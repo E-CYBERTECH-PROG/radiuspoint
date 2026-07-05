@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -c admin_cookies.txt -b admin_cookies.txt http://127.0.0.1:8000/platform-admin/tenants -o panel.html -w \"HTTP %{http_code}\\\\n\")"
+    ]
+  }
+}
