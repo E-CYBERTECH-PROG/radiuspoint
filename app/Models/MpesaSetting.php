@@ -18,9 +18,12 @@ class MpesaSetting extends Model
         'passkey',
         'environment',
         'is_active',
+        'consecutive_failures',
+        'last_checked_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'last_checked_at' => 'datetime',
     ];
 }

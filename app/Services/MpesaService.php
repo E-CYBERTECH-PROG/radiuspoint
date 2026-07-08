@@ -3,10 +3,21 @@
 namespace App\Services;
 
 use App\Models\MpesaSetting;
+use App\Models\Tenant;
+use App\Notifications\MpesaGatewayDown;
+use App\Notifications\MpesaGatewayRecovered;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 
 class MpesaService
 {
+    /**
+     * Consecutive stkPush() failures before declaring the gateway "down" — high enough that a
+     * single flaky request doesn't trigger a false alarm, low enough to catch a real Safaricom
+     * outage within a handful of customer payment attempts.
+     */
+    private const FAILURE_THRESHOLD = 3;
+
     public function __construct(private MpesaSetting $settings)
     {
         //
@@ -48,6 +59,44 @@ class MpesaService
                 'TransactionDesc' => $description,
             ]);
 
-        return $response->json() ?? [];
+        $result = $response->json() ?? [];
+        $this->recordHealth(isset($result['CheckoutRequestID']));
+
+        return $result;
+    }
+
+    /**
+     * Tracks consecutive failures and fires an alert once the threshold is crossed — not on
+     * every single failure, which would spam a notification per failed customer payment attempt
+     * during a real outage. Recovery fires once, on the first success after being "down."
+     */
+    private function recordHealth(bool $success): void
+    {
+        $wasDown = $this->settings->consecutive_failures >= self::FAILURE_THRESHOLD;
+
+        if ($success) {
+            $this->settings->update(['consecutive_failures' => 0, 'last_checked_at' => now()]);
+
+            if ($wasDown) {
+                $this->notifyTenant(new MpesaGatewayRecovered());
+            }
+
+            return;
+        }
+
+        $count = $this->settings->consecutive_failures + 1;
+        $this->settings->update(['consecutive_failures' => $count, 'last_checked_at' => now()]);
+
+        if ($count === self::FAILURE_THRESHOLD) {
+            $this->notifyTenant(new MpesaGatewayDown());
+        }
+    }
+
+    private function notifyTenant($notification): void
+    {
+        $tenant = Tenant::find($this->settings->tenant_id);
+        if ($tenant) {
+            Notification::send($tenant->users, $notification);
+        }
     }
 }
