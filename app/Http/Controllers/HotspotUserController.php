@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\HotspotUser;
 use App\Models\Plan;
 use App\Models\Router;
+use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Throwable;
 
 class HotspotUserController extends Controller
 {
@@ -115,5 +117,52 @@ class HotspotUserController extends Controller
         $hotspot_user->delete();
 
         return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer removed.');
+    }
+
+    /**
+     * Same batched-per-router pattern as PppoeUserController::liveStatus(). Matched by
+     * phone_number, not mac_address — RadiusSyncService::sync() always uses phone_number as the
+     * RADIUS username, so that's what RouterOS's own active-session "user" field will contain,
+     * regardless of what MAC the client connected from.
+     */
+    public function liveStatus(Request $request)
+    {
+        $phoneNumbers = (array) $request->input('phone_numbers', []);
+
+        $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)
+            ->whereIn('phone_number', $phoneNumbers)
+            ->whereNotNull('current_router_id')
+            ->get(['phone_number', 'current_router_id']);
+
+        $routers = Router::whereIn('id', $users->pluck('current_router_id')->unique())->get()->keyBy('id');
+        $result = [];
+
+        foreach ($users->groupBy('current_router_id') as $routerId => $groupUsers) {
+            $router = $routers->get($routerId);
+            if (! $router) {
+                continue;
+            }
+
+            try {
+                $api = new MikrotikApiService();
+                if (! $api->connect($router->ip_address, $router->api_username, $router->api_password)) {
+                    continue;
+                }
+
+                $activeByUser = collect($api->query('/ip/hotspot/active/print'))->keyBy('user');
+
+                foreach ($groupUsers as $user) {
+                    $session = $activeByUser->get($user->phone_number);
+                    $result[$user->phone_number] = $session
+                        ? ['online' => true, 'uptime' => $session['uptime'] ?? null, 'address' => $session['address'] ?? null, 'id' => $session['.id'] ?? null, 'router_id' => $routerId]
+                        : ['online' => false];
+                }
+            } catch (Throwable $e) {
+                // Router unreachable — omit these entries; frontend treats a missing key as
+                // "unknown" rather than falsely reporting offline.
+            }
+        }
+
+        return response()->json(['data' => $result]);
     }
 }

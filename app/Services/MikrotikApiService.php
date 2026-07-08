@@ -39,6 +39,114 @@ class MikrotikApiService
             $query->equal($key, $value);
         }
 
-        return $this->client->query($query)->read();
+        return $this->readResult($this->client->query($query));
+    }
+
+    /**
+     * The `.id` of the first item matching a filter on a /print endpoint, or null if none —
+     * used to reference an item by a real property (e.g. name) before setting it, since the
+     * API protocol has no inline "[find ...]" shorthand the way RouterOS's CLI/script parser does.
+     */
+    public function findId(string $printEndpoint, string $key, $value): ?string
+    {
+        $query = new Query($printEndpoint);
+        $query->where($key, $value);
+
+        $result = $this->readResult($this->client->query($query));
+
+        return $result[0]['.id'] ?? null;
+    }
+
+    public function setById(string $setEndpoint, string $id, array $attributes): void
+    {
+        $query = new Query($setEndpoint);
+        $query->equal('.id', $id);
+
+        foreach ($attributes as $key => $value) {
+            $query->equal($key, $value);
+        }
+
+        $this->readResult($this->client->query($query));
+    }
+
+    /**
+     * Reads the raw RouterOS response and throws if it's a `!trap` (error) rather than `!done`
+     * (success) — the vendor library's own parser treats both identically and just returns
+     * whatever attributes followed either way, so a failed /add or /set otherwise looks
+     * indistinguishable from a successful one to every caller in this class. Confirmed against
+     * real hardware this was silently swallowing failures during provisioning.
+     *
+     * Returns a list of rows (each a flat key => value array), matching the shape the vendor
+     * library's own parsed output already had for /print-style multi-row queries, so no existing
+     * caller needs to change how it reads the result.
+     */
+    private function readResult($queryResult): array
+    {
+        $raw = $queryResult->read(false);
+
+        if (in_array('!trap', $raw, true)) {
+            $message = 'RouterOS API error';
+            foreach ($raw as $word) {
+                if (is_string($word) && str_starts_with($word, '=message=')) {
+                    $message = substr($word, strlen('=message='));
+                    break;
+                }
+            }
+
+            throw new \RuntimeException($message);
+        }
+
+        $rows = [];
+        $current = [];
+
+        foreach ($raw as $word) {
+            if ($word === '!re') {
+                if ($current) {
+                    $rows[] = $current;
+                }
+                $current = [];
+            } elseif (is_string($word) && str_starts_with($word, '=')) {
+                [, $key, $value] = array_pad(explode('=', $word, 3), 3, '');
+                $current[$key] = $value;
+            }
+        }
+
+        if ($current) {
+            $rows[] = $current;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The first unused /24 under 172.20.0.0/16 — a block reserved for RadiusPoint-managed
+     * Hotspot/PPPoE client pools, distinct from the 10.0.0.0/24 WireGuard management subnet.
+     * Checks the router's *actual* current pools rather than deriving a fixed/hashed offset, so
+     * it can't collide with anything already configured on hardware with prior history (e.g. a
+     * router migrated from another platform that already has pools in this range).
+     */
+    public function allocateSubnet(): array
+    {
+        $existingRanges = array_column($this->query('/ip/pool/print'), 'ranges');
+
+        for ($octet = 0; $octet <= 255; $octet++) {
+            $cidr = "172.20.{$octet}.0/24";
+            $gateway = "172.20.{$octet}.1";
+            $range = "172.20.{$octet}.2-172.20.{$octet}.254";
+
+            $collides = false;
+            foreach ($existingRanges as $existing) {
+                if (str_contains((string) $existing, "172.20.{$octet}.")) {
+                    $collides = true;
+                    break;
+                }
+            }
+
+            if (! $collides) {
+                return ['gateway' => $gateway, 'range' => $range, 'cidr' => $cidr];
+            }
+        }
+
+        throw new \RuntimeException('No free /24 subnet available in the 172.20.0.0/16 allocation block.');
     }
 }

@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\HotspotUser;
 use App\Models\Plan;
+use App\Models\PlanRouterSync;
 use App\Models\PppoeUser;
 use App\Models\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Services\MikrotikApiService;
-use Illuminate\Support\Facades\Log;
 
 class PlanController extends Controller
 {
@@ -23,16 +22,31 @@ class PlanController extends Controller
             ->paginate($this->perPage($request))
             ->withQueryString();
 
-        return view('plans.index', compact('plans'));
+        $activeRouterCount = Router::where('tenant_id', Auth::user()->tenant_id)->where('status', 'active')->count();
+
+        // One aggregate query for every plan on the page, rather than a per-row query — grouped
+        // so the view can tell "fully synced" from "partially synced" from "sync failed
+        // somewhere" without re-deriving it per row.
+        $syncCounts = PlanRouterSync::whereIn('plan_id', $plans->pluck('id'))
+            ->selectRaw('plan_id, status, count(*) as c')
+            ->groupBy('plan_id', 'status')
+            ->get()
+            ->groupBy('plan_id')
+            ->map(fn ($rows) => $rows->pluck('c', 'status'));
+
+        return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts'));
     }
 
     // Show the "Create Plan" form
     public function create()
     {
-        return view('plans.create');
+        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->orderBy('name')->get();
+
+        return view('plans.create', compact('routers'));
     }
 
-    // Save the plan and push it to the routers
+    // Save the plan — router sync happens separately via the plan:reconcile scheduled command
+    // (see app/Console/Commands/PlanReconcile.php), not inline here.
     public function store(Request $request)
     {
         $request->validate([
@@ -43,9 +57,11 @@ class PlanController extends Controller
             'duration_unit' => 'required|in:minutes,hours,days,weeks,months',
             'data_cap_mb' => 'nullable|integer|min:1',
             'speed_limit' => 'required|string', // e.g., 5M/5M
+            'fup_speed_limit' => 'nullable|string',
+            'router_ids' => 'nullable|array',
+            'router_ids.*' => 'exists:routers,id',
         ]);
 
-        // 1. Save to Central Cloud Database
         $plan = Plan::create([
             'tenant_id' => Auth::user()->tenant_id,
             'name' => $request->name,
@@ -55,16 +71,22 @@ class PlanController extends Controller
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
             'speed_limit' => $request->speed_limit,
+            'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
 
-        $this->syncToRouters($plan);
+        // Empty selection = "applies to every active router" (the pre-existing default
+        // behavior) — an empty sync() call correctly leaves the pivot with no rows for that case.
+        $plan->routers()->sync($request->input('router_ids', []));
 
-        return redirect()->route('plans.index')->with('success', 'Plan created and synced to hardware successfully!');
+        return redirect()->route('plans.index')->with('success', 'Plan created — syncing to hardware within a minute.');
     }
 
     public function edit(Plan $plan)
     {
-        return view('plans.edit', compact('plan'));
+        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->orderBy('name')->get();
+        $selectedRouterIds = $plan->routers()->pluck('routers.id')->all();
+
+        return view('plans.edit', compact('plan', 'routers', 'selectedRouterIds'));
     }
 
     public function update(Request $request, Plan $plan)
@@ -77,6 +99,9 @@ class PlanController extends Controller
             'duration_unit' => 'required|in:minutes,hours,days,weeks,months',
             'data_cap_mb' => 'nullable|integer|min:1',
             'speed_limit' => 'required|string',
+            'fup_speed_limit' => 'nullable|string',
+            'router_ids' => 'nullable|array',
+            'router_ids.*' => 'exists:routers,id',
         ]);
 
         $plan->update([
@@ -87,11 +112,12 @@ class PlanController extends Controller
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
             'speed_limit' => $request->speed_limit,
+            'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
 
-        $this->syncToRouters($plan);
+        $plan->routers()->sync($request->input('router_ids', []));
 
-        return redirect()->route('plans.index')->with('success', 'Plan updated and re-synced to hardware successfully!');
+        return redirect()->route('plans.index')->with('success', 'Plan updated — re-syncing to hardware within a minute.');
     }
 
     public function destroy(Plan $plan)
@@ -108,36 +134,19 @@ class PlanController extends Controller
         return redirect()->route('plans.index')->with('success', 'Plan removed.');
     }
 
-    // Multi-Router Sync: push this profile to all active routers owned by this ISP
-    private function syncToRouters(Plan $plan): void
+    /**
+     * Per-router sync status, read straight from what plan:reconcile last recorded — not a live
+     * query, so this loads instantly regardless of how many routers this tenant has.
+     */
+    public function syncStatus(Plan $plan)
     {
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)
-                         ->where('status', 'active')
-                         ->get();
+        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->where('status', 'active')->get();
 
-        $api = new MikrotikApiService();
+        $syncs = PlanRouterSync::where('plan_id', $plan->id)
+            ->whereIn('router_id', $routers->pluck('id'))
+            ->get()
+            ->keyBy('router_id');
 
-        foreach ($routers as $router) {
-            if ($api->connect($router->ip_address, $router->api_username, $router->api_password)) {
-
-                // Route the command based on whether it is Hotspot or PPPoE
-                if ($plan->type === 'hotspot') {
-                    $api->query('/ip/hotspot/user/profile/add', [
-                        'name' => $plan->name,
-                        'rate-limit' => $plan->speed_limit,
-                        'shared-users' => '1',
-                        'transparent-proxy' => 'yes'
-                    ]);
-                } else {
-                    $api->query('/ppp/profile/add', [
-                        'name' => $plan->name,
-                        'rate-limit' => $plan->speed_limit,
-                        'only-one' => 'yes'
-                    ]);
-                }
-            } else {
-                Log::warning("Failed to sync Plan {$plan->name} to Router {$router->name}");
-            }
-        }
+        return view('plans.sync-status', compact('plan', 'routers', 'syncs'));
     }
 }

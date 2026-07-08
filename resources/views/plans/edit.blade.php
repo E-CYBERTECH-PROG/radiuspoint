@@ -57,6 +57,29 @@
                 <p class="text-xs text-gray-400 mt-2">1 GB = 1000 MB</p>
             </div>
 
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Fair Use Speed <span class="text-gray-400 normal-case">(optional)</span></label>
+                <input type="text" name="fup_speed_limit" value="{{ old('fup_speed_limit', $plan->fup_speed_limit) }}" placeholder="1M/1M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
+                <p class="text-xs text-gray-400 mt-2">Throttled speed once the data cap above is hit — ignored unless a data cap is also set.</p>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Applies To <span class="text-gray-400 normal-case">(optional)</span></label>
+                @if($routers->isEmpty())
+                    <p class="text-sm text-gray-400">No routers deployed yet — this plan will sync to any router added later.</p>
+                @else
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        @foreach($routers as $router)
+                            <label class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 cursor-pointer">
+                                <input type="checkbox" name="router_ids[]" value="{{ $router->id }}" @checked(in_array($router->id, old('router_ids', $selectedRouterIds))) class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $router->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Leave all unchecked to sync this plan to every router, including ones added later.</p>
+                @endif
+            </div>
+
         </div>
 
         <div class="pt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">

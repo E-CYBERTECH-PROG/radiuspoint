@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\PppoeUser;
 use App\Models\Plan;
 use App\Models\Router;
+use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class PppoeUserController extends Controller
 {
@@ -125,5 +127,52 @@ class PppoeUserController extends Controller
         $pppoe_user->delete();
 
         return redirect()->route('pppoe-users.index')->with('success', 'PPPoE customer removed.');
+    }
+
+    /**
+     * Polled by the index page's "Live" column. Groups the visible usernames by router and
+     * does ONE /ppp/active/print call per distinct router represented on the page, rather than
+     * one call per row — a page of 20 users spanning 3 routers means 3 API calls, not 20.
+     */
+    public function liveStatus(Request $request)
+    {
+        $usernames = (array) $request->input('usernames', []);
+
+        $users = PppoeUser::where('tenant_id', Auth::user()->tenant_id)
+            ->whereIn('username', $usernames)
+            ->whereNotNull('current_router_id')
+            ->get(['username', 'current_router_id']);
+
+        $routers = Router::whereIn('id', $users->pluck('current_router_id')->unique())->get()->keyBy('id');
+        $result = [];
+
+        foreach ($users->groupBy('current_router_id') as $routerId => $groupUsers) {
+            $router = $routers->get($routerId);
+            if (! $router) {
+                continue;
+            }
+
+            try {
+                $api = new MikrotikApiService();
+                if (! $api->connect($router->ip_address, $router->api_username, $router->api_password)) {
+                    continue;
+                }
+
+                $activeByName = collect($api->query('/ppp/active/print'))->keyBy('name');
+
+                foreach ($groupUsers as $user) {
+                    $session = $activeByName->get($user->username);
+                    $result[$user->username] = $session
+                        ? ['online' => true, 'uptime' => $session['uptime'] ?? null, 'address' => $session['address'] ?? null, 'id' => $session['.id'] ?? null, 'router_id' => $routerId]
+                        : ['online' => false];
+                }
+            } catch (Throwable $e) {
+                // Router unreachable — leave these usernames out of the result entirely rather
+                // than reporting a false "offline"; the frontend treats a missing entry as
+                // "unknown" (shows nothing) instead of a red badge.
+            }
+        }
+
+        return response()->json(['data' => $result]);
     }
 }

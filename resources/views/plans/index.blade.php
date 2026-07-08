@@ -58,12 +58,30 @@
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }}</td>
                             <td class="px-6 py-4 text-green-700 dark:text-green-400 font-bold">KES {{ number_format($plan->price) }}</td>
                             <td class="px-6 py-4 text-center">
-                                <div class="inline-flex items-center gap-2 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest font-bold">
-                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Synced
-                                </div>
+                                @php
+                                    $counts = $syncCounts[$plan->id] ?? collect();
+                                    $synced = $counts->get('synced', 0);
+                                    $failed = $counts->get('failed', 0);
+                                @endphp
+                                @if($activeRouterCount === 0)
+                                    <span class="text-[10px] text-gray-400 uppercase tracking-widest">No routers</span>
+                                @elseif($failed > 0)
+                                    <a href="{{ route('plans.sync-status', $plan) }}" class="inline-flex items-center gap-2 text-[10px] text-red-700 dark:text-red-400 uppercase tracking-widest font-bold hover:underline">
+                                        <span class="w-2 h-2 rounded-full bg-red-500"></span> Sync issue
+                                    </a>
+                                @elseif($synced >= $activeRouterCount)
+                                    <a href="{{ route('plans.sync-status', $plan) }}" class="inline-flex items-center gap-2 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest font-bold hover:underline">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Synced
+                                    </a>
+                                @else
+                                    <a href="{{ route('plans.sync-status', $plan) }}" class="inline-flex items-center gap-2 text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest font-bold hover:underline">
+                                        <i class="bx bx-loader-alt bx-spin"></i> Syncing...
+                                    </a>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-3">
+                                    <a href="{{ route('plans.sync-status', $plan) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Sync Status"><i class="bx bx-git-compare text-lg"></i></a>
                                     <a href="{{ route('plans.edit', $plan) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><i class="bx bx-edit-alt text-lg"></i></a>
                                     <form action="{{ route('plans.destroy', $plan) }}" method="POST" onsubmit="return confirm('Delete this plan? Customers assigned to it must be reassigned first.')">
                                         @csrf @method('DELETE')

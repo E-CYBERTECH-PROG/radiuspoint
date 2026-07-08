@@ -25,7 +25,7 @@
         @endif
     </form>
 
-    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div x-data="transactionLiveStatus()" x-init="startPolling()" class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
@@ -53,13 +53,11 @@
                                     {{ $transaction->payment_method }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-fira">{{ $transaction->mpesa_receipt ?: '—' }}</td>
-                            <td class="px-6 py-4">
-                                @if($transaction->status === 'success')
-                                    <span class="flex items-center gap-1 text-green-500 text-xs font-bold"><i class="bx bxs-check-circle"></i> Success</span>
-                                @else
-                                    <span class="flex items-center gap-1 text-red-500 text-xs font-bold"><i class="bx bxs-x-circle"></i> Failed</span>
-                                @endif
+                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-fira" x-text="(live[{{ $transaction->id }}]?.mpesa_receipt ?? {{ \Illuminate\Support\Js::from($transaction->mpesa_receipt) }}) || '—'"></td>
+                            <td class="px-6 py-4" x-data="{ status: {{ \Illuminate\Support\Js::from($transaction->status) }} }" x-effect="status = live[{{ $transaction->id }}]?.status ?? status">
+                                <span x-show="status === 'success'" class="flex items-center gap-1 text-green-500 text-xs font-bold"><i class="bx bxs-check-circle"></i> Success</span>
+                                <span x-show="status === 'pending'" class="flex items-center gap-1 text-amber-500 text-xs font-bold"><i class="bx bx-loader-alt bx-spin"></i> Pending</span>
+                                <span x-show="status === 'failed'" class="flex items-center gap-1 text-red-500 text-xs font-bold"><i class="bx bxs-x-circle"></i> Failed</span>
                             </td>
                             <td class="px-6 py-4 text-right text-xs text-gray-500">{{ $transaction->created_at->diffForHumans() }}</td>
                         </tr>
@@ -80,4 +78,42 @@
             </div>
         @endif
     </div>
+
+    <x-slot name="scripts">
+        <script>
+            function transactionLiveStatus() {
+                return {
+                    live: {},
+                    pendingIds: @json($transactions->where('status', 'pending')->pluck('id')->values()),
+
+                    startPolling() {
+                        if (this.pendingIds.length === 0) return;
+                        this.poll();
+                        // 5s matches the dashboard's online-counter cadence — payment confirmation
+                        // is exactly the kind of thing worth feeling immediate.
+                        this.interval = setInterval(() => this.poll(), 5000);
+                    },
+
+                    async poll() {
+                        try {
+                            const params = new URLSearchParams();
+                            this.pendingIds.forEach(id => params.append('ids[]', id));
+                            const res = await fetch(`{{ route('transactions.live-status') }}?${params}`, { headers: { 'Accept': 'application/json' } });
+                            const json = await res.json();
+                            this.live = json.data || {};
+
+                            // Stop polling entirely once nothing's pending anymore — a fully
+                            // settled page shouldn't poll forever.
+                            this.pendingIds = this.pendingIds.filter(id => (this.live[id]?.status ?? 'pending') === 'pending');
+                            if (this.pendingIds.length === 0 && this.interval) {
+                                clearInterval(this.interval);
+                            }
+                        } catch (e) {
+                            // Transient failure — next tick retries.
+                        }
+                    },
+                };
+            }
+        </script>
+    </x-slot>
 </x-sidebar-layout>

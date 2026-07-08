@@ -9,10 +9,15 @@
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $router->name }}</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $models[$router->board_model]['label'] ?? 'Unknown Model' }} &middot; {{ $router->ip_address }}</p>
                 </div>
-                <button @click="testConnection()" :disabled="testing" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                    <i class="bx" :class="testing ? 'bx-loader-alt bx-spin' : 'bx-broadcast'"></i>
-                    <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
-                </button>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('routers.monitor', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                        <i class="bx bx-pulse text-lg"></i> Live Monitor
+                    </a>
+                    <button @click="testConnection()" :disabled="testing" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                        <i class="bx" :class="testing ? 'bx-loader-alt bx-spin' : 'bx-broadcast'"></i>
+                        <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -62,18 +67,69 @@
                 <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-4">
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Web Access</p>
-                        <a href="http://{{ $router->ip_address }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold inline-flex items-center gap-1">
-                            http://{{ $router->ip_address }} <i class="bx bx-link-external"></i>
-                        </a>
+                        @if($router->web_proxy_port)
+                            <a href="http://{{ config('vpn.public_ip') }}:{{ $router->web_proxy_port }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold inline-flex items-center gap-1">
+                                Open Web UI <i class="bx bx-link-external"></i>
+                            </a>
+                        @else
+                            <span class="text-xs text-gray-400">Not yet allocated — re-save this router to assign a proxy port.</span>
+                        @endif
                     </div>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Winbox Address</p>
-                        <button @click="copyWinbox()" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 text-sm font-bold font-fira inline-flex items-center gap-1">
-                            {{ $router->ip_address }}:8291 <i class="bx" :class="copied ? 'bx-check text-green-500' : 'bx-copy'"></i>
-                        </button>
+                        @if($router->winbox_proxy_port)
+                            <button @click="copyWinbox()" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 text-sm font-bold font-fira inline-flex items-center gap-1">
+                                {{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }} <i class="bx" :class="copied ? 'bx-check text-green-500' : 'bx-copy'"></i>
+                            </button>
+                            <p class="text-[10px] text-gray-400 mt-1">Paste this into Winbox's "Connect To" field — reachable from anywhere, not just this server.</p>
+                        @else
+                            <span class="text-xs text-gray-400">Not yet allocated — re-save this router to assign a proxy port.</span>
+                        @endif
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-md font-bold text-gray-900 dark:text-white">Captive Portal</h3>
+                <a href="{{ route('captive.show', $router) }}" target="_blank" class="text-sm text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
+                    Preview <i class="bx bx-link-external"></i>
+                </a>
+            </div>
+            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'minimal') }}' }">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        @foreach(['minimal' => 'Minimal', 'business' => 'Business', 'promo' => 'Promo Banner'] as $key => $label)
+                            <label class="border rounded-lg p-3 cursor-pointer text-center transition-colors" :class="template === '{{ $key }}' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'">
+                                <input type="radio" name="template" value="{{ $key }}" x-model="template" class="sr-only">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Logo URL <span class="text-gray-400 normal-case">(optional)</span></label>
+                        <input type="url" name="logo_url" value="{{ old('logo_url', $captivePortal->logo_url ?? '') }}" placeholder="https://..." class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Brand Color</label>
+                        <input type="color" name="primary_color" value="{{ old('primary_color', $captivePortal->primary_color ?? '#2563eb') }}" class="w-full h-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Title <span class="text-gray-400 normal-case">(optional)</span></label>
+                    <input type="text" name="notice_title" value="{{ old('notice_title', $captivePortal->notice_title ?? '') }}" placeholder="e.g. Scheduled maintenance" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Body <span class="text-gray-400 normal-case">(optional)</span></label>
+                    <textarea name="notice_body" rows="2" placeholder="Tell your customers what's happening..." class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">{{ old('notice_body', $captivePortal->notice_body ?? '') }}</textarea>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg text-sm">Save Portal Settings</button>
+            </form>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -168,7 +224,7 @@
                     },
 
                     copyWinbox() {
-                        navigator.clipboard.writeText('{{ $router->ip_address }}:8291');
+                        navigator.clipboard.writeText('{{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }}');
                         this.copied = true;
                         setTimeout(() => this.copied = false, 2000);
                     },

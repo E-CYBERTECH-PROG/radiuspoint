@@ -73,7 +73,7 @@
         <div class="flex items-center justify-between p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/40 rounded-xl">
             <div>
                 <p class="text-[10px] text-blue-700 dark:text-blue-400 uppercase tracking-wide font-bold mb-1">Before you continue</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Applying this configuration will finalize the hardware deployment and register the router to your central dashboard.</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">This creates a real Hotspot and/or PPPoE server on each interface you assign — its own address pool and a RADIUS-authenticated profile — then finalizes the hardware deployment.</p>
             </div>
 
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 shrink-0">

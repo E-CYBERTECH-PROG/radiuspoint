@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Traits\BelongsToTenant;
 use Carbon\Carbon;
 
@@ -18,8 +19,18 @@ class Plan extends Model
     'duration_value',
     'duration_unit',
     'data_cap_mb',
-    'speed_limit'
+    'speed_limit',
+    'fup_speed_limit',
 ];
+
+    /**
+     * Routers this plan is restricted to. Empty means "applies to every active router" — see
+     * PlanReconcile, which is the only place this restriction is actually enforced.
+     */
+    public function routers(): BelongsToMany
+    {
+        return $this->belongsToMany(Router::class);
+    }
 
     public function expiresAt(): Carbon
     {

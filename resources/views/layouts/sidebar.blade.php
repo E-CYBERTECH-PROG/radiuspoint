@@ -56,7 +56,9 @@
                         <button @click="open = !open" class="w-full flex items-center px-3 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
                             <i class="bx bx-shield-quarter text-xl"></i>
                             <span class="ml-3 font-bold text-sm flex-1 text-left whitespace-nowrap" x-show="sidebarOpen">Platform</span>
-                            @php($pendingCount = \App\Models\Tenant::where('status', 'pending')->count())
+                            @php
+                                $pendingCount = \App\Models\Tenant::where('status', 'pending')->count();
+                            @endphp
                             @if($pendingCount > 0)
                                 <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mr-2" x-show="sidebarOpen">{{ $pendingCount }}</span>
                             @endif
@@ -112,10 +114,12 @@
                     <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">Vouchers</span>
                 </a>
 
-                <a href="{{ route('mpesa-settings.edit') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('mpesa-settings.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
-                    <i class="bx bx-credit-card text-xl"></i>
-                    <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">M-Pesa Settings</span>
-                </a>
+                @if(Auth::user()->role !== 'Sales Agent')
+                    <a href="{{ route('mpesa-settings.edit') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('mpesa-settings.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                        <i class="bx bx-credit-card text-xl"></i>
+                        <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">M-Pesa Settings</span>
+                    </a>
+                @endif
 
                 @if(Auth::user()->role === 'SuperAdmin')
                     <a href="{{ route('team.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('team.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
@@ -171,14 +175,96 @@
                     </div>
                 </div>
 
+                @php
+                    // Computed here (not inline inside the x-data attribute below) — a
+                    // multi-line @json() call wrapping a closure with its own [...] array
+                    // literal confused Blade's directive-argument parser: it compiled without
+                    // error but produced truncated, syntactically broken PHP that only failed
+                    // at actual render time. A plain variable sidesteps that entirely.
+                    $notifBellItems = Auth::user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                        'id' => $n->id,
+                        'message' => $n->data['message'] ?? 'Notification',
+                        'url' => $n->data['url'] ?? null,
+                        'read' => (bool) $n->read_at,
+                        'created_at_human' => $n->created_at->diffForHumans(),
+                    ]);
+                @endphp
                 <div class="flex items-center gap-4 lg:gap-6">
                     <button @click="darkMode = !darkMode" class="text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors focus:outline-none">
                         <i class="bx text-2xl" :class="darkMode ? 'bx-sun' : 'bx-moon'"></i>
                     </button>
-                    <button class="relative text-gray-500 hover:text-blue-600 transition-colors">
-                        <i class="bx bx-bell text-2xl"></i>
-                        <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-950"></span>
-                    </button>
+                    <div x-data="{
+                            notifOpen: false,
+                            unread: {{ Auth::user()->unreadNotifications->count() }},
+                            notifications: {{ Illuminate\Support\Js::from($notifBellItems) }},
+
+                            startPolling() {
+                                // 20s — frequent enough that a router-down alert feels current
+                                // without hammering the endpoint on every single page nav.
+                                setInterval(() => this.poll(), 20000);
+                            },
+
+                            async poll() {
+                                try {
+                                    const res = await fetch('{{ route('notifications.recent') }}', { headers: { 'Accept': 'application/json' } });
+                                    const data = await res.json();
+                                    this.unread = data.unread_count;
+                                    this.notifications = data.notifications;
+                                } catch (e) {
+                                    // Next tick retries — badge just stays stale meanwhile.
+                                }
+                            },
+
+                            openNotification(n) {
+                                this.notifOpen = false;
+                                if (!n.read) {
+                                    fetch(`{{ url('/notifications') }}/${n.id}/mark-read`, {
+                                        method: 'POST',
+                                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                                    });
+                                }
+                                if (n.url) window.location.href = n.url;
+                            },
+
+                            async markAllRead() {
+                                await fetch('{{ route('notifications.mark-all-read') }}', {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                                });
+                                this.unread = 0;
+                                this.notifications = this.notifications.map(n => ({ ...n, read: true }));
+                            },
+                         }"
+                         x-init="startPolling()"
+                         class="relative">
+                        <button @click="notifOpen = !notifOpen" class="relative text-gray-500 hover:text-blue-600 transition-colors">
+                            <i class="bx bx-bell text-2xl"></i>
+                            <span x-show="unread > 0" x-cloak class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-950"></span>
+                        </button>
+                        {{-- max-w-[90vw] keeps this from overflowing the viewport on narrow screens, since a fixed w-80 (320px) can exceed the visible width entirely on small phones. --}}
+                        <div x-show="notifOpen" x-cloak x-transition @click.outside="notifOpen = false" class="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50 max-h-96 overflow-y-auto">
+                            <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-950">
+                                <p class="text-xs font-bold uppercase tracking-wide text-gray-400">Notifications</p>
+                                <a href="{{ route('settings.notifications.edit') }}" class="text-[10px] font-bold text-gray-400 hover:text-blue-600 uppercase tracking-wide">Preferences</a>
+                            </div>
+                            <template x-if="notifications.length === 0">
+                                <p class="px-4 py-6 text-center text-xs text-gray-400">No notifications yet.</p>
+                            </template>
+                            <template x-for="n in notifications" :key="n.id">
+                                <button type="button" @click="openNotification(n)" class="w-full text-left px-4 py-3 text-sm border-b border-gray-50 dark:border-gray-900 last:border-0 flex items-start gap-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors" :class="!n.read ? 'bg-blue-50 dark:bg-blue-900/10' : ''">
+                                    <span class="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" :class="!n.read ? 'bg-blue-500' : ''"></span>
+                                    <div>
+                                        <p class="text-gray-700 dark:text-gray-300" x-text="n.message"></p>
+                                        <p class="text-[10px] text-gray-400 mt-1" x-text="n.created_at_human"></p>
+                                    </div>
+                                </button>
+                            </template>
+                            <div class="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                                <a href="{{ route('notifications.index') }}" class="text-[10px] font-bold text-gray-500 hover:text-blue-600 uppercase tracking-wide">View All</a>
+                                <button type="button" x-show="unread > 0" @click="markAllRead()" class="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wide">Mark all read</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
                     <div x-data="{ profileOpen: false }" class="relative">
                         <button @click="profileOpen = !profileOpen" @click.outside="profileOpen = false" class="flex items-center gap-3 cursor-pointer">

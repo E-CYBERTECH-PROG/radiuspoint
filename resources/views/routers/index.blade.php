@@ -4,9 +4,14 @@
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Hardware &amp; Routers</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Live monitoring and management of all deployed Mikrotik routers.</p>
         </div>
-        <a href="{{ route('routers.create') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-            <i class="bx bx-link text-lg"></i> Deploy New Hardware
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('routers.noc') }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                <i class="bx bx-grid-alt text-lg"></i> Fleet Status
+            </a>
+            <a href="{{ route('routers.create') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                <i class="bx bx-link text-lg"></i> Deploy New Hardware
+            </a>
+        </div>
     </div>
 
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
@@ -67,12 +72,19 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3 text-xs">
-                                    <a href="http://{{ $router->ip_address }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition-colors" title="Open Web Access">
-                                        <i class="bx bx-globe text-lg"></i>
+                                    @if($router->web_proxy_port)
+                                        <a href="http://{{ config('vpn.public_ip') }}:{{ $router->web_proxy_port }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition-colors" title="Open Web Access">
+                                            <i class="bx bx-globe text-lg"></i>
+                                        </a>
+                                    @endif
+                                    @if($router->winbox_proxy_port)
+                                        <button type="button" @click="navigator.clipboard.writeText('{{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }}'); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-blue-600 transition-colors" title="Copy Winbox Address">
+                                            <i class="bx" :class="copied ? 'bx-check text-green-500' : 'bx-copy'"></i>
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('routers.monitor', $router) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Live Monitor">
+                                        <i class="bx bx-pulse text-lg"></i>
                                     </a>
-                                    <button type="button" @click="navigator.clipboard.writeText('{{ $router->ip_address }}:8291'); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-blue-600 transition-colors" title="Copy Winbox Address">
-                                        <i class="bx" :class="copied ? 'bx-check text-green-500' : 'bx-copy'"></i>
-                                    </button>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-center">

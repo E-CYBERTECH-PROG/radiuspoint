@@ -25,4 +25,21 @@ class TransactionController extends Controller
 
         return view('transactions.index', compact('transactions'));
     }
+
+    /**
+     * Polled by the index page while any visible row is still 'pending' — the M-Pesa STK
+     * callback (BillingController::handleCallback) flips status independently of anything the
+     * admin is looking at, so this just re-reads the current state of the given IDs rather than
+     * re-running the whole filtered/paginated query.
+     */
+    public function liveStatus(Request $request)
+    {
+        $ids = (array) $request->input('ids', []);
+
+        $transactions = Transaction::where('tenant_id', Auth::user()->tenant_id)
+            ->whereIn('id', $ids)
+            ->get(['id', 'status', 'mpesa_receipt']);
+
+        return response()->json(['data' => $transactions->keyBy('id')]);
+    }
 }
