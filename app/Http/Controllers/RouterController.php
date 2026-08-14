@@ -160,7 +160,16 @@ class RouterController extends Controller
                   // would keep getting re-imported forever on every retry. Remove it first so a
                   // retry always re-fetches and re-imports the current script, not a stale copy.
                   "  :if ([:len [/file find name=startup.rsc]] > 0) do={ /file remove startup.rsc };\n" .
-                  "  /tool fetch url=\"{$startupUrl}\" mode={$fetchMode} keep-result=yes dst-path=startup.rsc http-method=get;\n" .
+                  // check-certificate=no: a factory-fresh/just-reset router has no correct
+                  // system clock yet (no confirmed NTP sync, no RTC battery on some boards), so
+                  // RouterOS can reject our Let's Encrypt cert as "not yet valid"/"expired" purely
+                  // because its own clock is wrong — this is the classic MikroTik ZTP
+                  // chicken-and-egg problem, and shows up in the router's own terminal as an SSL
+                  // failure on this very first fetch. The tunnel this script sets up moments later
+                  // (WireGuard keypair + RADIUS shared secret) is what actually authenticates the
+                  // router going forward, so skipping strict cert validation on just this one
+                  // bootstrap download doesn't weaken that.
+                  "  /tool fetch url=\"{$startupUrl}\" mode={$fetchMode} check-certificate=no keep-result=yes dst-path=startup.rsc http-method=get;\n" .
                   "  :import startup.rsc;\n" .
                   "} else={\n" .
                   "  :put \$rpDiag;\n" .
