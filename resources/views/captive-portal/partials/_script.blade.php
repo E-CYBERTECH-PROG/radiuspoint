@@ -1,10 +1,14 @@
 <script>
+    const rpLinkLoginOnly = @json($linkLoginOnly);
+    const rpAutoReconnect = @json($autoReconnect ?? null);
+
     const rpPortal = (function () {
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const linkLoginOnly = @json($linkLoginOnly);
+        const linkLoginOnly = rpLinkLoginOnly;
         const payUrl = @json(route('portal.pay', $router));
         const statusUrlTemplate = @json(route('portal.status', [$router, '__ID__']));
         const lookupUrl = @json(route('captive.lookup', $router));
+        const lookupReceiptUrl = @json(route('captive.lookup-receipt', $router));
         const freeModeUrl = @json(route('captive.free-mode', $router));
         const mac = @json($mac);
 
@@ -19,7 +23,7 @@
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
         }
         function step(prefix, name) {
-            ['phone', 'code', 'confirm', 'waiting', 'success', 'failed', 'error'].forEach(s => {
+            ['phone', 'message', 'code', 'confirm', 'waiting', 'success', 'failed', 'error'].forEach(s => {
                 const el = document.getElementById(`rp-${prefix}-step-${s}`);
                 if (el) el.style.display = (s === name) ? 'block' : 'none';
             });
@@ -153,6 +157,51 @@
             }
         }
 
+        function openReceipt() {
+            document.getElementById('rp-receipt-error').style.display = 'none';
+            document.getElementById('rp-receipt-message').value = '';
+            step('receipt', 'message');
+            show('rp-modal-receipt');
+        }
+
+        async function submitReceipt() {
+            const message = document.getElementById('rp-receipt-message').value.trim();
+            const errorEl = document.getElementById('rp-receipt-error');
+            const btn = document.getElementById('rp-receipt-submit');
+
+            if (!message) {
+                errorEl.textContent = 'Paste the M-Pesa confirmation message you received.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            errorEl.style.display = 'none';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(lookupReceiptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ message }),
+                });
+                const data = await res.json();
+                btn.disabled = false;
+
+                if (data.found) {
+                    document.getElementById('rp-receipt-username').textContent = data.username;
+                    document.getElementById('rp-receipt-password').textContent = data.password;
+                    step('receipt', 'success');
+                } else {
+                    errorEl.textContent = data.message || 'No matching payment found.';
+                    errorEl.style.display = 'block';
+                }
+            } catch (e) {
+                btn.disabled = false;
+                errorEl.textContent = 'Network error. Please try again.';
+                errorEl.style.display = 'block';
+            }
+        }
+
         function submitVoucher() {
             const code = document.getElementById('rp-voucher-code').value.trim().toUpperCase();
             const errorEl = document.getElementById('rp-voucher-error');
@@ -228,6 +277,19 @@
             form.submit();
         }
 
-        return { openBuy, openReconnect, openVoucher, openFreeMode, submitBuy, submitReconnect, submitVoucher, submitFreeMode, resetBuy, autoConnect, close };
+        return { openBuy, openReconnect, openVoucher, openReceipt, openFreeMode, submitBuy, submitReconnect, submitVoucher, submitReceipt, submitFreeMode, resetBuy, autoConnect, close };
     })();
+
+    // Silent cross-router/cross-visit auto-reconnect: if the server already matched this
+    // device's MAC to a still-active plan (see CaptivePortalController::show()), skip the plan
+    // list entirely and log them straight back in — no click needed, covers both "moved to a
+    // different router" and "left and came back".
+    if (rpAutoReconnect && rpLinkLoginOnly) {
+        document.getElementById('rp-autoreconnect-overlay').style.display = 'flex';
+        document.getElementById('rp-login-username').value = rpAutoReconnect.username;
+        document.getElementById('rp-login-password').value = rpAutoReconnect.password;
+        const form = document.getElementById('rp-hotspot-login-form');
+        form.action = rpLinkLoginOnly;
+        form.submit();
+    }
 </script>

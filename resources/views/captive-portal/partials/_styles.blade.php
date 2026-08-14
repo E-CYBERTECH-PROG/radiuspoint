@@ -36,7 +36,12 @@
     .btn-outline { background: #f9fafb; color: #374151; border: 1px solid #e5e7eb; }
     .btn-ghost { background: none; color: var(--brand); border: none; padding: 8px; }
     .btn-block { width: 100%; padding: 13px; font-size: 14px; }
-    .actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .action-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 6px; cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; text-align: center; }
+    .action-card:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.06); border-color: var(--brand); }
+    .action-card-icon { width: 26px; height: 26px; color: var(--brand); }
+    .action-card-icon svg { width: 100%; height: 100%; }
+    .action-card-label { font-size: 11px; font-weight: 700; color: #374151; line-height: 1.25; }
     .divider { border-top: 1px solid #f3f4f6; margin: 18px 0; }
     .empty { text-align: center; color: #6b7280; font-size: 13px; padding: 20px 0; }
     .footer { padding: 14px 24px; border-top: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }

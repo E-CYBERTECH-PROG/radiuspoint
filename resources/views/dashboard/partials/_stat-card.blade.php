@@ -10,7 +10,7 @@
         <p class="text-xs font-bold text-gray-500 dark:text-gray-400" x-text="dateText"></p>
         <p class="text-xs font-fira font-bold text-gray-400 tabular-nums" x-text="timeText"></p>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y lg:divide-y-0 divide-gray-100 dark:divide-gray-800">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-x-0 sm:divide-x divide-y lg:divide-y-0 divide-gray-100 dark:divide-gray-800">
         <div class="p-3 sm:p-4">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Online Now</p>

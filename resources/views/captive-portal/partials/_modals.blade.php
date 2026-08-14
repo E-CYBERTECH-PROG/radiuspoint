@@ -61,6 +61,34 @@
     </div>
 </div>
 
+{{-- Paste-payment-message modal: extracts the M-Pesa receipt code server-side and matches it
+     against a successful Transaction — same idea as the phone lookup above, for when someone
+     doesn't have/remember the paying number handy. --}}
+<div class="modal-overlay" id="rp-modal-receipt">
+    <div class="modal">
+        <div id="rp-receipt-step-message">
+            <h2>Paste Payment Message</h2>
+            <p class="sub">Paste the full M-Pesa confirmation SMS you received — we'll find the receipt code in it.</p>
+            <textarea id="rp-receipt-message" rows="4" placeholder="e.g. TAx1B2C3D4 Confirmed. You have received Ksh20.00 from JOHN DOE 254712345678 on 14/8/26 at 3:45 PM..." style="width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:13px; outline:none; margin-bottom:14px; resize:vertical; font-family:inherit;"></textarea>
+            <p class="error-text" id="rp-receipt-error" style="display:none"></p>
+            <button type="button" class="btn btn-brand btn-block" id="rp-receipt-submit" onclick="rpPortal.submitReceipt()">Find My Plan</button>
+            <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-receipt')">Cancel</button>
+        </div>
+        <div id="rp-receipt-step-success" style="display:none">
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h2>Plan found!</h2>
+            <p class="sub">Save these in case you need to log in manually.</p>
+            <div class="creds">
+                <div class="k">Username</div>
+                <div class="v" id="rp-receipt-username"></div>
+                <div class="k">Password</div>
+                <div class="v" id="rp-receipt-password"></div>
+            </div>
+            <button type="button" class="btn btn-brand btn-block" onclick="rpPortal.autoConnect('receipt')">Connect Me Automatically</button>
+        </div>
+    </div>
+</div>
+
 {{-- Voucher modal: a voucher code IS the login credential (username = password = code, see
      VoucherController::generate) — no lookup needed, just submit it straight to the router. --}}
 <div class="modal-overlay" id="rp-modal-voucher">
@@ -96,6 +124,17 @@
             <p class="error-text" id="rp-freemode-error"></p>
             <button type="button" class="btn btn-brand btn-block" onclick="rpPortal.close('rp-modal-freemode')">Close</button>
         </div>
+    </div>
+</div>
+
+{{-- Shown instead of the plan list when CaptivePortalController::show() already matched this
+     device's MAC to a still-active plan — see the auto-reconnect block at the bottom of
+     _script.blade.php, which submits the login form immediately and reveals this overlay. --}}
+<div class="modal-overlay" id="rp-autoreconnect-overlay" style="display:none">
+    <div class="modal">
+        <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e5e7eb" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
+        <h2>Welcome back!</h2>
+        <p class="sub">Reconnecting you automatically…</p>
     </div>
 </div>
 

@@ -70,6 +70,9 @@ Route::get('/captive/{router:public_token}', [CaptivePortalController::class, 's
 Route::post('/captive/{router:public_token}/lookup', [CaptivePortalController::class, 'lookup'])
     ->middleware('throttle:6,1')
     ->name('captive.lookup');
+Route::post('/captive/{router:public_token}/lookup-receipt', [CaptivePortalController::class, 'lookupReceipt'])
+    ->middleware('throttle:6,1')
+    ->name('captive.lookup-receipt');
 Route::post('/captive/{router:public_token}/free-mode', [CaptivePortalController::class, 'freeMode'])
     ->middleware('throttle:6,1')
     ->name('captive.free-mode');

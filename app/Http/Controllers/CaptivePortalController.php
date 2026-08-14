@@ -9,6 +9,7 @@ use App\Models\HotspotUser;
 use App\Models\Plan;
 use App\Models\Router;
 use App\Models\Tenant;
+use App\Models\Transaction;
 use App\Services\RadiusSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -63,15 +64,41 @@ class CaptivePortalController extends Controller
             ->limit(3)
             ->get();
 
+        // Silent cross-router reconnect: a customer with a still-active plan shouldn't have to
+        // do anything just because they moved to a different router/location, or left and came
+        // back — RouterOS already hands us their device's MAC on every portal hit ($mac below).
+        // Scoped by tenant_id only (not router_id), same as lookup() below, so it follows the
+        // customer across every router this tenant owns. HotspotUser.mac_address gets backfilled
+        // from their radacct session shortly after first connect (see SyncHotspotConnectionInfo),
+        // so this covers essentially every active customer, not just a lucky subset.
+        $autoReconnect = null;
+        if ($mac = $request->query('mac')) {
+            $existing = HotspotUser::withoutGlobalScope('tenant')
+                ->where('tenant_id', $router->tenant_id)
+                ->where('mac_address', $mac)
+                ->where('status', 'active')
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                ->latest()
+                ->first();
+
+            if ($existing) {
+                $autoReconnect = [
+                    'username' => $existing->phone_number,
+                    'password' => $this->radiusPassword($existing->phone_number),
+                ];
+            }
+        }
+
         return view($view, [
             'tenant' => $tenant,
             'router' => $router,
             'portal' => $portal,
             'plans' => $plans,
             'announcements' => $announcements,
+            'autoReconnect' => $autoReconnect,
             'linkLoginOnly' => $request->query('link-login-only'),
             'linkOrig' => $request->query('link-orig'),
-            'mac' => $request->query('mac'),
+            'mac' => $mac,
             'ip' => $request->query('ip'),
         ]);
     }
@@ -109,16 +136,85 @@ class CaptivePortalController extends Controller
             ]);
         }
 
-        $password = DB::table('radcheck')
-            ->where('username', $hotspotUser->phone_number)
-            ->where('attribute', 'Cleartext-Password')
-            ->value('value');
+        return response()->json([
+            'found' => true,
+            'username' => $hotspotUser->phone_number,
+            'password' => $this->radiusPassword($hotspotUser->phone_number),
+        ]);
+    }
+
+    /**
+     * Paste-your-payment-message self-service lookup — for when someone doesn't have/remember
+     * the phone number they paid from (shared phone, business line paying for a customer, etc).
+     * Same throttle tier as lookup() above for the same reason: an unauthenticated endpoint that
+     * runs a DB lookup from user-supplied text is a real target without one.
+     */
+    public function lookupReceipt(Request $request, Router $router)
+    {
+        $request->validate([
+            'message' => ['required', 'string', 'max:500'],
+        ]);
+
+        // M-Pesa receipt codes are ~10-char alphanumeric with at least one letter and one digit —
+        // filters out a phone number (all digits) or a plain word (all letters) that might also
+        // appear in the pasted text.
+        preg_match_all('/\b[A-Z0-9]{9,12}\b/', Str::upper($request->message), $matches);
+        $code = collect($matches[0] ?? [])
+            ->first(fn ($token) => preg_match('/[A-Z]/', $token) && preg_match('/[0-9]/', $token));
+
+        if (! $code) {
+            return response()->json([
+                'found' => false,
+                'message' => "Couldn't find a receipt code in that message. Paste the full M-Pesa confirmation text.",
+            ], 422);
+        }
+
+        $transaction = Transaction::withoutGlobalScope('tenant')
+            ->where('tenant_id', $router->tenant_id)
+            ->where('status', 'success')
+            ->where('mpesa_receipt', $code)
+            ->latest()
+            ->first();
+
+        if (! $transaction) {
+            return response()->json([
+                'found' => false,
+                'message' => 'No matching payment found for that receipt. Buy a plan below to get connected.',
+            ]);
+        }
+
+        $hotspotUser = $transaction->hotspot_user_id
+            ? HotspotUser::withoutGlobalScope('tenant')->find($transaction->hotspot_user_id)
+            : HotspotUser::withoutGlobalScope('tenant')
+                ->where('tenant_id', $router->tenant_id)
+                ->where('phone_number', $transaction->phone_number)
+                ->latest()
+                ->first();
+
+        if (! $hotspotUser || $hotspotUser->status !== 'active' || ($hotspotUser->expires_at && $hotspotUser->expires_at->isPast())) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Found that payment, but the plan has since expired. Buy a new one below.',
+            ]);
+        }
 
         return response()->json([
             'found' => true,
             'username' => $hotspotUser->phone_number,
-            'password' => $password,
+            'password' => $this->radiusPassword($hotspotUser->phone_number),
         ]);
+    }
+
+    /**
+     * Cleartext RADIUS password for a username — reused by lookup(), lookupReceipt(), and the
+     * MAC auto-reconnect check in show().
+     */
+    private function radiusPassword(string $username): ?string
+    {
+        return DB::table('radcheck')
+            ->where('username', $username)
+            ->where('attribute', 'Cleartext-Password')
+            ->value('value');
     }
 
     /**

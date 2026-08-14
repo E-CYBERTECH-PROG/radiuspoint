@@ -12,7 +12,7 @@
         <p class="text-xs font-bold text-gray-500 dark:text-gray-400" x-text="dateText"></p>
         <p class="text-xs font-fira font-bold text-gray-400 tabular-nums" x-text="timeText"></p>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div class="bg-white dark:bg-gray-950 border border-gray-300/70 dark:border-green-900/40 p-4 rounded-xl shadow-sm rp-rise" style="--rp-delay: {{ $d }}ms">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Online Now</p>
