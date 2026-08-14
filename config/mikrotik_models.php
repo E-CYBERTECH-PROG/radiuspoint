@@ -1,18 +1,9 @@
 <?php
 
-// Catalog of real MikroTik RouterBoard/switch models, used to render an accurate
-// port-count schematic and a real product photo when an admin adds a router.
-// Port/SFP counts and image URLs sourced from MikroTik's official product listing
-// (mikrotik.com/products/group/...) as of this build, plus a few long-discontinued-
-// but-still-widely-deployed ISP models (e.g. RB2011) that no longer appear on the
-// current marketing site but are real, still-supported RouterOS hardware — those
-// are listed without an 'image' key since no current, official photo URL exists
-// for them (the view falls back to a generic icon rather than a broken/fake link).
+// Catalog of MikroTik RouterBoard/switch models, used to render a port-count schematic
+// and product photo when an admin adds a router. Discontinued-but-still-deployed models
+// (e.g. RB2011) are listed without an 'image' key, falling back to a generic icon.
 // "other" is the fallback for anything not listed.
-//
-// Note: could not find or verify a real "RB2030" model anywhere on MikroTik's
-// official site or elsewhere — omitted rather than guessing at specs. If you meant
-// a specific model, let me know and I'll add it with real numbers.
 return [
     // --- hAP series (home/office wireless routers) ---
     'hap_lite' => ['label' => 'hAP lite', 'ports' => 4, 'image' => 'https://cdn.mikrotik.com/web-assets/rb_images/1007_tm.webp'],

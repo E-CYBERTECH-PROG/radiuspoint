@@ -596,8 +596,7 @@
                     startTrafficPolling() {
                         this.stopTrafficPolling();
                         this.pollTraffic();
-                        // 2s balances "feels live" against this link's own real-world latency
-                        // (~500ms per round trip against the test router) and avoids hammering it.
+                        // 2s balances "feels live" against round-trip latency without hammering the router.
                         this.trafficPolling = setInterval(() => this.pollTraffic(), 2000);
                     },
 

@@ -26,16 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.timezone' => ApplyTenantTimezone::class,
         ]);
 
-        // Nginx only sets $_SERVER['HTTPS'] when the connection reaching THIS server was itself
-        // TLS — but Cloudflare (sitting in front) can talk plain HTTP to the origin even when the
-        // visitor's own browser sees HTTPS (its default "Flexible" SSL mode). Without trusting
-        // the proxy's X-Forwarded-Proto header, Laravel has no way to know the original request
-        // was secure, so route()/url() generate http:// links on an https:// page — which
-        // browsers silently block as mixed content. That's what caused "Failed to fetch" on the
-        // router provisioning page's AJAX call with no server-side error at all (the request
-        // never left the browser). '*' trusts whatever connects directly to nginx, which for
-        // this server is only ever Cloudflare or local/direct testing — appropriate since nginx
-        // itself is the sole thing reaching PHP-FPM.
+        // Trust the X-Forwarded-Proto header from Cloudflare, which can talk plain HTTP to
+        // the origin even when the visitor's browser sees HTTPS — without this, route()/url()
+        // generate http:// links on an https:// page, which browsers block as mixed content.
+        // '*' is safe here since nginx is the only thing reaching PHP-FPM.
         $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
             | Request::HEADER_X_FORWARDED_HOST
             | Request::HEADER_X_FORWARDED_PORT
