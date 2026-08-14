@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SmsMessage;
 use App\Models\SmsTemplate;
 use App\Models\SmsSetting;
+use App\Models\SmsTrigger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,8 +23,9 @@ class SmsMessageController extends Controller
             ->withQueryString();
         $templates = SmsTemplate::where('tenant_id', Auth::user()->tenant_id)->get();
         $setting = SmsSetting::firstOrNew(['tenant_id' => Auth::user()->tenant_id]);
+        $triggers = SmsTrigger::where('tenant_id', Auth::user()->tenant_id)->get()->keyBy('trigger_key');
 
-        return view('sms.index', compact('messages', 'templates', 'setting'));
+        return view('sms.index', compact('messages', 'templates', 'setting', 'triggers'));
     }
 
     public function store(Request $request)

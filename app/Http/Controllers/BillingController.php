@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\HotspotUser;
 use App\Models\Plan;
-use App\Models\SmsMessage;
 use App\Models\Transaction;
 use App\Services\RadiusSyncService;
+use App\Services\SmsTriggerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -83,13 +83,11 @@ class BillingController extends Controller
         $password = Str::password(10);
         RadiusSyncService::sync($hotspotUser->phone_number, $password, $plan->speed_limit);
 
-        SmsMessage::withoutGlobalScope('tenant')->create([
-            'tenant_id' => $transaction->tenant_id,
-            'phone_number' => $hotspotUser->phone_number,
-            'message' => "Payment received for {$plan->name}. Login with Username: {$hotspotUser->phone_number} Password: {$password}",
-            'status' => 'queued',
-            'initiator' => 'M-Pesa Payment',
-        ]);
+        SmsTriggerService::fire(
+            $transaction->tenant_id, 'hotspot_purchase_confirmed', $hotspotUser->phone_number,
+            ['name' => $hotspotUser->phone_number, 'plan' => $plan->name, 'password' => $password, 'expires_at' => $hotspotUser->expires_at?->format('d M Y H:i')],
+            fallbackMessage: "Payment received for {$plan->name}. Login with Username: {$hotspotUser->phone_number} Password: {$password}"
+        );
 
         Log::info("HotspotUser {$hotspotUser->phone_number} provisioned successfully with {$plan->speed_limit} limits.");
     }

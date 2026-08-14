@@ -8,6 +8,7 @@ use App\Models\Router;
 use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use App\Services\SessionDisconnectService;
+use App\Services\SmsTriggerService;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -33,7 +34,7 @@ class ExpireOverdueUsers extends Command
             $expiredCount++;
         }
 
-        foreach (PppoeUser::withoutGlobalScope('tenant')->where('status', 'active')->where('expires_at', '<', now())->get() as $user) {
+        foreach (PppoeUser::withoutGlobalScope('tenant')->where('status', 'active')->where('expires_at', '<', now())->with('plan')->get() as $user) {
             $user->update(['status' => 'expired']);
             RadiusSyncService::remove($user->username);
 
@@ -41,6 +42,11 @@ class ExpireOverdueUsers extends Command
                 $this->blockIfConnected($user->router, '/ppp/active/print', 'name', $user->username);
                 SessionDisconnectService::disconnect($user->router, '/ppp/active/print', 'name', '/ppp/active/remove', $user->username);
             }
+
+            SmsTriggerService::fire($user->tenant_id, 'pppoe_expired', $user->phone_number, [
+                'name' => $user->name ?: $user->username,
+                'plan' => $user->plan?->name,
+            ]);
 
             $expiredCount++;
         }

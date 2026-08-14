@@ -54,3 +54,8 @@ Schedule::command('transactions:reap-stale')->everyFiveMinutes()->withoutOverlap
 // Bills each eligible tenant 3% commission on last month's revenue. Runs once on the 1st —
 // idempotent (unique period constraint), so a missed/late run just catches up next time.
 Schedule::command('billing:generate-invoices')->monthlyOn(1, '00:15')->withoutOverlapping();
+
+// Reminds PPPoE customers 3 days before expiry, if the tenant has that trigger enabled (see
+// SmsTrigger::KEYS). A lightweight DB scan, not a router call — dailyAt is enough, no need for
+// everyMinute like the router-facing commands above.
+Schedule::command('sms:expiry-reminders')->dailyAt('08:00')->withoutOverlapping();

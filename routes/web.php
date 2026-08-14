@@ -16,6 +16,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\SmsSettingController;
+use App\Http\Controllers\SmsTriggerController;
 use App\Http\Controllers\MpesaSettingController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\SearchController;
@@ -221,6 +222,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::middleware('restrict.sales-agent')->group(function () {
         Route::get('/sms/settings', [SmsSettingController::class, 'edit'])->name('sms-settings.edit');
         Route::put('/sms/settings', [SmsSettingController::class, 'update'])->name('sms-settings.update');
+        Route::put('/sms/automation', [SmsTriggerController::class, 'update'])->name('sms-triggers.update');
         Route::get('/mpesa/settings', [MpesaSettingController::class, 'edit'])->name('mpesa-settings.edit');
         Route::put('/mpesa/settings', [MpesaSettingController::class, 'update'])->name('mpesa-settings.update');
         Route::get('/billing', [TenantBillingController::class, 'edit'])->name('billing.edit');

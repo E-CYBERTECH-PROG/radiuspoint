@@ -1,5 +1,5 @@
 <x-sidebar-layout title="SMS Outbox">
-    <div x-data="{ open: false, tab: '{{ request('tab') === 'settings' ? 'settings' : 'outbox' }}', message: '' }" x-init="open = @json($errors->any())">
+    <div x-data="{ open: false, tab: '{{ in_array(request('tab'), ['settings', 'templates', 'automation']) ? request('tab') : 'outbox' }}', message: '' }" x-init="open = @json($errors->any())">
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">SMS</h1>
@@ -17,6 +17,7 @@
             <button @click="tab = 'outbox'" :class="tab === 'outbox' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800'" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">Outbox</button>
             <button @click="tab = 'templates'" :class="tab === 'templates' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800'" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">Templates</button>
             <button @click="tab = 'settings'" :class="tab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800'" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">Settings</button>
+            <button @click="tab = 'automation'" :class="tab === 'automation' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800'" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">Automation</button>
         </div>
 
         <div x-show="tab === 'outbox'">
@@ -162,6 +163,47 @@
                 </div>
                 <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save Settings</button>
+                </div>
+            </form>
+        </div>
+
+        <div x-show="tab === 'automation'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Fire an SMS automatically on a customer lifecycle event, using one of your templates below. Placeholders available: <code class="font-fira text-xs">{name} {plan} {expires_at} {code} {password}</code>. Leave a trigger off to change nothing.</p>
+            <form action="{{ route('sms-triggers.update') }}" method="POST" class="space-y-4">
+                @csrf @method('PUT')
+                @php
+                    $triggerLabels = [
+                        'pppoe_expiry_reminder_3d' => ['PPPoE — Expiry Reminder (3 days before)', 'Sent once, 3 days before a PPPoE account expires.'],
+                        'pppoe_expired' => ['PPPoE — Account Expired', 'Sent the moment a PPPoE account is flipped to expired.'],
+                        'pppoe_renewed' => ['PPPoE — Renewal Confirmed', 'Sent whenever a PPPoE account is extended/renewed.'],
+                        'pppoe_welcome' => ['PPPoE — Welcome Message', 'Sent when a new active PPPoE customer is added.'],
+                        'pppoe_payment_receipt' => ['PPPoE — Payment Receipt', 'Reserved for a future online PPPoE payment flow — not fired yet.'],
+                        'hotspot_purchase_confirmed' => ['Hotspot — Purchase Confirmed', 'Sent after a successful M-Pesa hotspot purchase. Replaces the built-in login-details message when enabled.'],
+                        'hotspot_voucher_created' => ['Hotspot — Voucher Created', 'Sent when a voucher is generated with a phone number attached. Replaces the built-in voucher-code message when enabled.'],
+                    ];
+                @endphp
+                <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                    @foreach($triggerLabels as $key => [$label, $help])
+                        @php $trigger = $triggers[$key] ?? null; @endphp
+                        <div class="py-4 flex flex-col md:flex-row md:items-center gap-3">
+                            <div class="md:w-72 shrink-0">
+                                <label class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white cursor-pointer">
+                                    <input type="checkbox" name="triggers[{{ $key }}][enabled]" value="1" @checked($trigger?->enabled) class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    {{ $label }}
+                                </label>
+                                <p class="text-xs text-gray-400 mt-1 ml-6">{{ $help }}</p>
+                            </div>
+                            <select name="triggers[{{ $key }}][sms_template_id]" class="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">— No template selected —</option>
+                                @foreach($templates as $template)
+                                    <option value="{{ $template->id }}" @selected($trigger?->sms_template_id === $template->id)>{{ $template->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save Automation</button>
                 </div>
             </form>
         </div>

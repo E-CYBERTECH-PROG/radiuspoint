@@ -8,6 +8,7 @@ use App\Models\Router;
 use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use App\Services\SessionDisconnectService;
+use App\Services\SmsTriggerService;
 use App\Services\UsageCycleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -74,6 +75,12 @@ class PppoeUserController extends Controller
         if ($user->status === 'active') {
             $plan = Plan::find($user->current_plan_id);
             RadiusSyncService::sync($user->username, Str::password(10), $plan?->speed_limit);
+
+            SmsTriggerService::fire($user->tenant_id, 'pppoe_welcome', $user->phone_number, [
+                'name' => $user->name ?: $user->username,
+                'plan' => $plan?->name,
+                'expires_at' => $user->expires_at?->format('d M Y H:i'),
+            ]);
         }
 
         return redirect()->route('pppoe-users.index')->with('success', 'PPPoE customer added successfully.');
@@ -220,7 +227,12 @@ class PppoeUserController extends Controller
                 : back()->with('error', 'Choose a number of days or a specific date.');
         }
 
-        $pppoe_user->update(['status' => 'active', 'expires_at' => $newExpiry, 'fup_throttled_at' => null]);
+        $pppoe_user->update([
+            'status' => 'active',
+            'expires_at' => $newExpiry,
+            'fup_throttled_at' => null,
+            'expiry_reminder_sent_at' => null,
+        ]);
 
         $plan = $pppoe_user->plan;
         if (RadiusSyncService::hasCredential($pppoe_user->username)) {
@@ -229,6 +241,12 @@ class PppoeUserController extends Controller
             RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
         }
         RadiusSyncService::setExpiration($pppoe_user->username, $newExpiry);
+
+        SmsTriggerService::fire($pppoe_user->tenant_id, 'pppoe_renewed', $pppoe_user->phone_number, [
+            'name' => $pppoe_user->name ?: $pppoe_user->username,
+            'plan' => $plan?->name,
+            'expires_at' => $newExpiry->format('d M Y H:i'),
+        ]);
 
         $message = "Extended to {$newExpiry->format('d M Y H:i')}.";
 

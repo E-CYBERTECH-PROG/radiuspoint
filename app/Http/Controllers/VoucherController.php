@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\HotspotUser;
 use App\Models\Plan;
-use App\Models\SmsMessage;
 use App\Services\RadiusSyncService;
+use App\Services\SmsTriggerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -64,13 +64,11 @@ class VoucherController extends Controller
         }
 
         if ($request->filled('phone') && count($vouchers) === 1) {
-            SmsMessage::create([
-                'tenant_id' => Auth::user()->tenant_id,
-                'phone_number' => $request->phone,
-                'message' => "Your {$plan->name} voucher code is: {$vouchers[0]['code']}",
-                'status' => 'queued',
-                'initiator' => Auth::user()->name,
-            ]);
+            SmsTriggerService::fire(
+                Auth::user()->tenant_id, 'hotspot_voucher_created', $request->phone,
+                ['name' => $request->phone, 'plan' => $plan->name, 'code' => $vouchers[0]['code']],
+                fallbackMessage: "Your {$plan->name} voucher code is: {$vouchers[0]['code']}"
+            );
         }
 
         return redirect()->route('vouchers.print')->with('vouchers', $vouchers);
