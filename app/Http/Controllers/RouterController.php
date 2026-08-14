@@ -269,6 +269,24 @@ class RouterController extends Controller
         } catch (Exception $e) {
             Log::warning("Could not add the radiuspoint-expired firewall rule: " . $e->getMessage());
         }
+
+        // RouterOS's default "defconf: fasttrack" rule marks established/related forward
+        // connections to skip all further firewall AND queue processing for the rest of that
+        // connection's life — which means a connection that got fasttracked before a customer
+        // expired can keep bypassing radiuspoint-expired-block above, and any already-fasttracked
+        // connection bypasses FUP's simple-queue throttling too (see EnforceFairUsage). Disabling
+        // it (not removing it — matches BillNasi's own working config, inspected this session, and
+        // keeps the rule available to re-enable manually if a tenant ever needs the throughput)
+        // makes both of those guarantees actually hold for the connection's full lifetime, not
+        // just its first few packets.
+        try {
+            $fasttrackRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'defconf: fasttrack');
+            if ($fasttrackRuleId) {
+                $api->setById('/ip/firewall/filter/set', $fasttrackRuleId, ['disabled' => 'yes']);
+            }
+        } catch (Exception $e) {
+            Log::warning("Could not disable the default fasttrack rule: " . $e->getMessage());
+        }
     }
 
     /**
