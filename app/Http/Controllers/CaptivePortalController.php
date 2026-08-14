@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CaptivePortal;
+use App\Models\CaptivePortalAnnouncement;
 use App\Models\CaptivePortalVisit;
 use App\Models\HotspotUser;
 use App\Models\Plan;
@@ -51,11 +52,23 @@ class CaptivePortalController extends Controller
             $view = 'captive-portal.templates.default';
         }
 
+        // Unauthenticated route, so no tenant global scope applies anyway — explicit tenant_id
+        // filter matches the same pattern $plans above already uses. Non-expired, and either
+        // global (router_id null) or targeted at this specific router.
+        $announcements = CaptivePortalAnnouncement::withoutGlobalScope('tenant')
+            ->where('tenant_id', $router->tenant_id)
+            ->where(fn ($q) => $q->whereNull('router_id')->orWhere('router_id', $router->id))
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->latest()
+            ->limit(3)
+            ->get();
+
         return view($view, [
             'tenant' => $tenant,
             'router' => $router,
             'portal' => $portal,
             'plans' => $plans,
+            'announcements' => $announcements,
             'linkLoginOnly' => $request->query('link-login-only'),
             'linkOrig' => $request->query('link-orig'),
             'mac' => $request->query('mac'),

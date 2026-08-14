@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PlatformAdmin\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\RouterController;
 use App\Http\Controllers\OltController;
+use App\Http\Controllers\CaptivePortalAnnouncementController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PppoeUserController;
 use App\Http\Controllers\HotspotUserController;
@@ -237,6 +238,13 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
     Route::post('/vouchers/generate', [VoucherController::class, 'generate'])->name('vouchers.generate');
     Route::get('/vouchers/print', [VoucherController::class, 'print'])->name('vouchers.print');
+
+    // === CAPTIVE PORTAL ANNOUNCEMENTS ===
+    // Customer-facing marketing/ops content — same access tier as captive-portal template
+    // settings (RouterController::updateCaptivePortal), so it stays behind the same middleware.
+    Route::middleware('restrict.sales-agent')->group(function () {
+        Route::resource('captive-announcements', CaptivePortalAnnouncementController::class)->only(['index', 'store', 'destroy']);
+    });
 
     // === TEAM / OPERATORS ===
     Route::resource('team', TeamController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['team' => 'user']);

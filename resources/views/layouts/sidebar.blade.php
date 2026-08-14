@@ -177,6 +177,10 @@
                     <i class="bx bx-message-square-dots text-xl"></i>
                     <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">SMS Outbox</span>
                 </a>
+                <a href="{{ route('captive-announcements.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('captive-announcements.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                    <i class="bx bx-broadcast text-xl"></i>
+                    <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">Portal Announcements</span>
+                </a>
 
                 <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6" x-show="sidebarOpen">Reports</p>
                 <div x-data="{ open: {{ request()->routeIs('reports.*') ? 'true' : 'false' }} }" class="mt-1">
