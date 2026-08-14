@@ -49,15 +49,13 @@
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $transaction->package_name }}</td>
                             <td class="px-6 py-4 font-fira font-bold text-gray-900 dark:text-white">KES {{ number_format($transaction->amount) }}</td>
                             <td class="px-6 py-4">
-                                <span class="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-md font-bold">
-                                    {{ $transaction->payment_method }}
-                                </span>
+                                <x-status-badge color="blue">{{ $transaction->payment_method }}</x-status-badge>
                             </td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-fira" x-text="(live[{{ $transaction->id }}]?.mpesa_receipt ?? {{ \Illuminate\Support\Js::from($transaction->mpesa_receipt) }}) || '—'"></td>
                             <td class="px-6 py-4" x-data="{ status: {{ \Illuminate\Support\Js::from($transaction->status) }} }" x-effect="status = live[{{ $transaction->id }}]?.status ?? status">
-                                <span x-show="status === 'success'" class="flex items-center gap-1 text-green-500 text-xs font-bold"><i class="bx bxs-check-circle"></i> Success</span>
-                                <span x-show="status === 'pending'" class="flex items-center gap-1 text-amber-500 text-xs font-bold"><i class="bx bx-loader-alt bx-spin"></i> Pending</span>
-                                <span x-show="status === 'failed'" class="flex items-center gap-1 text-red-500 text-xs font-bold"><i class="bx bxs-x-circle"></i> Failed</span>
+                                <x-status-badge color="green" icon="bxs-check-circle" x-show="status === 'success'">Success</x-status-badge>
+                                <x-status-badge color="amber" icon="bx-loader-alt bx-spin" x-show="status === 'pending'">Pending</x-status-badge>
+                                <x-status-badge color="red" icon="bxs-x-circle" x-show="status === 'failed'">Failed</x-status-badge>
                             </td>
                             <td class="px-6 py-4 text-right text-xs text-gray-500">{{ $transaction->created_at->diffForHumans() }}</td>
                         </tr>

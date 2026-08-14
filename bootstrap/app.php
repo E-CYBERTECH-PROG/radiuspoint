@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\ApplyTenantTimezone;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Http\Middleware\EnsureTenantIsApproved;
+use App\Http\Middleware\EnsureTenantSubscribed;
 use App\Http\Middleware\RestrictSalesAgent;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,8 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant.approved' => EnsureTenantIsApproved::class,
+            'tenant.subscribed' => EnsureTenantSubscribed::class,
             'platform.admin' => EnsurePlatformAdmin::class,
             'restrict.sales-agent' => RestrictSalesAgent::class,
+            'tenant.timezone' => ApplyTenantTimezone::class,
         ]);
 
         // Nginx only sets $_SERVER['HTTPS'] when the connection reaching THIS server was itself

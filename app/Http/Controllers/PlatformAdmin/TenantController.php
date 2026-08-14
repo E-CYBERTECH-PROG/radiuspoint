@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\PppoeUser;
 use App\Models\Router;
 use App\Models\Tenant;
+use App\Models\TenantInvoice;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TenantApproved;
@@ -21,8 +22,10 @@ class TenantController extends Controller
 {
     public function index(Request $request): View
     {
+        $search = $this->searchTerm($request);
+
         $tenants = Tenant::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('company_name', 'like', "%{$request->search}%"))
+            ->when($search, fn ($q) => $q->where('company_name', 'like', "%{$search}%"))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('tier'), fn ($q) => $q->where('subscription_tier', $request->tier))
             ->with('users')
@@ -55,8 +58,9 @@ class TenantController extends Controller
 
         $recentTransactions = $this->tenantScoped(Transaction::class, $tenant)->latest()->limit(10)->get();
         $recentActivity = AdminActivityLog::where('tenant_id', $tenant->id)->with('admin')->latest()->limit(10)->get();
+        $invoices = $this->tenantScoped(TenantInvoice::class, $tenant)->latest('period_start')->get();
 
-        return view('platform-admin.tenants.show', compact('tenant', 'stats', 'recentTransactions', 'recentActivity'));
+        return view('platform-admin.tenants.show', compact('tenant', 'stats', 'recentTransactions', 'recentActivity', 'invoices'));
     }
 
     public function edit(Tenant $tenant): View

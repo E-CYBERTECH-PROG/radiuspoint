@@ -12,8 +12,10 @@ class SmsMessageController extends Controller
 {
     public function index(Request $request)
     {
+        $search = $this->searchTerm($request);
+
         $messages = SmsMessage::where('tenant_id', Auth::user()->tenant_id)
-            ->when($request->filled('search'), fn ($q) => $q->where('phone_number', 'like', "%{$request->search}%"))
+            ->when($search, fn ($q) => $q->where('phone_number', 'like', "%{$search}%"))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest()
             ->paginate($this->perPage($request))

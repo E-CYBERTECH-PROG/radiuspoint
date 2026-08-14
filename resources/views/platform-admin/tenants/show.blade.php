@@ -105,6 +105,40 @@
             </div>
 
             <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-md font-bold text-gray-900 dark:text-white">Commission Invoices</h3>
+                    <a href="{{ route('platform-admin.invoices.index') }}" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800">View All</a>
+                </div>
+                <div class="space-y-3">
+                    @forelse($invoices as $invoice)
+                        <div class="flex items-center justify-between text-sm">
+                            <div>
+                                <p class="font-bold text-gray-900 dark:text-white">{{ $invoice->period_start->format('F Y') }}</p>
+                                <p class="text-xs text-gray-400 font-fira">KES {{ number_format($invoice->amount_due, 2) }}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                @if($invoice->status === 'paid')
+                                    <x-status-badge color="green" dot>Paid</x-status-badge>
+                                @elseif($invoice->isOverdue())
+                                    <x-status-badge color="red">Overdue</x-status-badge>
+                                @else
+                                    <x-status-badge color="amber" icon="bx-time">Pending</x-status-badge>
+                                @endif
+                                @if($invoice->status === 'pending')
+                                    <form action="{{ route('platform-admin.invoices.mark-paid', $invoice) }}" method="POST" onsubmit="return confirm('Mark this invoice as paid?')">
+                                        @csrf
+                                        <button type="submit" class="text-gray-400 hover:text-green-600 transition-colors" title="Mark Paid"><i class="bx bx-check-circle text-lg"></i></button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No invoices yet.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                 <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
                 <div class="space-y-3">
                     @forelse($recentActivity as $entry)

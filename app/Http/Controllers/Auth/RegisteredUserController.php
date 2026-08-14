@@ -38,10 +38,14 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Create the ISP's Tenant Profile First (awaiting admin approval)
+        // 2. Create the ISP's Tenant Profile First (awaiting admin approval). 10-day free
+        // trial starts now — once it lapses, GenerateTenantInvoices starts billing 3%
+        // commission on their monthly revenue (see Tenant::isTrialExpired()).
         $tenant = Tenant::create([
             'company_name' => $request->company_name,
             'status' => 'pending',
+            'subscription_status' => 'trial',
+            'subscription_expires_at' => now()->addDays(10),
         ]);
 
         // 3. Create the User and link them to the new Tenant

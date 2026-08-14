@@ -90,19 +90,26 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm mb-6">
+        <div id="captive-portal" class="bg-white dark:bg-gray-950 p-6 rounded-xl border-2 border-blue-200 dark:border-blue-900/50 shadow-sm mb-6 scroll-mt-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-md font-bold text-gray-900 dark:text-white">Captive Portal</h3>
+                <div class="flex items-center gap-2">
+                    <i class="bx bx-globe text-xl text-blue-600 dark:text-blue-400"></i>
+                    <h3 class="text-md font-bold text-gray-900 dark:text-white">Captive Portal</h3>
+                    @if(! $captivePortal)
+                        <span class="text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/50 font-bold">Using default</span>
+                    @endif
+                </div>
                 <a href="{{ route('captive.show', $router) }}" target="_blank" class="text-sm text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
                     Preview <i class="bx bx-link-external"></i>
                 </a>
             </div>
-            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'minimal') }}' }">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Customize the page hotspot customers see when they connect to this router's WiFi.</p>
+            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'default') }}' }">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
-                    <div class="grid grid-cols-3 gap-3">
-                        @foreach(['minimal' => 'Minimal', 'business' => 'Business', 'promo' => 'Promo Banner'] as $key => $label)
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        @foreach(['default' => 'Modern', 'business' => 'Business', 'promo' => 'Promo', 'premium' => 'Premium'] as $key => $label)
                             <label class="border rounded-lg p-3 cursor-pointer text-center transition-colors" :class="template === '{{ $key }}' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'">
                                 <input type="radio" name="template" value="{{ $key }}" x-model="template" class="sr-only">
                                 <span class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $label }}</span>
@@ -128,8 +135,42 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Body <span class="text-gray-400 normal-case">(optional)</span></label>
                     <textarea name="notice_body" rows="2" placeholder="Tell your customers what's happening..." class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">{{ old('notice_body', $captivePortal->notice_body ?? '') }}</textarea>
                 </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Testimonials <span class="text-gray-400 normal-case">(optional — only shown if filled in, use real customer quotes)</span></label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <input type="text" name="testimonial_1_text" value="{{ old('testimonial_1_text', $captivePortal->testimonial_1_text ?? '') }}" placeholder="&quot;Fast and reliable, never lets me down.&quot;" maxlength="255" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            <input type="text" name="testimonial_1_author" value="{{ old('testimonial_1_author', $captivePortal->testimonial_1_author ?? '') }}" placeholder="— Jane, Eldoret" maxlength="100" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs">
+                        </div>
+                        <div class="space-y-2">
+                            <input type="text" name="testimonial_2_text" value="{{ old('testimonial_2_text', $captivePortal->testimonial_2_text ?? '') }}" placeholder="&quot;Best hotspot in the estate.&quot;" maxlength="255" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            <input type="text" name="testimonial_2_author" value="{{ old('testimonial_2_author', $captivePortal->testimonial_2_author ?? '') }}" placeholder="— David, Langas" maxlength="100" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs">
+                        </div>
+                    </div>
+                </div>
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg text-sm">Save Portal Settings</button>
             </form>
+
+            <div class="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800" x-data="{ pushing: false, pushResult: null, pushOk: true }">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">Sync Portal to Router</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pushes the walled-garden rule and hotspot login redirect to this router's hardware. Run this once per router (or after a factory reset) so customers see this portal instead of the router's default login box.</p>
+                    </div>
+                    <button type="button" @click="
+                        pushing = true; pushResult = null;
+                        fetch('{{ route('routers.captive-portal.push', $router) }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
+                            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Login page: ' + data.login_html + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies).') : data.message; })
+                            .catch(() => { pushOk = false; pushResult = 'Network error — could not reach the router.'; })
+                            .finally(() => pushing = false);
+                    " :disabled="pushing" class="shrink-0 inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs py-2 px-4 rounded-lg disabled:opacity-50 transition-colors">
+                        <i class="bx" :class="pushing ? 'bx-loader-alt bx-spin' : 'bx-upload'"></i>
+                        <span x-text="pushing ? 'Pushing...' : 'Push Files to Router'"></span>
+                    </button>
+                </div>
+                <p x-show="pushResult" x-cloak class="text-xs font-bold mt-2" :class="pushOk ? 'text-green-600 dark:text-green-400' : 'text-red-500'" x-text="pushResult"></p>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -153,15 +194,31 @@
                 </form>
             </div>
 
-            <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm">
+            <div id="decommission" class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm scroll-mt-6">
                 <h3 class="text-md font-bold text-red-600 dark:text-red-400 mb-2">Decommission Hardware</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Permanently removes this router from your network topology. This cannot be undone.</p>
-                <form action="{{ route('routers.destroy', $router) }}" method="POST" onsubmit="return confirm('Decommission {{ $router->name }}? This cannot be undone.')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-lg text-sm inline-flex items-center gap-2">
-                        <i class="bx bx-trash"></i> Decommission
+
+                <template x-if="decommissionStep === 'idle'">
+                    <button type="button" @click="startDecommission()" :disabled="decommissionSending" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-lg text-sm inline-flex items-center gap-2">
+                        <i class="bx" :class="decommissionSending ? 'bx-loader-alt bx-spin' : 'bx-trash'"></i>
+                        <span x-text="decommissionSending ? 'Sending code...' : 'Decommission'"></span>
                     </button>
-                </form>
+                </template>
+
+                <template x-if="decommissionStep === 'code'">
+                    <div class="space-y-3 max-w-sm">
+                        <p class="text-sm text-gray-700 dark:text-gray-300">We sent a 6-digit code to your notifications (in-app + push). Enter it to confirm removal of <strong>{{ $router->name }}</strong>.</p>
+                        <input type="text" x-model="decommissionCode" placeholder="000000" inputmode="numeric" maxlength="6" class="w-full text-center tracking-widest font-fira text-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                        <p x-show="decommissionError" x-cloak x-text="decommissionError" class="text-sm text-red-500 font-bold"></p>
+                        <div class="flex items-center gap-3">
+                            <button type="button" @click="confirmDecommission()" :disabled="decommissionSending || decommissionCode.length !== 6" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-lg text-sm inline-flex items-center gap-2">
+                                <i class="bx" :class="decommissionSending ? 'bx-loader-alt bx-spin' : 'bx-check'"></i>
+                                <span x-text="decommissionSending ? 'Verifying...' : 'Confirm Removal'"></span>
+                            </button>
+                            <button type="button" @click="decommissionStep = 'idle'; decommissionCode = ''; decommissionError = null" class="text-sm text-gray-500 dark:text-gray-400 hover:underline">Cancel</button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </div>
@@ -181,6 +238,11 @@
                     freeMemory: null,
                     totalMemory: null,
                     copied: false,
+
+                    decommissionStep: 'idle',
+                    decommissionCode: '',
+                    decommissionError: null,
+                    decommissionSending: false,
 
                     get memoryText() {
                         if (!this.freeMemory || !this.totalMemory) return '—';
@@ -239,6 +301,45 @@
                         } else {
                             led.classList.add('bg-red-500');
                             led.style.animation = 'none';
+                        }
+                    },
+
+                    async startDecommission() {
+                        this.decommissionSending = true;
+                        this.decommissionError = null;
+                        try {
+                            const res = await fetch("{{ route('routers.decommission.request', $router) }}", {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                            });
+                            if (!res.ok) throw new Error();
+                            this.decommissionStep = 'code';
+                        } catch (e) {
+                            this.decommissionError = 'Could not send a code. Please try again.';
+                        } finally {
+                            this.decommissionSending = false;
+                        }
+                    },
+
+                    async confirmDecommission() {
+                        this.decommissionSending = true;
+                        this.decommissionError = null;
+                        try {
+                            const res = await fetch("{{ route('routers.decommission.confirm', $router) }}", {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                                body: JSON.stringify({ code: this.decommissionCode }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) {
+                                this.decommissionError = data.message || 'That code is incorrect or has expired.';
+                                this.decommissionSending = false;
+                                return;
+                            }
+                            window.location.href = data.redirect;
+                        } catch (e) {
+                            this.decommissionError = 'Network error. Please try again.';
+                            this.decommissionSending = false;
                         }
                     },
                 };

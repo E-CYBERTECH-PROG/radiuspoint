@@ -11,6 +11,7 @@ class MpesaSetting extends Model
 
     protected $fillable = [
         'tenant_id',
+        'slot',
         'gateway_type',
         'shortcode',
         'consumer_key',

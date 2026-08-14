@@ -23,8 +23,10 @@ class TenantDataExportController extends Controller
 {
     public function exportList(Request $request): StreamedResponse
     {
+        $search = $this->searchTerm($request);
+
         $tenants = Tenant::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('company_name', 'like', "%{$request->search}%"))
+            ->when($search, fn ($q) => $q->where('company_name', 'like', "%{$search}%"))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('tier'), fn ($q) => $q->where('subscription_tier', $request->tier))
             ->with('users')

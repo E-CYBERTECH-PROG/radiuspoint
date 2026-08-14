@@ -55,38 +55,93 @@ class PaymentPortalController extends Controller
             'payment_method' => 'M-Pesa STK',
             'status' => 'pending',
             'plan_id' => $plan->id,
+            'router_id' => $router->id,
         ]);
 
-        $settings = MpesaSetting::withoutGlobalScope('tenant')->where('tenant_id', $router->tenant_id)->first();
+        // Slot 1 (primary) is tried first; slot 2 (backup) — entirely optional — is only
+        // attempted if slot 1 fails to actually start the STK push. A customer never sees the
+        // first failure, they just end up paying through whichever gateway actually works.
+        $gateways = MpesaSetting::withoutGlobalScope('tenant')
+            ->where('tenant_id', $router->tenant_id)
+            ->whereIn('slot', [1, 2])
+            ->orderBy('slot')
+            ->get()
+            ->filter(fn ($s) => $this->isConfigured($s));
 
-        if (! $settings || ! $settings->is_active) {
+        if ($gateways->isEmpty()) {
             $transaction->update(['status' => 'failed']);
 
-            return response()->json(['error' => 'This network has not enabled M-Pesa payments yet.'], 422);
+            return response()->json(['error' => 'This network has not finished setting up M-Pesa payments yet. Please try again later or contact support.'], 422);
         }
 
-        $mpesa = new MpesaService($settings);
-        $response = $mpesa->stkPush(
-            $phone,
-            (float) $plan->price,
-            'RadiusPoint-'.$transaction->id,
-            $plan->name,
-            route('api.mpesa.callback')
-        );
+        $response = null;
+        foreach ($gateways as $settings) {
+            $response = $this->attemptStkPush($settings, $phone, $plan, $transaction, $router);
 
-        if (isset($response['CheckoutRequestID'])) {
-            $transaction->update([
-                'checkout_request_id' => $response['CheckoutRequestID'],
-                'merchant_request_id' => $response['MerchantRequestID'] ?? null,
-            ]);
-        } else {
-            Log::warning('STK push failed to initiate', $response);
+            if ($response !== null) {
+                break;
+            }
+        }
+
+        if ($response === null) {
             $transaction->update(['status' => 'failed']);
 
             return response()->json(['error' => 'Could not start the M-Pesa payment. Please try again.'], 422);
         }
 
+        $transaction->update([
+            'checkout_request_id' => $response['CheckoutRequestID'],
+            'merchant_request_id' => $response['MerchantRequestID'] ?? null,
+        ]);
+
         return response()->json(['transaction_id' => $transaction->id]);
+    }
+
+    /**
+     * is_active alone isn't enough — a tenant can flip the toggle on before actually entering
+     * real Daraja credentials. Without this check, stkPush() throws an uncaught TypeError
+     * (withBasicAuth() rejecting a null consumer key), which the customer sees as a raw failure
+     * instead of a clear message.
+     */
+    private function isConfigured(?MpesaSetting $settings): bool
+    {
+        return $settings && $settings->is_active
+            && filled($settings->consumer_key)
+            && filled($settings->consumer_secret)
+            && filled($settings->passkey)
+            && filled($settings->shortcode);
+    }
+
+    /**
+     * Returns the Daraja response array on a genuine success (a real CheckoutRequestID), or null
+     * on any failure — a thrown exception, a network error, or Safaricom rejecting the request —
+     * so the caller can uniformly try the next configured gateway without duplicating this
+     * try/catch at every call site.
+     */
+    private function attemptStkPush(MpesaSetting $settings, string $phone, Plan $plan, Transaction $transaction, Router $router): ?array
+    {
+        try {
+            $mpesa = new MpesaService($settings);
+            $response = $mpesa->stkPush(
+                $phone,
+                (float) $plan->price,
+                'RadiusPoint-'.$transaction->id,
+                $plan->name,
+                route('api.mpesa.callback')
+            );
+        } catch (\Throwable $e) {
+            Log::error('STK push threw an exception', ['tenant_id' => $router->tenant_id, 'slot' => $settings->slot, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if (! isset($response['CheckoutRequestID'])) {
+            Log::warning('STK push failed to initiate', ['tenant_id' => $router->tenant_id, 'slot' => $settings->slot] + $response);
+
+            return null;
+        }
+
+        return $response;
     }
 
     public function status(Router $router, Transaction $transaction)

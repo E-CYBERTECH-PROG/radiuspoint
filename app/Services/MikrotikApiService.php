@@ -11,7 +11,16 @@ class MikrotikApiService
 {
     protected ?Client $client = null;
 
-    public function connect(string $host, string $username, string $password, int $port = 8728): bool
+    /**
+     * Default lowered from 5s to 3s — every routine action here (testConnection, reboot,
+     * terminal, monitor tabs) targets a router that's already provisioned and normally answers
+     * in well under a second over the WireGuard tunnel (confirmed live this session, ~250-600ms
+     * round trip). 3s is still generous for a genuinely slow-but-working router while meaningfully
+     * shortening how long a truly unreachable one can tie up a request. First-contact ZTP
+     * (checkStatus()) explicitly passes a longer timeout since a freshly-booted router's API
+     * service can be slower to come up than an already-running one.
+     */
+    public function connect(string $host, string $username, string $password, int $port = 8728, int $timeout = 3): bool
     {
         try {
             $this->client = new Client([
@@ -19,7 +28,7 @@ class MikrotikApiService
                 'user' => $username,
                 'pass' => $password,
                 'port' => $port,
-                'timeout' => 5,
+                'timeout' => $timeout,
             ]);
 
             return true;
@@ -55,6 +64,18 @@ class MikrotikApiService
         $result = $this->readResult($this->client->query($query));
 
         return $result[0]['.id'] ?? null;
+    }
+
+    /**
+     * All matching rows from a /print endpoint filtered by a single key — like findId() but
+     * returns the whole row so callers can read other properties, not just .id.
+     */
+    public function queryWhere(string $printEndpoint, string $key, $value): array
+    {
+        $query = new Query($printEndpoint);
+        $query->where($key, $value);
+
+        return $this->readResult($this->client->query($query));
     }
 
     public function setById(string $setEndpoint, string $id, array $attributes): void

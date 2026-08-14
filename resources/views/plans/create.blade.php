@@ -38,19 +38,17 @@
                 <div class="flex gap-2">
                     <input type="number" name="duration_value" required min="1" placeholder="30" class="w-1/2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
                     <select name="duration_unit" required class="w-1/2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors cursor-pointer">
-                        <option value="minutes">Minute(s)</option>
-                        <option value="hours">Hour(s)</option>
-                        <option value="days" selected>Day(s)</option>
-                        <option value="weeks">Week(s)</option>
-                        <option value="months">Month(s)</option>
+                        @foreach(\App\Models\Plan::DURATION_UNITS as $unit)
+                            <option value="{{ $unit }}" @selected(old('duration_unit', 'days') === $unit)>{{ ucfirst(rtrim($unit, 's')) }}(s)</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
 
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Bandwidth Cap (RX/TX)</label>
-                <input type="text" name="speed_limit" required placeholder="5M/5M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
-                <p class="text-xs text-gray-400 mt-2">Format: Upload/Download (e.g., 5M/5M or 10M/20M)</p>
+                <input type="text" name="speed_limit" required pattern="\d+[kKmM]/\d+[kKmM]" title="Number + K or M, a slash, then number + K or M — e.g. 5M/5M. No other separator is valid." placeholder="5M/5M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
+                <p class="text-xs text-gray-400 mt-2">Format: Upload/Download (e.g., 5M/5M or 10M/20M) — must use a slash, not a period or dash, or the router silently ignores it and the customer gets no cap at all.</p>
             </div>
 
             <div>
@@ -61,7 +59,7 @@
 
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Fair Use Speed <span class="text-gray-400 normal-case">(optional)</span></label>
-                <input type="text" name="fup_speed_limit" placeholder="1M/1M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
+                <input type="text" name="fup_speed_limit" pattern="\d+[kKmM]/\d+[kKmM]" title="Number + K or M, a slash, then number + K or M — e.g. 1M/1M." placeholder="1M/1M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
                 <p class="text-xs text-gray-400 mt-2">Throttled speed once the data cap above is hit — ignored unless a data cap is also set.</p>
             </div>
 

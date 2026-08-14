@@ -73,6 +73,7 @@ class BillingController extends Controller
             'tenant_id' => $transaction->tenant_id,
             'phone_number' => $transaction->phone_number,
             'current_plan_id' => $plan->id,
+            'current_router_id' => $transaction->router_id,
             'status' => 'active',
             'expires_at' => $plan->expiresAt(),
         ]);

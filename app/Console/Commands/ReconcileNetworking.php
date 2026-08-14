@@ -22,8 +22,18 @@ class ReconcileNetworking extends Command
         $this->reconcileProxyPorts();
 
         if ($peersChanged || $nasChanged) {
-            (new Process(['systemctl', 'reload', 'freeradius']))->run();
-            $this->info('FreeRADIUS reloaded (NAS clients and/or peers changed).');
+            // Must be `restart`, not `reload`. FreeRADIUS's `read_clients`/`client_table = nas`
+            // loads NAS clients from SQL only at process startup — a `reload` (SIGHUP) only
+            // re-reads changed *files* ("HUP - No files changed. Ignoring" in its own log) and
+            // never re-queries the `nas` table. With `reload`, a new/changed router's RADIUS
+            // secret was silently never picked up: FreeRADIUS kept validating against whatever
+            // secret it loaded at its last real startup, so the router got a genuine "Shared
+            // secret is incorrect" rejection indistinguishable from "not responding" in the
+            // hotspot log — confirmed live against a real re-provisioned router. `restart` costs
+            // a ~1s interruption, acceptable since this only fires when the nas table actually
+            // changed (router added/removed/re-secreted), not on every run.
+            (new Process(['systemctl', 'restart', 'freeradius']))->run();
+            $this->info('FreeRADIUS restarted (NAS clients and/or peers changed).');
         }
 
         return self::SUCCESS;

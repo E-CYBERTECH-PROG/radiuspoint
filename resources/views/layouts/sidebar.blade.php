@@ -28,11 +28,40 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
         <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+        <script>
+            // Applied synchronously, before Alpine even loads (it's deferred), so a returning
+            // dark-mode/themed user never sees a flash of the defaults while the page boots.
+            // Dark mode falls back to the OS/browser preference the very first time, before any
+            // choice is stored; the three color roles (text/card/button) each independently
+            // default to "blue" (the app's original, untouched color — see ThemePalette).
+            (function () {
+                var stored = localStorage.getItem('rp_dark_mode');
+                var isDark = stored === null
+                    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                    : stored === '1';
+                document.documentElement.classList.toggle('dark', isDark);
+
+                ['text', 'card', 'button'].forEach(function (role) {
+                    var color = localStorage.getItem('rp_theme_' + role) || 'blue';
+                    document.documentElement.setAttribute('data-' + role + '-theme', color);
+                });
+            })();
+        </script>
+
+        {{--
+            Theme accent overrides — see App\Support\ThemePalette for the actual color values
+            and how this reaches every page without rewriting individual Blade files.
+        --}}
+        <style>
+            {!! \App\Support\ThemePalette::textCss() !!}
+            {!! \App\Support\ThemePalette::buttonCss() !!}
+            {!! \App\Support\ThemePalette::cardCss() !!}
+        </style>
     </head>
     <body>
-    <div x-data="{ sidebarOpen: true, mobileMenu: false, darkMode: false }"
-         :class="{ 'dark': darkMode }"
-         class="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans text-gray-800 dark:text-gray-200 overflow-hidden">
+    <div x-data="{ sidebarOpen: true, mobileMenu: false, darkMode: document.documentElement.classList.contains('dark') }"
+         class="flex h-screen bg-gray-200 dark:bg-gray-900 transition-colors duration-300 font-sans text-gray-800 dark:text-gray-200 overflow-hidden">
 
         <div x-show="mobileMenu" @click="mobileMenu = false" class="fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-sm lg:hidden"></div>
 
@@ -51,8 +80,14 @@
 
             <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto custom-scrollbar">
                 @if(Auth::user()->is_platform_admin)
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2" x-show="sidebarOpen">Platform</p>
-                    <div x-data="{ open: {{ request()->routeIs('platform-admin.*') ? 'true' : 'false' }} }" class="mt-1">
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2" x-show="sidebarOpen">Main</p>
+                    <a href="{{ route('platform-admin.dashboard') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('platform-admin.dashboard') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                        <i class="bx bxs-dashboard text-xl"></i>
+                        <span class="ml-3 font-bold text-sm whitespace-nowrap" x-show="sidebarOpen">Dashboard</span>
+                    </a>
+
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6" x-show="sidebarOpen">Platform</p>
+                    <div x-data="{ open: {{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'true' : 'false' }} }" class="mt-1">
                         <button @click="open = !open" class="w-full flex items-center px-3 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
                             <i class="bx bx-shield-quarter text-xl"></i>
                             <span class="ml-3 font-bold text-sm flex-1 text-left whitespace-nowrap" x-show="sidebarOpen">Platform</span>
@@ -67,6 +102,7 @@
                         <div x-show="open && sidebarOpen" class="ml-9 mt-1 space-y-1">
                             <a href="{{ route('platform-admin.tenants.index') }}" class="block py-1.5 text-sm {{ request()->routeIs('platform-admin.tenants.index') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Tenants</a>
                             <a href="{{ route('platform-admin.tenants.import-form') }}" class="block py-1.5 text-sm {{ request()->routeIs('platform-admin.tenants.import-form') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Import Tenants</a>
+                            <a href="{{ route('platform-admin.invoices.index') }}" class="block py-1.5 text-sm {{ request()->routeIs('platform-admin.invoices.index') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Commission Invoices</a>
                             <a href="{{ route('platform-admin.activity-log.index') }}" class="block py-1.5 text-sm {{ request()->routeIs('platform-admin.activity-log.index') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Activity Log</a>
                         </div>
                     </div>
@@ -98,6 +134,11 @@
                     <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">Hardware &amp; Routers</span>
                 </a>
 
+                <a href="{{ route('olts.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('olts.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                    <i class="bx bx-git-repo-forked text-xl"></i>
+                    <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">OLT (GPON/EPON)</span>
+                </a>
+
                 <a href="{{ route('plans.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('plans.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                     <i class="bx bx-box text-xl"></i>
                     <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">Packages &amp; Plans</span>
@@ -114,12 +155,9 @@
                     <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">Vouchers</span>
                 </a>
 
-                @if(Auth::user()->role !== 'Sales Agent')
-                    <a href="{{ route('mpesa-settings.edit') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('mpesa-settings.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
-                        <i class="bx bx-credit-card text-xl"></i>
-                        <span class="ml-3 font-medium text-sm whitespace-nowrap" x-show="sidebarOpen">M-Pesa Settings</span>
-                    </a>
-                @endif
+                {{-- M-Pesa Settings, Company Settings, and Billing moved into the Profile menu
+                     (top-right avatar dropdown) — account-level settings live there now,
+                     leaving this nav for day-to-day operational pages. --}}
 
                 @if(Auth::user()->role === 'SuperAdmin')
                     <a href="{{ route('team.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition-colors {{ request()->routeIs('team.*') ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
@@ -152,13 +190,14 @@
                         <a href="{{ route('reports.fixed-sales') }}" class="block py-1.5 text-sm {{ request()->routeIs('reports.fixed-sales') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Fixed Service Sales</a>
                         <a href="{{ route('reports.hotspot-sales') }}" class="block py-1.5 text-sm {{ request()->routeIs('reports.hotspot-sales') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Hotspot Service Sales</a>
                         <a href="{{ route('reports.access-log') }}" class="block py-1.5 text-sm {{ request()->routeIs('reports.access-log') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Access Requests</a>
+                        <a href="{{ route('reports.analytics') }}" class="block py-1.5 text-sm {{ request()->routeIs('reports.analytics') ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">Analytics</a>
                     </div>
                 </div>
                 @endunless
             </nav>
         </aside>
 
-        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-200 dark:bg-gray-900">
 
             <header class="h-16 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-8 z-30">
                 <div class="flex items-center gap-4">
@@ -169,30 +208,40 @@
                         <i class="bx text-2xl" :class="sidebarOpen ? 'bx-menu-alt-left' : 'bx-menu'"></i>
                     </button>
 
-                    <div class="hidden md:flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-blue-500 transition-colors">
+                    @php
+                        $rpHour = now()->hour;
+                        $rpGreeting = $rpHour < 12 ? 'Good morning' : ($rpHour < 17 ? 'Good afternoon' : 'Good evening');
+                        $rpFirstName = explode(' ', Auth::user()->name)[0] ?? Auth::user()->name;
+                    @endphp
+                    <form action="{{ route('search') }}" method="GET" class="hidden md:flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-blue-500 transition-colors">
                         <i class="bx bx-search text-gray-400 text-lg"></i>
-                        <input type="text" placeholder="Search users, IPs, or invoices..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-64 dark:text-gray-200 dark:placeholder-gray-500">
-                    </div>
+                        <input type="text" name="q" placeholder="{{ $rpGreeting }}, {{ $rpFirstName }} — what do you want to search today?" class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-72 dark:text-gray-200 dark:placeholder-gray-500">
+                    </form>
                 </div>
 
-                @php
-                    // Computed here (not inline inside the x-data attribute below) — a
-                    // multi-line @json() call wrapping a closure with its own [...] array
-                    // literal confused Blade's directive-argument parser: it compiled without
-                    // error but produced truncated, syntactically broken PHP that only failed
-                    // at actual render time. A plain variable sidesteps that entirely.
-                    $notifBellItems = Auth::user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
-                        'id' => $n->id,
-                        'message' => $n->data['message'] ?? 'Notification',
-                        'url' => $n->data['url'] ?? null,
-                        'read' => (bool) $n->read_at,
-                        'created_at_human' => $n->created_at->diffForHumans(),
-                    ]);
-                @endphp
                 <div class="flex items-center gap-4 lg:gap-6">
-                    <button @click="darkMode = !darkMode" class="text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors focus:outline-none">
+                    <button @click="
+                        darkMode = !darkMode;
+                        document.documentElement.classList.toggle('dark', darkMode);
+                        localStorage.setItem('rp_dark_mode', darkMode ? '1' : '0');
+                    " title="Toggle dark mode" class="text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors focus:outline-none">
                         <i class="bx text-2xl" :class="darkMode ? 'bx-sun' : 'bx-moon'"></i>
                     </button>
+
+                    @php
+                        // Computed here (not inline inside the x-data attribute below) — a
+                        // multi-line @json() call wrapping a closure with its own [...] array
+                        // literal confused Blade's directive-argument parser: it compiled without
+                        // error but produced truncated, syntactically broken PHP that only failed
+                        // at actual render time. A plain variable sidesteps that entirely.
+                        $notifBellItems = Auth::user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                            'id' => $n->id,
+                            'message' => $n->data['message'] ?? 'Notification',
+                            'url' => $n->data['url'] ?? null,
+                            'read' => (bool) $n->read_at,
+                            'created_at_human' => $n->created_at->diffForHumans(),
+                        ]);
+                    @endphp
                     <div x-data="{
                             notifOpen: false,
                             unread: {{ Auth::user()->unreadNotifications->count() }},
@@ -241,8 +290,14 @@
                             <i class="bx bx-bell text-2xl"></i>
                             <span x-show="unread > 0" x-cloak class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-950"></span>
                         </button>
-                        {{-- max-w-[90vw] keeps this from overflowing the viewport on narrow screens, since a fixed w-80 (320px) can exceed the visible width entirely on small phones. --}}
-                        <div x-show="notifOpen" x-cloak x-transition @click.outside="notifOpen = false" class="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50 max-h-96 overflow-y-auto">
+                        {{-- Confirmed via a real 360px-viewport render: right-0 anchors to *this
+                             button's own* position, not the true viewport edge — the profile
+                             avatar sits further right still, so a right-0 + vw-width panel
+                             clipped ~28px off the LEFT edge of the screen. fixed positioning with
+                             explicit left/right margins pins it to the actual viewport on small
+                             screens instead; sm:absolute reverts to the original flush-right
+                             dropdown once there's room for it not to matter. --}}
+                        <div x-show="notifOpen" x-cloak x-transition @click.outside="notifOpen = false" class="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-[4.5rem] sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 sm:max-w-80 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50 max-h-[calc(100vh-6rem)] sm:max-h-96 overflow-y-auto">
                             <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-950">
                                 <p class="text-xs font-bold uppercase tracking-wide text-gray-400">Notifications</p>
                                 <a href="{{ route('settings.notifications.edit') }}" class="text-[10px] font-bold text-gray-400 hover:text-blue-600 uppercase tracking-wide">Preferences</a>
@@ -265,6 +320,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
                     <div x-data="{ profileOpen: false }" class="relative">
                         <button @click="profileOpen = !profileOpen" @click.outside="profileOpen = false" class="flex items-center gap-3 cursor-pointer">
@@ -275,11 +331,25 @@
                             </div>
                             <i class="bx bx-chevron-down text-gray-400 hidden sm:block"></i>
                         </button>
-                        <div x-show="profileOpen" x-cloak x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50">
-                            <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+                        <div x-show="profileOpen" x-cloak x-transition @click.outside="profileOpen = false" class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50">
+                            <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="bx bx-user text-base text-gray-400"></i> Profile &amp; Appearance</a>
+                            @if(Auth::user()->is_platform_admin)
+                                {{-- Configures the *platform's own* M-Pesa till/paybill (tenant_id=config('billing.platform_tenant_id')) —
+                                     this is what receives tenant commission payments, see TenantBillingController::pay(). --}}
+                                <a href="{{ route('mpesa-settings.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 {{ request()->routeIs('mpesa-settings.*') ? 'text-blue-600 dark:text-blue-400 font-bold' : '' }}"><i class="bx bx-credit-card text-base text-gray-400"></i> Platform M-Pesa Settings</a>
+                            @else
+                                @if(Auth::user()->role !== 'Sales Agent')
+                                    <a href="{{ route('mpesa-settings.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 {{ request()->routeIs('mpesa-settings.*') ? 'text-blue-600 dark:text-blue-400 font-bold' : '' }}"><i class="bx bx-credit-card text-base text-gray-400"></i> M-Pesa Settings</a>
+                                @endif
+                                <a href="{{ route('company-settings.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 {{ request()->routeIs('company-settings.*') ? 'text-blue-600 dark:text-blue-400 font-bold' : '' }}"><i class="bx bx-building-house text-base text-gray-400"></i> Company Settings</a>
+                                @if(Auth::user()->role !== 'Sales Agent')
+                                    <a href="{{ route('billing.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 {{ request()->routeIs('billing.*') ? 'text-blue-600 dark:text-blue-400 font-bold' : '' }}"><i class="bx bx-receipt text-base text-gray-400"></i> Billing</a>
+                                @endif
+                            @endif
+                            <div class="border-t border-gray-100 dark:border-gray-800 my-1"></div>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Log Out</button>
+                                <button type="submit" class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="bx bx-log-out text-base text-gray-400"></i> Log Out</button>
                             </form>
                         </div>
                     </div>
@@ -303,6 +373,8 @@
             </div>
         </main>
     </div>
+
+    @include('partials._user-detail-panel')
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 

@@ -4,9 +4,17 @@
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">PPPoE Users</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Fixed / fiber customers authenticating by username.</p>
         </div>
-        <a href="{{ route('pppoe-users.create') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-            <i class="bx bx-user-plus text-lg"></i> Add Customer
-        </a>
+        <div class="flex items-center gap-2 flex-wrap">
+            <form action="{{ route('pppoe-users.purge-expired') }}" method="POST" onsubmit="return confirm('Delete every expired PPPoE customer? This also removes their RADIUS credentials and cannot be undone.')">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors">
+                    <i class="bx bx-trash text-lg"></i> Purge Expired
+                </button>
+            </form>
+            <a href="{{ route('pppoe-users.create') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                <i class="bx bx-user-plus text-lg"></i> Add Customer
+            </a>
+        </div>
     </div>
 
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
@@ -52,7 +60,11 @@
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
                     @forelse($users as $user)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-                            <td class="px-6 py-4 text-gray-900 dark:text-white font-bold font-fira">{{ $user->username }}</td>
+                            <td class="px-6 py-4 font-fira">
+                                <button type="button" @click="$dispatch('open-user-panel', { panelUrl: '{{ route('pppoe-users.panel', $user) }}' })" class="text-gray-900 dark:text-white font-bold hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
+                                    {{ $user->username }}
+                                </button>
+                            </td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $user->name ?: '—' }}</td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $user->phone_number ?: '—' }}</td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $plans[$user->current_plan_id]->name ?? '—' }}</td>
@@ -60,17 +72,11 @@
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $user->expires_at?->format('d M Y H:i') ?? '—' }}</td>
                             <td class="px-6 py-4 text-center">
                                 @if($user->status === 'active')
-                                    <span class="inline-flex items-center gap-1 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full border border-green-200 dark:border-green-900/50 font-bold">
-                                        <span class="w-2 h-2 rounded-full bg-green-500"></span> Active
-                                    </span>
+                                    <x-status-badge color="green" dot>Active</x-status-badge>
                                 @elseif($user->status === 'expired')
-                                    <span class="inline-flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-900/50 font-bold">
-                                        Expired
-                                    </span>
+                                    <x-status-badge color="amber">Expired</x-status-badge>
                                 @else
-                                    <span class="inline-flex items-center gap-1 text-[10px] text-red-700 dark:text-red-400 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-200 dark:border-red-900/50 font-bold">
-                                        Offline
-                                    </span>
+                                    <x-status-badge color="red">Offline</x-status-badge>
                                 @endif
                                 @if($user->fup_throttled_at)
                                     <span class="block mt-1 inline-flex items-center gap-1 text-[10px] text-orange-700 dark:text-orange-400 uppercase tracking-widest font-bold" title="Throttled since {{ $user->fup_throttled_at->diffForHumans() }}">
@@ -80,9 +86,7 @@
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <template x-if="live['{{ $user->username }}']?.online">
-                                    <span class="inline-flex items-center gap-1 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full border border-green-200 dark:border-green-900/50 font-bold">
-                                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
-                                    </span>
+                                    <x-status-badge color="green" dot pulse>Online</x-status-badge>
                                 </template>
                                 <template x-if="live['{{ $user->username }}'] && !live['{{ $user->username }}'].online">
                                     <span class="text-[10px] text-gray-400 uppercase tracking-widest">Offline</span>

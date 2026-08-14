@@ -47,7 +47,7 @@
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $transaction->package_name }}</td>
                             <td class="px-6 py-4 font-fira font-bold text-gray-900 dark:text-white">KES {{ number_format($transaction->amount) }}</td>
                             <td class="px-6 py-4">
-                                <span class="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-md font-bold">{{ $transaction->payment_method }}</span>
+                                <x-status-badge color="blue">{{ $transaction->payment_method }}</x-status-badge>
                             </td>
                             <td class="px-6 py-4 text-right text-xs text-gray-500">{{ $transaction->created_at->diffForHumans() }}</td>
                         </tr>

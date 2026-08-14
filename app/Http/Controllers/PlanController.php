@@ -9,14 +9,17 @@ use App\Models\PppoeUser;
 use App\Models\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class PlanController extends Controller
 {
     // Display all plans
     public function index(Request $request)
     {
+        $search = $this->searchTerm($request);
+
         $plans = Plan::where('tenant_id', Auth::user()->tenant_id)
-            ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
             ->latest()
             ->paginate($this->perPage($request))
@@ -54,10 +57,15 @@ class PlanController extends Controller
             'type' => 'required|in:hotspot,pppoe',
             'price' => 'required|numeric|min:0',
             'duration_value' => 'required|integer|min:1',
-            'duration_unit' => 'required|in:minutes,hours,days,weeks,months',
+            'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
-            'speed_limit' => 'required|string', // e.g., 5M/5M
-            'fup_speed_limit' => 'nullable|string',
+            // Mikrotik-Rate-Limit's format is rx-rate/tx-rate (e.g. "5M/5M") — a "/" is required,
+            // not "." or any other separator. A malformed value here isn't a cosmetic issue: a
+            // string RouterOS can't parse is silently ignored, meaning the customer gets no rate
+            // limit applied at all. Confirmed live — an existing plan slipped in with "5m.5m"
+            // before this validation existed and would have gone completely uncapped.
+            'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
         ]);
@@ -96,10 +104,10 @@ class PlanController extends Controller
             'type' => 'required|in:hotspot,pppoe',
             'price' => 'required|numeric|min:0',
             'duration_value' => 'required|integer|min:1',
-            'duration_unit' => 'required|in:minutes,hours,days,weeks,months',
+            'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
-            'speed_limit' => 'required|string',
-            'fup_speed_limit' => 'nullable|string',
+            'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
         ]);

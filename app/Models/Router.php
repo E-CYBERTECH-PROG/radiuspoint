@@ -44,6 +44,7 @@ class Router extends Model {
     {
         $publicIp = config('vpn.public_ip');
         $publicKey = config('vpn.public_key');
+        $serverVpnIp = config('vpn.server_vpn_ip');
 
         $lines = [];
 
@@ -82,7 +83,23 @@ class Router extends Model {
         // `/ip service print` and manually widen `address=` to include 10.0.0.0/24 alongside
         // whatever's already there, rather than assuming this script alone will make it reachable.
         $lines[] = "/ip service set api disabled=no port=8728;";
-        $lines[] = "/radius add address={$publicIp} secret={$this->secret_key} service=hotspot,ppp;";
+        // Must be the server's *tunnel-internal* address, not $publicIp — that's only for
+        // dialing the tunnel itself. FreeRADIUS binds solely to the VPN interface (10.0.0.1),
+        // not the public one, so pointing RADIUS at $publicIp routes the request out over the
+        // router's normal WAN instead of through the tunnel — RouterOS reports this as
+        // "connect:Network unreachable" and every login (buy/reconnect/voucher/free-mode)
+        // fails with "RADIUS server is not responding", with nothing in FreeRADIUS's own log
+        // since the request never arrives. Confirmed against the real test router (id=11).
+        //
+        // Clear any existing hotspot/ppp radius entries first — this script can legitimately
+        // run more than once for the same router (an interrupted ZTP flow restarted, a
+        // deliberate re-provision), and `/radius add` has no "update if exists" form, so a
+        // second run previously left a *second*, stale entry behind with whatever secret was
+        // current at the time. RouterOS tried that stale entry first and got rejected, which
+        // looks identical to "RADIUS server not responding" from the hotspot log alone —
+        // confirmed as the actual live cause on a real re-provisioned router (id=17).
+        $lines[] = "/radius remove [find service=hotspot,ppp];";
+        $lines[] = "/radius add address={$serverVpnIp} secret={$this->secret_key} service=hotspot,ppp;";
         $lines[] = "/radius incoming set accept=yes port=3799;";
 
         // RouterOS's stock default firewall drops input traffic from any interface not on the

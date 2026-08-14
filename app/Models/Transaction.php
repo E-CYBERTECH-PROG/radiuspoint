@@ -15,6 +15,7 @@ class Transaction extends Model
     'checkout_request_id',
     'merchant_request_id',
     'plan_id',
+    'router_id',
     'hotspot_user_id',
     'amount',
     'customer_name',

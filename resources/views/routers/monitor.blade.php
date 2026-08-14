@@ -40,14 +40,19 @@
 <x-sidebar-layout title="Live Monitor — {{ $router->name }}">
     <div x-data="routerMonitor()" x-init="init()">
         <div class="mb-6">
-            <a href="{{ route('routers.show', $router) }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2 mb-2">
-                <i class="bx bx-left-arrow-alt text-lg"></i> Back to {{ $router->name }}
-            </a>
+            <div class="flex items-center justify-between mb-2">
+                <a href="{{ route('routers.show', $router) }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2">
+                    <i class="bx bx-left-arrow-alt text-lg"></i> Back to {{ $router->name }}
+                </a>
+                <a href="{{ route('routers.show', $router) }}#captive-portal" class="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-2">
+                    <i class="bx bx-globe text-lg"></i> Captive Portal
+                </a>
+            </div>
             <div class="flex items-center gap-3">
                 <span class="w-2.5 h-2.5 rounded-full" :class="loaded ? 'bg-green-500 animate-pulse' : 'bg-gray-300'"></span>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Live Monitor</h1>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" x-text="loaded ? `Connected to MikroTik — ${identity || $router->ip_address}` : 'Connecting...'"></p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" x-text="loaded ? `Connected to MikroTik — ${identity || '{{ $router->ip_address }}'}` : 'Connecting...'"></p>
         </div>
 
         {{-- Action feedback toast: every remote-control button (reboot, toggle, disconnect,
@@ -372,9 +377,15 @@
                     freeMemory: null,
                     totalMemory: null,
 
-                    tabData: { logs: null, ethernet: null, hotspot: null, pppoe: null, addresses: null, neighbors: null },
-                    tabError: { logs: null, ethernet: null, hotspot: null, pppoe: null, addresses: null, neighbors: null },
-                    tabLoading: { logs: false, ethernet: false, hotspot: false, pppoe: false, addresses: false, neighbors: false },
+                    // Generated from the same server-side $tabs array the tab buttons/panes loop
+                    // over, instead of a hand-duplicated key list — the previous hardcoded list
+                    // only covered 6 of the 11 real tabs (dhcp/wireless/health/queues/firewall
+                    // were missing entirely), so opening any of those threw "Cannot read
+                    // properties of undefined (reading 'length')" the instant Alpine evaluated
+                    // that tab's x-if, confirmed via a real headless-browser render.
+                    tabData: @json(array_fill_keys(array_keys($tabs), null)),
+                    tabError: @json(array_fill_keys(array_keys($tabs), null)),
+                    tabLoading: @json(array_fill_keys(array_keys($tabs), false)),
 
                     // Traffic Monitor state — polled on a timer rather than loaded once, since this
                     // tab shows a live-updating chart rather than a static table.
@@ -551,6 +562,14 @@
                     buildTrafficChart() {
                         const canvas = document.getElementById('trafficChart');
                         if (!canvas) return;
+                        // Defensive: destroy any chart already bound to this canvas first.
+                        // Confirmed via a real headless-browser render that this constructor can
+                        // run twice for the same canvas (Chart.js then throws "Canvas is already
+                        // in use" and refuses to render at all) — this guard makes rebuilding
+                        // safe regardless of what triggers the second call, rather than only
+                        // patching one specific re-entry path.
+                        const existing = Chart.getChart(canvas);
+                        if (existing) existing.destroy();
                         this.trafficChart = new Chart(canvas.getContext('2d'), {
                             type: 'line',
                             data: {
@@ -637,6 +656,8 @@
                     buildResourceChart() {
                         const canvas = document.getElementById('resourceChart');
                         if (!canvas) return;
+                        const existing = Chart.getChart(canvas);
+                        if (existing) existing.destroy();
                         this.resourceChart = new Chart(canvas.getContext('2d'), {
                             type: 'line',
                             data: {

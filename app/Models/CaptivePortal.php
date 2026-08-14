@@ -15,6 +15,10 @@ class CaptivePortal extends Model
         'primary_color',
         'notice_title',
         'notice_body',
+        'testimonial_1_text',
+        'testimonial_1_author',
+        'testimonial_2_text',
+        'testimonial_2_author',
     ];
 
     public function router(): BelongsTo

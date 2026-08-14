@@ -4,12 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\HotspotUser;
 use App\Models\PppoeUser;
-use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
-use Carbon\Carbon;
+use App\Services\SessionDisconnectService;
+use App\Services\UsageCycleService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Throwable;
 
 class EnforceFairUsage extends Command
 {
@@ -43,7 +41,7 @@ class EnforceFairUsage extends Command
             ->filter(fn ($user) => $user->plan && $user->plan->data_cap_mb && $user->plan->fup_speed_limit);
 
         foreach ($users as $user) {
-            $cycleStart = $this->cycleStart($user->plan, $user->expires_at);
+            $cycleStart = UsageCycleService::cycleStart($user->plan, $user->expires_at);
 
             // A new cycle started since the customer was last throttled — restore full speed
             // before checking usage against the new cycle's cap.
@@ -56,58 +54,20 @@ class EnforceFairUsage extends Command
                 continue; // already throttled for the current cycle — nothing more to do
             }
 
-            $usedBytes = DB::table('radacct')
-                ->where('username', $user->{$usernameColumn})
-                ->where('acctstarttime', '>=', $cycleStart)
-                ->selectRaw('COALESCE(SUM(acctinputoctets + acctoutputoctets), 0) as total')
-                ->value('total');
+            $usedBytes = UsageCycleService::bytesUsed($user->{$usernameColumn}, $cycleStart);
 
-            if ((int) $usedBytes < $user->plan->data_cap_mb * 1024 * 1024) {
+            if ($usedBytes < $user->plan->data_cap_mb * 1024 * 1024) {
                 continue;
             }
 
             RadiusSyncService::updateRateLimit($user->{$usernameColumn}, $user->plan->fup_speed_limit);
-            $this->forceReconnect($user->router, $user->{$usernameColumn}, $activeEndpoint, $activeUserField, $removeEndpoint);
+            // radreply only takes effect on a customer's NEXT re-authentication (confirmed — no
+            // CoA capability exists in this app), so the throttle wouldn't bite until they
+            // happened to reconnect on their own. Forcing one disconnect now makes it immediate.
+            // Best-effort: radreply is already updated either way, so the throttle takes effect
+            // on their next reconnect regardless of whether this succeeds.
+            SessionDisconnectService::disconnect($user->router, $activeEndpoint, $activeUserField, $removeEndpoint, $user->{$usernameColumn});
             $user->update(['fup_throttled_at' => now()]);
         }
-    }
-
-    /**
-     * radreply only takes effect on a customer's NEXT re-authentication (confirmed — no CoA
-     * capability exists in this app), so the throttle wouldn't bite until they happened to
-     * reconnect on their own. Forcing one disconnect now makes it immediate, reusing the exact
-     * mechanism already proven in RouterController::disconnectHotspotUser/disconnectPppoeUser.
-     */
-    private function forceReconnect($router, string $username, string $activeEndpoint, string $activeUserField, string $removeEndpoint): void
-    {
-        try {
-            $api = new MikrotikApiService();
-            if (! $api->connect($router->ip_address, $router->api_username, $router->api_password)) {
-                return;
-            }
-
-            $session = collect($api->query($activeEndpoint))->first(fn ($row) => $row[$activeUserField] === $username);
-            if ($session) {
-                $api->query($removeEndpoint, ['.id' => $session['.id']]);
-            }
-        } catch (Throwable $e) {
-            // Best-effort — radreply is already updated, so the throttle takes effect on their
-            // next reconnect regardless of whether we managed to force one now.
-        }
-    }
-
-    private function cycleStart($plan, ?Carbon $expiresAt): Carbon
-    {
-        $expiresAt ??= now();
-        $value = $plan->duration_value ?: 1;
-        $start = $expiresAt->copy();
-
-        return match ($plan->duration_unit) {
-            'minutes' => $start->subMinutes($value),
-            'hours' => $start->subHours($value),
-            'weeks' => $start->subWeeks($value),
-            'months' => $start->subMonths($value),
-            default => $start->subDays($value),
-        };
     }
 }

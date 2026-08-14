@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Router;
 use App\Models\RouterTerminalLog;
+use App\Notifications\RouterDecommissionCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Services\MikrotikApiService;
 use App\Services\WireguardService;
@@ -22,9 +25,11 @@ class RouterController extends Controller
     public function index(Request $request)
     {
         // The BelongsToTenant trait ensures they only see their own hardware
+        $search = $this->searchTerm($request);
+
         $routers = Router::where('tenant_id', Auth::user()->tenant_id)
-            ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")->orWhere('ip_address', 'like', "%{$request->search}%");
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")->orWhere('ip_address', 'like', "%{$search}%");
             }))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest()
@@ -171,7 +176,10 @@ class RouterController extends Controller
         try {
             $api = new MikrotikApiService();
 
-            if ($api->connect($router->ip_address, $router->api_username, $router->api_password)) {
+            // Longer timeout than the 3s default — a freshly-booted router's API service can
+            // still be settling right after the provisioning script ran, unlike every other call
+            // site here which only ever targets an already-running, previously-proven router.
+            if ($api->connect($router->ip_address, $router->api_username, $router->api_password, timeout: 8)) {
                 $update = ['status' => 'provisioning', 'last_seen' => now()];
 
                 // If the admin didn't pick a specific model at add-time, identify the real
@@ -204,7 +212,7 @@ class RouterController extends Controller
      * reliably failed RouterOS's :import parser. Best-effort: a fresh router may not have
      * Hotspot configured at all yet, so a missing "default" profile is not an error.
      */
-    protected function enableRadiusOnDefaultProfiles(MikrotikApiService $api): void
+    public function enableRadiusOnDefaultProfiles(MikrotikApiService $api): void
     {
         try {
             $id = $api->findId('/ip/hotspot/profile/print', 'name', 'default');
@@ -219,10 +227,47 @@ class RouterController extends Controller
         // Unlike Hotspot, PPP's RADIUS delegation isn't a per-profile property at all — confirmed
         // against real hardware that /ppp/profile/set rejects use-radius outright ("unknown
         // parameter"). It's a single router-wide toggle instead (see provisionPppoe()).
+        // interim-update matches the hotspot profile's radius-interim-update — without it PPPoE
+        // sessions have the same "radacct usage frozen until disconnect" problem hotspot did.
+        // This call runs on every testConnection() (health-check ping), so it doubles as the
+        // retroactive fix for PPPoE routers provisioned before this was added — no separate
+        // one-off repair needed since PPP's RADIUS delegation is router-wide, not per-profile.
         try {
-            $api->query('/ppp/aaa/set', ['use-radius' => 'yes']);
+            $api->query('/ppp/aaa/set', ['use-radius' => 'yes', 'interim-update' => '00:05:00']);
         } catch (Exception $e) {
             Log::warning("Could not enable RADIUS on /ppp/aaa: " . $e->getMessage());
+        }
+
+        // Defense-in-depth against expired customers keeping internet access: reference
+        // BillNasi's own working config (`/ip firewall filter add action=drop chain=forward
+        // src-address-list=expired`) — a real device's exported provisioning script downloaded
+        // and inspected this session. Previously ExpireOverdueUsers only deleted the RADIUS
+        // credential and flipped status; it never touched an *already-connected* session, which
+        // RouterOS doesn't re-check against RADIUS mid-session (no CoA here) — so an expired
+        // customer who was online at the moment they expired kept full access until they
+        // happened to disconnect on their own. ExpireOverdueUsers now adds their session's IP to
+        // radiuspoint-expired (see that command) whenever this rule exists to actually enforce it.
+        try {
+            $oldExpiredRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-expired-block');
+            if ($oldExpiredRuleId) {
+                $api->setById('/ip/firewall/filter/set', $oldExpiredRuleId, [
+                    'src-address-list' => 'radiuspoint-expired',
+                    'comment' => 'radiuspoint-expired-block',
+                ]);
+            }
+
+            $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-expired-block');
+            if (! $dropRuleId) {
+                $api->query('/ip/firewall/filter/add', [
+                    'chain' => 'forward',
+                    'action' => 'drop',
+                    'src-address-list' => 'radiuspoint-expired',
+                    'comment' => 'radiuspoint-expired-block',
+                    'place-before' => '0',
+                ]);
+            }
+        } catch (Exception $e) {
+            Log::warning("Could not add the radiuspoint-expired firewall rule: " . $e->getMessage());
         }
     }
 
@@ -246,11 +291,15 @@ class RouterController extends Controller
     public function updateCaptivePortal(Request $request, Router $router)
     {
         $request->validate([
-            'template' => 'required|in:minimal,business,promo',
+            'template' => 'required|in:default,business,promo,premium',
             'logo_url' => 'nullable|url|max:255',
             'primary_color' => 'nullable|string|max:20',
             'notice_title' => 'nullable|string|max:255',
             'notice_body' => 'nullable|string|max:1000',
+            'testimonial_1_text' => 'nullable|string|max:255',
+            'testimonial_1_author' => 'nullable|string|max:100',
+            'testimonial_2_text' => 'nullable|string|max:255',
+            'testimonial_2_author' => 'nullable|string|max:100',
         ]);
 
         \App\Models\CaptivePortal::updateOrCreate(
@@ -262,6 +311,10 @@ class RouterController extends Controller
                 'primary_color' => $request->primary_color ?: '#2563eb',
                 'notice_title' => $request->notice_title,
                 'notice_body' => $request->notice_body,
+                'testimonial_1_text' => $request->testimonial_1_text,
+                'testimonial_1_author' => $request->testimonial_1_author,
+                'testimonial_2_text' => $request->testimonial_2_text,
+                'testimonial_2_author' => $request->testimonial_2_author,
             ]
         );
 
@@ -354,15 +407,41 @@ class RouterController extends Controller
             return redirect()->route('routers.provision', $router->id)->with('error', 'Connection lost. Re-verify uplink before configuring ports.');
         }
 
+        try {
+            $this->cleanupInvalidHotspotServers($api);
+        } catch (Exception $e) {
+            Log::warning("Invalid hotspot server cleanup failed for {$router->name}: " . $e->getMessage());
+        }
+
+        // Two independent checkboxes per interface (Hotspot / PPPoE) rather than a single
+        // none/hotspot/pppoe/both dropdown — derive the same role string the rest of this method
+        // already expects, so provisioning logic below is unchanged. all_interfaces[] carries
+        // every interface shown on the form (even ones with neither box checked) so an interface
+        // being explicitly turned back to "none" is still recorded, matching the old dropdown's
+        // default option rather than just being silently omitted.
+        $hotspotPorts = $request->input('hotspot_ports', []);
+        $pppoePorts = $request->input('pppoe_ports', []);
+        $ports = [];
+        foreach ($request->input('all_interfaces', []) as $interface) {
+            $isHotspot = in_array($interface, $hotspotPorts, true);
+            $isPppoe = in_array($interface, $pppoePorts, true);
+            $ports[$interface] = match (true) {
+                $isHotspot && $isPppoe => 'both',
+                $isHotspot => 'hotspot',
+                $isPppoe => 'pppoe',
+                default => 'none',
+            };
+        }
+
         // Unlike Hotspot (where use-radius is a per-profile property), PPP's RADIUS delegation
         // is a single router-wide toggle — confirmed against real hardware: /ppp/profile/add
         // rejects use-radius outright ("unknown parameter"). Setting it once here, before the
         // per-interface loop, covers every PPPoE server this request provisions.
-        if (in_array('pppoe', $request->ports ?? [], true) || in_array('both', $request->ports ?? [], true)) {
+        if (in_array('pppoe', $ports, true) || in_array('both', $ports, true)) {
             $api->query('/ppp/aaa/set', ['use-radius' => 'yes']);
         }
 
-        foreach ($request->ports ?? [] as $interface => $role) {
+        foreach ($ports as $interface => $role) {
             if ($role === 'none') {
                 $outcome[$interface] = ['role' => 'none'];
                 continue;
@@ -393,7 +472,12 @@ class RouterController extends Controller
 
         $anyHotspot = collect($outcome)->contains(fn ($r) => in_array($r['role'] ?? null, ['hotspot', 'both'], true));
         if ($anyHotspot) {
-            $this->provisionCaptivePortal($api, $router);
+            try {
+                $this->provisionCaptivePortal($api, $router);
+                $this->provisionFreeMode($api, $router);
+            } catch (Exception $e) {
+                Log::warning("Captive portal provisioning failed for {$router->name}: " . $e->getMessage());
+            }
         }
 
         $router->update([
@@ -409,35 +493,326 @@ class RouterController extends Controller
      * unauthenticated hotspot clients reach our domain (otherwise they can't load the portal
      * page at all before logging in), and a tiny local login.html rewritten to redirect there,
      * carrying RouterOS's own $(...) template variables — substituted server-side into real
-     * values before the browser ever sees them — as query params. Best-effort: a failure here
-     * shouldn't fail the whole provisioning step, since the router's own default login page
-     * keeps working either way and an admin can retry later.
+     * values before the browser ever sees them — as query params. Best-effort during initial
+     * provisioning: a failure here shouldn't fail the whole provisioning step. Idempotent, so
+     * it also doubles as the handler behind the "Push Portal Files" button on an
+     * already-provisioned router (see pushCaptivePortalFiles()) — safe to call repeatedly.
      */
-    protected function provisionCaptivePortal(MikrotikApiService $api, Router $router): void
+    protected function provisionCaptivePortal(MikrotikApiService $api, Router $router): array
+    {
+        $host = parse_url(config('app.url'), PHP_URL_HOST);
+
+        $existingRule = $api->findId('/ip/hotspot/walled-garden/print', 'dst-host', $host);
+        if (! $existingRule) {
+            $api->query('/ip/hotspot/walled-garden/add', [
+                'action' => 'allow',
+                'dst-host' => $host,
+                'comment' => 'RadiusPoint captive portal',
+            ]);
+        }
+
+        $portalUrl = route('captive.show', $router);
+        $stub = '<html><head><meta http-equiv="refresh" content="0;url='.$portalUrl
+            .'?link-login-only=$(link-login-only)&link-orig=$(link-orig)&mac=$(mac)&ip=$(ip)"></head>'
+            .'<body>Redirecting...</body></html>';
+
+        $fileId = $api->findId('/file/print', 'name', 'hotspot/login.html');
+        if ($fileId) {
+            $api->setById('/file/set', $fileId, ['contents' => $stub]);
+        }
+
+        // Retroactive fix for routers provisioned before login-by/radius-interim-update were
+        // added to provisionHotspot() — without http-pap, RouterOS silently rejects every plain
+        // username+password POST our captive portal's auto-connect submits; without
+        // radius-interim-update, radacct usage stays frozen at 0 for the whole session (see
+        // provisionHotspot()'s comment), which is why data-cap/FUP enforcement wasn't really
+        // working. Scoped to profiles we created — recognizes both the current
+        // "radiuspoint_hs_prof_" prefix and the older "rp_hs_prof_" one so routers provisioned
+        // before the BillNasi-style rename get migrated (not orphaned), never "everything except
+        // default" — an admin's own manually-named profile isn't ours to rewrite or rename.
+        $loginByFixed = 0;
+        $interimUpdateFixed = 0;
+        $renamed = 0;
+        $profiles = $api->query('/ip/hotspot/profile/print');
+        foreach ($profiles as $profile) {
+            $name = $profile['name'] ?? '';
+            $isOurs = str_starts_with($name, 'radiuspoint_hs_prof_') || str_starts_with($name, 'rp_hs_prof_');
+            if (! $isOurs) {
+                continue;
+            }
+            if (str_starts_with($name, 'rp_hs_prof_')) {
+                $name = 'radiuspoint_hs_prof_'.substr($name, strlen('rp_hs_prof_'));
+                $api->setById('/ip/hotspot/profile/set', $profile['.id'], ['name' => $name]);
+                $renamed++;
+            }
+            $current = $profile['login-by'] ?? '';
+            if (! str_contains($current, 'http-pap')) {
+                $api->setById('/ip/hotspot/profile/set', $profile['.id'], [
+                    'login-by' => $current ? $current.',http-pap' : 'http-pap',
+                ]);
+                $loginByFixed++;
+            }
+            // RouterOS always reads this back normalized as "5m", never the "00:05:00" form
+            // used to set it — confirmed live (comparing against "00:05:00" here made this
+            // "retroactive fix" silently rewrite the same value on every single push).
+            if (($profile['radius-interim-update'] ?? '') !== '5m') {
+                $api->setById('/ip/hotspot/profile/set', $profile['.id'], [
+                    'radius-interim-update' => '00:05:00',
+                ]);
+                $interimUpdateFixed++;
+            }
+        }
+
+        // Retroactive fix for hotspot servers provisioned before idle-timeout was set explicitly
+        // — see provisionHotspot()'s comment. Servers use the "radiuspoint_hs_server_"/"rp_hs_"
+        // prefix (not "..._prof_", that's the profile above) — same recognize-both-migrate-old
+        // approach as the profile loop.
+        $idleTimeoutFixed = 0;
+        $servers = $api->query('/ip/hotspot/print');
+        foreach ($servers as $server) {
+            $name = $server['name'] ?? '';
+            $isOurs = str_starts_with($name, 'radiuspoint_hs_server_') || str_starts_with($name, 'rp_hs_');
+            if (! $isOurs) {
+                continue;
+            }
+            if (str_starts_with($name, 'rp_hs_') && ! str_starts_with($name, 'radiuspoint_hs_server_')) {
+                $name = 'radiuspoint_hs_server_'.substr($name, strlen('rp_hs_'));
+                $api->setById('/ip/hotspot/set', $server['.id'], ['name' => $name]);
+                $renamed++;
+            }
+            if (($server['idle-timeout'] ?? '') !== '2m') {
+                $api->setById('/ip/hotspot/set', $server['.id'], ['idle-timeout' => '2m']);
+                $idleTimeoutFixed++;
+            }
+        }
+
+        // Retroactive rename for the hotspot address-pool ("rp_hs_{interface}" ->
+        // "radiuspoint_hs_pool_{interface}") — pools aren't referenced by name from anywhere we
+        // query here, but renaming them keeps `/ip pool print` consistent with everything else
+        // rather than leaving a mismatched leftover name behind.
+        $pools = $api->query('/ip/pool/print');
+        foreach ($pools as $pool) {
+            $name = $pool['name'] ?? '';
+            if (str_starts_with($name, 'rp_hs_') && ! str_starts_with($name, 'rp_hs_prof_')) {
+                $newName = 'radiuspoint_hs_pool_'.substr($name, strlen('rp_hs_'));
+                $api->setById('/ip/pool/set', $pool['.id'], ['name' => $newName]);
+                $renamed++;
+            } elseif (str_starts_with($name, 'rp_ppp_') && ! str_starts_with($name, 'rp_ppp_prof_')) {
+                $newName = 'radiuspoint_ppp_pool_'.substr($name, strlen('rp_ppp_'));
+                $api->setById('/ip/pool/set', $pool['.id'], ['name' => $newName]);
+                $renamed++;
+            }
+        }
+
+        // Same idea for PPPoE profiles ("rp_ppp_prof_" -> "radiuspoint_ppp_prof_") — no other
+        // fixes apply to these today, just the rename.
+        $pppProfiles = $api->query('/ppp/profile/print');
+        foreach ($pppProfiles as $profile) {
+            $name = $profile['name'] ?? '';
+            if (str_starts_with($name, 'rp_ppp_prof_')) {
+                $newName = 'radiuspoint_ppp_prof_'.substr($name, strlen('rp_ppp_prof_'));
+                $api->setById('/ppp/profile/set', $profile['.id'], ['name' => $newName]);
+                $renamed++;
+            }
+        }
+
+        // Retroactive fix for routers provisioned before buildProvisioningScript() was
+        // corrected — it used to point /radius at the server's *public* IP (only correct for
+        // dialing the WireGuard tunnel itself), not the tunnel-internal address FreeRADIUS
+        // actually binds to. RouterOS reports the resulting broken entry as
+        // "connect:Network unreachable" and every login fails with "RADIUS server is not
+        // responding" — confirmed against the real test router (id=11), see
+        // project_radius_firewall_and_timezone_fixes memory.
+        // Also removes stale duplicate entries left by an interrupted/repeated provisioning
+        // run (`/radius add` has no "update if exists" form) — a leftover entry with the
+        // router's *previous* secret gets tried by RouterOS, fails the server's shared-secret
+        // check, and FreeRADIUS silently drops it rather than replying — indistinguishable
+        // from "not responding" in the hotspot log alone. Confirmed as the live cause on a
+        // real re-provisioned router (id=17). Exactly one entry, with the router's current
+        // secret_key and the correct tunnel-internal address, should exist afterward.
+        // Scoped to service=hotspot,ppp (matching Router::buildProvisioningScript()'s own
+        // `/radius remove [find service=hotspot,ppp]`) so this never touches a /radius client an
+        // admin configured for something else entirely (IPsec/L2TP/wireless auth) — those have no
+        // reason to share this router's secret_key and would otherwise look "wrong" and get
+        // deleted purely for not matching it.
+        $correctRadiusIp = config('vpn.server_vpn_ip');
+        $radiusFixed = 0;
+        $radiusEntries = $api->query('/radius/print');
+        foreach ($radiusEntries as $entry) {
+            $service = $entry['service'] ?? '';
+            if (! str_contains($service, 'hotspot') && ! str_contains($service, 'ppp')) {
+                continue;
+            }
+            if (($entry['secret'] ?? '') !== $router->secret_key) {
+                $api->query('/radius/remove', ['.id' => $entry['.id']]);
+                $radiusFixed++;
+                continue;
+            }
+            if (($entry['address'] ?? '') !== $correctRadiusIp) {
+                $api->setById('/radius/set', $entry['.id'], ['address' => $correctRadiusIp]);
+                $radiusFixed++;
+            }
+        }
+
+        return [
+            'walled_garden' => $existingRule ? 'already present' : 'added',
+            'login_html' => $fileId ? 'updated' : 'not found — hotspot skin missing hotspot/login.html',
+            'login_by_fixed' => $loginByFixed,
+            'interim_update_fixed' => $interimUpdateFixed,
+            'idle_timeout_fixed' => $idleTimeoutFixed,
+            'radius_address_fixed' => $radiusFixed,
+            'renamed_to_billnasi_style' => $renamed,
+        ];
+    }
+
+    /**
+     * Free Mode: a RADIUS-authenticated session gets throttled to a low rate cap (confirmed
+     * mechanism — same Mikrotik-Rate-Limit reply attribute FUP enforcement already uses live) and
+     * tagged into an address-list via Mikrotik-Group. Confirmed FreeRADIUS's own
+     * authorize_reply_query is fully generic (SELECT * FROM radreply WHERE username = ...,
+     * ORDER BY id, no attribute-specific logic anywhere) — Mikrotik-Group gets encoded and sent
+     * through the exact same code path as Mikrotik-Rate-Limit, which is already proven live (a
+     * real customer's session queue enforced the configured cap — see EnforceFairUsage). The
+     * router-side profile (radiuspoint_free, address-list=radiuspoint-freemode) is also confirmed
+     * present with the right config. The one thing that still can't be verified without a human
+     * physically connecting a device is whether that specific customer's traffic then actually
+     * gets filtered by the walled-garden firewall rules — everything upstream of that final tap
+     * is now confirmed correct, so treat the domain restriction as a secondary layer on top of
+     * the rate cap (itself fully proven), not an unverified guess.
+     * Idempotent — safe to call on every push, same as provisionCaptivePortal().
+     */
+    protected function provisionFreeMode(MikrotikApiService $api, Router $router): array
+    {
+        // Migrate an old "rp_free" profile in place rather than leaving it orphaned alongside a
+        // new one — renaming also updates its address-list field so dynamically-tagged sessions
+        // start landing in the new-named list going forward.
+        $oldProfileId = $api->findId('/ip/hotspot/user/profile/print', 'name', 'rp_free');
+        if ($oldProfileId) {
+            $api->setById('/ip/hotspot/user/profile/set', $oldProfileId, [
+                'name' => 'radiuspoint_free',
+                'address-list' => 'radiuspoint-freemode',
+            ]);
+        }
+
+        $profileId = $api->findId('/ip/hotspot/user/profile/print', 'name', 'radiuspoint_free');
+        if (! $profileId) {
+            $api->query('/ip/hotspot/user/profile/add', [
+                'name' => 'radiuspoint_free',
+                'address-list' => 'radiuspoint-freemode',
+                'rate-limit' => '96k/96k',
+            ]);
+        }
+
+        $allowedDomains = [
+            '.*whatsapp\\.com',
+            '.*whatsapp\\.net',
+            '.*facebook\\.com',
+            '.*fbcdn\\.net',
+            '.*messenger\\.com',
+        ];
+
+        $dnsAdded = 0;
+        foreach ($allowedDomains as $regexp) {
+            $existing = $api->findId('/ip/dns/static/print', 'regexp', $regexp);
+            if ($existing) {
+                // Matched by regexp regardless of naming generation — make sure its
+                // address-list still points at the current name rather than a stale one.
+                $api->setById('/ip/dns/static/set', $existing, ['address-list' => 'radiuspoint-freemode-allowed']);
+            } else {
+                $api->query('/ip/dns/static/add', [
+                    'regexp' => $regexp,
+                    'type' => 'FWD',
+                    'forward-to' => '8.8.8.8',
+                    'address-list' => 'radiuspoint-freemode-allowed',
+                    'ttl' => '1m',
+                    'comment' => 'RadiusPoint free mode',
+                ]);
+                $dnsAdded++;
+            }
+        }
+
+        // Same migrate-in-place approach for the two firewall rules — found by their old comment,
+        // updated to the new comment + address-list names rather than left stale.
+        $oldAcceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-freemode-allow');
+        if ($oldAcceptRuleId) {
+            $api->setById('/ip/firewall/filter/set', $oldAcceptRuleId, [
+                'src-address-list' => 'radiuspoint-freemode',
+                'dst-address-list' => 'radiuspoint-freemode-allowed',
+                'comment' => 'radiuspoint-freemode-allow',
+            ]);
+        }
+
+        $acceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-freemode-allow');
+        if (! $acceptRuleId) {
+            $api->query('/ip/firewall/filter/add', [
+                'chain' => 'forward',
+                'action' => 'accept',
+                'src-address-list' => 'radiuspoint-freemode',
+                'dst-address-list' => 'radiuspoint-freemode-allowed',
+                'comment' => 'radiuspoint-freemode-allow',
+            ]);
+        }
+
+        $oldDropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-freemode-block-rest');
+        if ($oldDropRuleId) {
+            $api->setById('/ip/firewall/filter/set', $oldDropRuleId, [
+                'src-address-list' => 'radiuspoint-freemode',
+                'comment' => 'radiuspoint-freemode-block-rest',
+            ]);
+        }
+
+        $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-freemode-block-rest');
+        if (! $dropRuleId) {
+            $api->query('/ip/firewall/filter/add', [
+                'chain' => 'forward',
+                'action' => 'drop',
+                'src-address-list' => 'radiuspoint-freemode',
+                'comment' => 'radiuspoint-freemode-block-rest',
+            ]);
+        }
+
+        return [
+            'profile' => $profileId ? 'already present' : 'added',
+            'dns_rules_added' => $dnsAdded,
+            'firewall_rules' => ($acceptRuleId && $dropRuleId) ? 'already present' : 'added',
+        ];
+    }
+
+    /**
+     * Manual re-run of the captive-portal + free-mode wiring for a router that's already
+     * provisioned. `provisionCaptivePortal()` only ran automatically the moment a hotspot port
+     * was first saved — any router provisioned before that step existed (or whose walled-garden
+     * rule was lost to a factory reset) never got it, and there was previously no way to retry
+     * short of re-running the whole port-provisioning flow. This exposes that one step directly.
+     */
+    public function pushCaptivePortalFiles(Router $router)
     {
         try {
-            $host = parse_url(config('app.url'), PHP_URL_HOST);
+            $api = new MikrotikApiService();
 
-            $existingRule = $api->findId('/ip/hotspot/walled-garden/print', 'dst-host', $host);
-            if (! $existingRule) {
-                $api->query('/ip/hotspot/walled-garden/add', [
-                    'action' => 'allow',
-                    'dst-host' => $host,
-                    'comment' => 'RadiusPoint captive portal',
-                ]);
+            if (! $api->connect($router->ip_address, $router->api_username, $router->api_password)) {
+                return response()->json(['message' => 'Hardware unreachable.'], 400);
             }
 
-            $portalUrl = route('captive.show', $router);
-            $stub = '<html><head><meta http-equiv="refresh" content="0;url='.$portalUrl
-                .'?link-login-only=$(link-login-only)&link-orig=$(link-orig)&mac=$(mac)&ip=$(ip)"></head>'
-                .'<body>Redirecting...</body></html>';
+            $result = $this->provisionCaptivePortal($api, $router);
+            $freeMode = $this->provisionFreeMode($api, $router);
 
-            $fileId = $api->findId('/file/print', 'name', 'hotspot/login.html');
-            if ($fileId) {
-                $api->setById('/file/set', $fileId, ['contents' => $stub]);
-            }
+            return response()->json([
+                'message' => 'Captive portal files pushed to router.',
+                'walled_garden' => $result['walled_garden'],
+                'login_html' => $result['login_html'],
+                'login_by_fixed' => $result['login_by_fixed'],
+                'interim_update_fixed' => $result['interim_update_fixed'],
+                'idle_timeout_fixed' => $result['idle_timeout_fixed'],
+                'radius_address_fixed' => $result['radius_address_fixed'],
+                'renamed_to_billnasi_style' => $result['renamed_to_billnasi_style'],
+                'free_mode_profile' => $freeMode['profile'],
+                'free_mode_firewall' => $freeMode['firewall_rules'],
+            ]);
         } catch (Exception $e) {
-            Log::warning("Captive portal provisioning failed for {$router->name}: " . $e->getMessage());
+            Log::error("Captive portal push failed for {$router->name}: " . $e->getMessage());
+
+            return response()->json(['message' => 'Failed: ' . $e->getMessage()], 500);
         }
     }
 
@@ -446,31 +821,125 @@ class RouterController extends Controller
      * (never "default" — see Router::buildProvisioningScript() for why that's avoided
      * entirely) wired to authenticate via RADIUS, bound together via /ip/hotspot/add.
      */
+    /**
+     * RouterOS marks a /ip hotspot server invalid=yes when it can never actually run — the
+     * common cause is its interface being a bridge port, which provisionHotspot() didn't used
+     * to account for (confirmed live: 3 of 4 servers created this way sat invalid while only
+     * the one bound to the bridge itself worked). Removes the dead server plus its now-orphaned
+     * profile/pool so a router provisioned before that fix gets cleaned up the next time ports
+     * are saved, rather than accumulating dead config forever. Safe to call repeatedly.
+     */
+    protected function cleanupInvalidHotspotServers(MikrotikApiService $api): void
+    {
+        foreach ($api->query('/ip/hotspot/print') as $server) {
+            if (($server['invalid'] ?? 'false') !== 'true') {
+                continue;
+            }
+
+            $api->query('/ip/hotspot/remove', ['.id' => $server['.id']]);
+
+            if ($profileId = $api->findId('/ip/hotspot/profile/print', 'name', $server['profile'] ?? '')) {
+                $api->query('/ip/hotspot/profile/remove', ['.id' => $profileId]);
+            }
+
+            if ($poolId = $api->findId('/ip/pool/print', 'name', $server['address-pool'] ?? '')) {
+                $api->query('/ip/pool/remove', ['.id' => $poolId]);
+            }
+        }
+    }
+
     protected function provisionHotspot(MikrotikApiService $api, string $interface): array
     {
-        $subnet = $api->allocateSubnet();
-        $poolName = "rp_hs_{$interface}";
-        $profileName = "rp_hs_prof_{$interface}";
+        // A hotspot server can't actually run on an interface that's itself a bridge port —
+        // RouterOS marks it invalid=yes and it never intercepts anything. RouterOS's own
+        // factory-default config already bridges every LAN/WiFi port together, so an admin
+        // ticking several of those ports as "Hotspot" used to create several dead server
+        // entries instead of one working one. Confirmed live: 3 of 4 servers provisioned this
+        // way sat invalid while only the one bound to the bridge itself ran. Resolve to the
+        // real bridge up front so every bridged port converges on the same server below.
+        $bridgePort = $api->queryWhere('/interface/bridge/port/print', 'interface', $interface);
+        if ($bridgePort) {
+            $interface = $bridgePort[0]['bridge'];
+        }
 
-        $api->query('/ip/address/add', ['address' => "{$subnet['gateway']}/24", 'interface' => $interface]);
-        $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
-        $api->query('/ip/hotspot/profile/add', [
-            'name' => $profileName,
-            'hotspot-address' => $subnet['gateway'],
-            'use-radius' => 'yes',
-        ]);
-        // RouterOS defaults a new hotspot server to disabled=yes unless told otherwise —
-        // confirmed against real hardware: without this it sits inactive after "successful"
-        // provisioning, silently accepting no client traffic at all.
-        $api->query('/ip/hotspot/add', [
-            'name' => "rp_hs_{$interface}",
-            'interface' => $interface,
-            'address-pool' => $poolName,
-            'profile' => $profileName,
-            'disabled' => 'no',
-        ]);
+        $serverName = "radiuspoint_hs_server_{$interface}";
+        $poolName = "radiuspoint_hs_pool_{$interface}";
+        $profileName = "radiuspoint_hs_prof_{$interface}";
 
-        return ['pool' => $poolName, 'profile' => $profileName, 'cidr' => $subnet['cidr']];
+        // Idempotent: two bridged ports both resolving to "bridge" above must not try to
+        // create the same named pool/profile/server twice (RouterOS rejects duplicate names),
+        // and re-running this after the server already exists (e.g. the "Push Portal Files"
+        // button) must not touch it again either.
+        if (! $api->findId('/ip/hotspot/print', 'name', $serverName)) {
+            $subnet = $api->allocateSubnet();
+
+            $api->query('/ip/address/add', ['address' => "{$subnet['gateway']}/24", 'interface' => $interface]);
+            $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
+            // login-by must include http-pap: RouterOS's default of "cookie,http-chap" only
+            // accepts a CHAP challenge/response or an existing cookie, silently rejecting the
+            // plain username+password POST our captive portal's auto-connect submits. Confirmed
+            // against real hardware — every profile provisioned before this fix only had
+            // cookie,http-chap, which is why buy/reconnect/voucher/free-mode auto-connect never
+            // actually worked for a real connecting device despite the RADIUS credentials being
+            // valid the whole time.
+            // radius-interim-update must be set explicitly — RouterOS's default (unset) means it
+            // never sends an Interim-Update, so radacct.acctinputoctets/acctoutputoctets stay at
+            // their session-start value (0) for the entire session and only become accurate once
+            // the session actually ends. Every usage-based feature (FUP cap enforcement, the
+            // "Data Usage" display) reads radacct live and was blind to real-time usage as a
+            // result. Value matches BillNasi's own working reference config (their routers use
+            // 3:45-6:30, randomized).
+            $api->query('/ip/hotspot/profile/add', [
+                'name' => $profileName,
+                'hotspot-address' => $subnet['gateway'],
+                'use-radius' => 'yes',
+                'login-by' => 'cookie,http-chap,http-pap',
+                'radius-interim-update' => '00:05:00',
+            ]);
+            // RouterOS defaults a new hotspot server to disabled=yes unless told otherwise —
+            // confirmed against real hardware: without this it sits inactive after "successful"
+            // provisioning, silently accepting no client traffic at all.
+            // idle-timeout must be set explicitly — RouterOS defaults a new hotspot server to
+            // 5m, meaning a customer who just walks away (WiFi off, out of range) without a
+            // proper logout isn't detected as offline — and radacct.acctstoptime isn't set, so
+            // the dashboard's online count and the Live column both keep showing them online —
+            // for up to 5 minutes. 2m materially speeds up "went offline" detection without
+            // being so aggressive it disconnects someone who's just idle on a page.
+            $api->query('/ip/hotspot/add', [
+                'name' => $serverName,
+                'interface' => $interface,
+                'address-pool' => $poolName,
+                'profile' => $profileName,
+                'disabled' => 'no',
+                'idle-timeout' => '2m',
+            ]);
+        }
+
+        // Runs every time, even when the server above already existed: a router provisioned
+        // before this fix has a hotspot server but no DHCP server feeding its pool at all.
+        // Confirmed live: the only DHCP server actually running was RouterOS's untouched
+        // factory default, bound to this same interface but handing out a completely
+        // different subnet (192.168.88.0/24 vs. the hotspot pool's 172.20.x.0/24) — so
+        // clients landed in a range the hotspot never recognized as its own and the portal
+        // never triggered. RouterOS doesn't sanely support two independent DHCP servers on one
+        // interface, so an existing one is repointed at our pool rather than left running
+        // alongside a new one.
+        $existingDhcp = $api->queryWhere('/ip/dhcp-server/print', 'interface', $interface);
+        if ($existingDhcp) {
+            if (($existingDhcp[0]['address-pool'] ?? null) !== $poolName) {
+                $api->setById('/ip/dhcp-server/set', $existingDhcp[0]['.id'], ['address-pool' => $poolName, 'lease-time' => '1h']);
+            }
+        } else {
+            $api->query('/ip/dhcp-server/add', [
+                'name' => "radiuspoint_hs_dhcp_{$interface}",
+                'interface' => $interface,
+                'address-pool' => $poolName,
+                'lease-time' => '1h',
+                'disabled' => 'no',
+            ]);
+        }
+
+        return ['server' => $serverName, 'pool' => $poolName, 'profile' => $profileName];
     }
 
     /**
@@ -482,8 +951,8 @@ class RouterController extends Controller
     protected function provisionPppoe(MikrotikApiService $api, string $interface): array
     {
         $subnet = $api->allocateSubnet();
-        $poolName = "rp_ppp_{$interface}";
-        $profileName = "rp_ppp_prof_{$interface}";
+        $poolName = "radiuspoint_ppp_pool_{$interface}";
+        $profileName = "radiuspoint_ppp_prof_{$interface}";
 
         $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
         $api->query('/ppp/profile/add', [
@@ -548,10 +1017,37 @@ class RouterController extends Controller
     }
 
     /**
-     * Decommission Hardware (Secure Deletion).
+     * Step 1 of decommissioning: generates a 6-digit code, valid 5 minutes, sent to the
+     * requesting user via in-app + push notification (see RouterDecommissionCode) — deleting a
+     * router is destructive and irreversible (it also drops the router's RADIUS client row),
+     * so a bare confirm() dialog isn't enough friction for an action this consequential.
      */
-    public function destroy(Router $router)
+    public function requestDecommission(Router $router)
     {
+        $code = (string) random_int(100000, 999999);
+        Cache::put($this->decommissionCacheKey($router), $code, now()->addMinutes(5));
+
+        Notification::send([Auth::user()], new RouterDecommissionCode($router, $code));
+
+        return response()->json(['message' => 'A removal code was sent to your notifications.']);
+    }
+
+    /**
+     * Step 2: verifies the code from requestDecommission() before actually deleting anything.
+     */
+    public function confirmDecommission(Request $request, Router $router)
+    {
+        $request->validate(['code' => 'required|string']);
+
+        $key = $this->decommissionCacheKey($router);
+        $expected = Cache::get($key);
+
+        if (! $expected || ! hash_equals($expected, $request->code)) {
+            return response()->json(['message' => 'That code is incorrect or has expired. Request a new one.'], 422);
+        }
+
+        Cache::forget($key);
+
         // In a true SaaS, you might want to check if there are active users on this router first!
         // Remove the matching RADIUS client row now — the WireGuard peer itself is removed by
         // ReconcileNetworking's next run, which diffs live peers against still-existing routers.
@@ -559,7 +1055,12 @@ class RouterController extends Controller
 
         $router->delete();
 
-        return redirect()->route('routers.index')->with('success', 'Hardware decommissioned and removed from network.');
+        return response()->json(['message' => 'Hardware decommissioned and removed from network.', 'redirect' => route('routers.index')]);
+    }
+
+    private function decommissionCacheKey(Router $router): string
+    {
+        return "router-decommission-code-{$router->id}-".Auth::id();
     }
 
     /**

@@ -85,21 +85,18 @@
                                     <a href="{{ route('routers.monitor', $router) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Live Monitor">
                                         <i class="bx bx-pulse text-lg"></i>
                                     </a>
+                                    <a href="{{ route('routers.show', $router) }}#captive-portal" class="text-gray-400 hover:text-blue-600 transition-colors" title="Captive Portal">
+                                        <i class="bx bx-globe text-lg"></i>
+                                    </a>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if($router->status === 'active')
-                                    <div class="inline-flex items-center gap-2 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full border border-green-200 dark:border-green-900/50 font-bold">
-                                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
-                                    </div>
+                                    <x-status-badge color="green" dot pulse>Online</x-status-badge>
                                 @elseif($router->status === 'provisioning' || $router->status === 'pending')
-                                    <div class="inline-flex items-center gap-2 text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-900/50 font-bold">
-                                        <i class='bx bx-loader-alt bx-spin'></i> Awaiting Uplink
-                                    </div>
+                                    <x-status-badge color="amber" icon="bx-loader-alt bx-spin">Awaiting Uplink</x-status-badge>
                                 @else
-                                    <div class="inline-flex items-center gap-2 text-[10px] text-red-700 dark:text-red-400 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-200 dark:border-red-900/50 font-bold">
-                                        <span class="w-2 h-2 rounded-full bg-red-500"></span> Offline
-                                    </div>
+                                    <x-status-badge color="red" dot>Offline</x-status-badge>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-right">
@@ -123,12 +120,9 @@
                                             ">
                                             <i class='bx text-lg' :class="testing ? 'bx-loader-alt bx-spin' : (result === true ? 'bx-check text-green-500' : (result === false ? 'bx-x text-red-500' : 'bx-broadcast'))"></i>
                                         </button>
-                                        <form action="{{ route('routers.destroy', $router) }}" method="POST" onsubmit="return confirm('Decommission {{ $router->name }}? This cannot be undone.')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove Hardware">
-                                                <i class='bx bx-trash text-lg'></i>
-                                            </button>
-                                        </form>
+                                        <a href="{{ route('routers.show', $router) }}#decommission" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove Hardware (requires a confirmation code)">
+                                            <i class='bx bx-trash text-lg'></i>
+                                        </a>
                                     </div>
                                 @endif
                             </td>

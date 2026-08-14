@@ -29,7 +29,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         if ($request->user()->is_platform_admin) {
-            return redirect()->intended(route('platform-admin.tenants.index', absolute: false));
+            return redirect()->intended(route('platform-admin.dashboard', absolute: false));
         }
 
         return redirect()->intended(route('dashboard', absolute: false));

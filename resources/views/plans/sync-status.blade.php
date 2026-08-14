@@ -27,17 +27,11 @@
                             <td class="px-6 py-4 text-gray-900 dark:text-white font-bold">{{ $router->name }}</td>
                             <td class="px-6 py-4 text-center">
                                 @if(! $sync)
-                                    <span class="inline-flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-widest bg-gray-50 dark:bg-gray-900 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800 font-bold">
-                                        <i class="bx bx-time"></i> Awaiting first sync
-                                    </span>
+                                    <x-status-badge color="gray" icon="bx-time">Awaiting first sync</x-status-badge>
                                 @elseif($sync->status === 'synced')
-                                    <span class="inline-flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full border border-green-200 dark:border-green-900/50 font-bold">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Synced
-                                    </span>
+                                    <x-status-badge color="green" dot>Synced</x-status-badge>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 text-[10px] text-red-700 dark:text-red-400 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-200 dark:border-red-900/50 font-bold">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Failed
-                                    </span>
+                                    <x-status-badge color="red" dot>Failed</x-status-badge>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $sync->message ?? '—' }}</td>

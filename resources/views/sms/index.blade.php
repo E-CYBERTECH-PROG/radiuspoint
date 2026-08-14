@@ -60,9 +60,9 @@
                                 <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $msg->initiator ?: 'System' }}</td>
                                 <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $msg->created_at->format('d M Y H:i') }}</td>
                                 <td class="px-6 py-4 text-center">
-                                    <span class="px-2 py-1 rounded text-[10px] tracking-wide uppercase font-bold {{ $msg->status == 'sent' ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/50' : ($msg->status == 'failed' ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50') }}">
+                                    <x-status-badge :color="$msg->status === 'sent' ? 'green' : ($msg->status === 'failed' ? 'red' : 'amber')">
                                         {{ $msg->status }}
-                                    </span>
+                                    </x-status-badge>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <form action="{{ route('sms.destroy', $msg) }}" method="POST" onsubmit="return confirm('Remove this message from the log?')">
@@ -118,7 +118,10 @@
                         </template>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500 dark:text-gray-400 col-span-2">No templates yet.</p>
+                    <div class="col-span-2 text-center text-gray-400 py-12">
+                        <i class="bx bx-file-blank text-4xl mb-3 text-gray-200"></i>
+                        <p class="text-xs tracking-widest uppercase">No templates yet.</p>
+                    </div>
                 @endforelse
             </div>
             <form action="{{ route('sms-templates.store') }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-6 flex flex-col md:flex-row gap-3">

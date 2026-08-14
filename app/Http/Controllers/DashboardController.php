@@ -77,20 +77,56 @@ class DashboardController extends Controller
         // 5. Real router status list (replaces the old fabricated "Recent Router Logs" panel)
         $routers = $this->routerStatusSnapshot();
 
-        return view('dashboard', compact(
-            'stats', 'recentTransactions', 'expiringUsers', 'chartLabels', 'chartData', 'routers'
-        ));
-    }
+        // 6. New customers per month, last 6 months — hotspot + PPPoE combined, same window as
+        // the revenue chart so the two read together (are we growing, and is it paying off).
+        $growthLabels = [];
+        $growthData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = $now->copy()->subMonths($i);
+            $growthLabels[] = $month->format('M');
+            $growthData[] = HotspotUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count()
+                + PppoeUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count();
+        }
 
-    /**
-     * Polled by the "Online Right Now" dashboard widget every few seconds. Counts truly-live
-     * RADIUS sessions (radacct rows with no stop time yet) rather than the `status` column on
-     * HotspotUser/PppoeUser — status reflects billing state (active package vs expired), not
-     * whether the customer is actually connected to a router right this second.
-     */
-    public function liveCount(): \Illuminate\Http\JsonResponse
-    {
-        return response()->json(['count' => $this->liveOnlineCount()]);
+        // 7. Most-purchased packages — same query Reports > Analytics uses, capped to the top 5
+        // so it fits a dashboard tile rather than duplicating that page's full top-10 table.
+        $topPackages = Transaction::where('status', 'success')
+            ->selectRaw('package_name, COUNT(*) as purchase_count')
+            ->groupBy('package_name')
+            ->orderByDesc('purchase_count')
+            ->limit(5)
+            ->get();
+
+        // 8. View-layer values every layout needs — computed once here instead of duplicated as
+        // a @php block at the top of each of the 3 layout templates.
+        $currency = Auth::user()->tenant?->currency_symbol ?? 'KES';
+        $currentTimezone = Auth::user()->tenant?->timezone ?? config('app.timezone');
+
+        $incomeTodayDelta = ($stats['income_yesterday'] ?? 0) > 0
+            ? (($stats['income_today'] - $stats['income_yesterday']) / $stats['income_yesterday']) * 100
+            : null;
+        $incomeMonthDelta = ($stats['income_last_month'] ?? 0) > 0
+            ? (($stats['income_month'] - $stats['income_last_month']) / $stats['income_last_month']) * 100
+            : null;
+
+        $dashboardInitial = [
+            'online_now' => (int) ($stats['online_now'] ?? 0),
+            'recent_transactions' => $recentTransactions,
+            'routers' => $routers,
+            'mpesa_status' => $stats['mpesa_status'],
+        ];
+
+        // Which of the 3 arrangements this user picked in Profile > Appearance — falls back to
+        // 'standard' for garbage/unrecognized values rather than a missing-view error.
+        $layout = in_array(Auth::user()->dashboard_layout, \App\Models\User::DASHBOARD_LAYOUTS, true)
+            ? Auth::user()->dashboard_layout
+            : 'standard';
+
+        return view("dashboard.{$layout}", compact(
+            'stats', 'recentTransactions', 'expiringUsers', 'chartLabels', 'chartData', 'routers',
+            'growthLabels', 'growthData', 'topPackages', 'currency', 'currentTimezone',
+            'incomeTodayDelta', 'incomeMonthDelta', 'dashboardInitial'
+        ));
     }
 
     private function liveOnlineCount(): int
@@ -108,14 +144,14 @@ class DashboardController extends Controller
     }
 
     /**
-     * Polled by the dashboard's Recent Transactions / Router Status widgets every 10s. Reuses
-     * the exact same two snapshot queries the page-load render already uses, so the initial
-     * Blade-rendered markup and every subsequent poll are always the same shape — one render
-     * path, not two that could silently drift apart.
+     * Polled by the dashboard every 10s — a single combined snapshot (online count, recent
+     * transactions, router status, M-Pesa health) so the page makes one request per tick
+     * instead of two separate timers hitting the server at different intervals.
      */
     public function liveSnapshot(): \Illuminate\Http\JsonResponse
     {
         return response()->json([
+            'online_now' => $this->liveOnlineCount(),
             'recent_transactions' => $this->recentTransactionsSnapshot(),
             'routers' => $this->routerStatusSnapshot(),
             'mpesa_status' => $this->mpesaStatusSnapshot(),
@@ -127,19 +163,38 @@ class DashboardController extends Controller
      * actual outage — MpesaService::stkPush() tracks consecutive_failures on every real attempt,
      * so "degraded" here means real customer payments have been failing repeatedly, not a guess.
      */
+    /**
+     * Reflects both gateways, not just the primary — if slot 1 is down but slot 2 (backup) is
+     * healthy, customers can still pay, so this reports "active" (with a note) rather than
+     * "degraded", matching what PaymentPortalController::pay() actually does at checkout time.
+     */
     private function mpesaStatusSnapshot(): array
     {
-        $setting = MpesaSetting::where('tenant_id', Auth::user()->tenant_id)->first();
+        $settings = MpesaSetting::where('tenant_id', Auth::user()->tenant_id)
+            ->whereIn('slot', [1, 2])
+            ->orderBy('slot')
+            ->get();
 
-        if (! $setting || ! $setting->is_active) {
+        $active = $settings->filter(fn ($s) => $s->is_active);
+
+        if ($active->isEmpty()) {
             return ['state' => 'not_configured', 'label' => 'Not Configured'];
         }
 
-        if ($setting->consecutive_failures >= 3) {
-            return ['state' => 'degraded', 'label' => 'Degraded'];
+        $primary = $active->firstWhere('slot', 1);
+        $primaryDown = $primary && $primary->consecutive_failures >= 3;
+        $backup = $active->firstWhere('slot', 2);
+        $backupHealthy = $backup && $backup->consecutive_failures < 3;
+
+        if (! $primaryDown) {
+            return ['state' => 'active', 'label' => 'Active'];
         }
 
-        return ['state' => 'active', 'label' => 'Active'];
+        if ($backupHealthy) {
+            return ['state' => 'active', 'label' => 'Active (Backup)'];
+        }
+
+        return ['state' => 'degraded', 'label' => 'Degraded'];
     }
 
     private function recentTransactionsSnapshot()
@@ -152,6 +207,7 @@ class DashboardController extends Controller
             'payment_method' => $t->payment_method,
             'status' => $t->status,
             'created_at_human' => $t->created_at->diffForHumans(),
+            'hotspot_user_id' => $t->hotspot_user_id,
         ]);
     }
 

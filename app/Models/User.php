@@ -16,6 +16,11 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory, Notifiable, HasPushSubscriptions;
 
     /**
+     * Which dashboard.blade.php arrangement this user sees — see DashboardController::index().
+     */
+    public const DASHBOARD_LAYOUTS = ['standard', 'ops', 'analytics'];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -28,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'tenant_id', // Add this
         'role',      // Add this
         'is_platform_admin',
+        'dashboard_layout',
     ];
 
     public function tenant(): BelongsTo

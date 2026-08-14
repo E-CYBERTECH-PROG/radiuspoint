@@ -10,9 +10,11 @@ class TicketController extends Controller
 {
     public function index(Request $request)
     {
+        $search = $this->searchTerm($request);
+
         $tickets = Ticket::where('tenant_id', Auth::user()->tenant_id)
-            ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
-                $q->where('username', 'like', "%{$request->search}%")->orWhere('phone', 'like', "%{$request->search}%");
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('username', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%");
             }))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest()

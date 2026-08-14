@@ -13,10 +13,12 @@ class TeamController extends Controller
     {
         abort_unless(Auth::user()->role === 'SuperAdmin', 403);
 
+        $search = $this->searchTerm($request);
+
         $members = User::where('tenant_id', Auth::user()->tenant_id)
             ->where('is_platform_admin', false)
-            ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")->orWhere('email', 'like', "%{$request->search}%");
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
             }))
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->role))
             ->latest()

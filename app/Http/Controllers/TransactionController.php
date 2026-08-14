@@ -10,11 +10,13 @@ class TransactionController extends Controller
 {
     public function index(Request $request)
     {
+        $search = $this->searchTerm($request);
+
         $transactions = Transaction::where('tenant_id', Auth::user()->tenant_id)
-            ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
-                $q->where('phone_number', 'like', "%{$request->search}%")
-                    ->orWhere('customer_name', 'like', "%{$request->search}%")
-                    ->orWhere('mpesa_receipt', 'like', "%{$request->search}%");
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('phone_number', 'like', "%{$search}%")
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('mpesa_receipt', 'like', "%{$search}%");
             }))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))

@@ -10,6 +10,18 @@ class HotspotUser extends Model
 {
     use BelongsToTenant;
 
+    /**
+     * Single source of truth for every place that validates or lists a status — previously
+     * hand-duplicated as "active,expired,offline" in 4 separate places (2 controller validation
+     * rules, 2 Blade views) and every one of them silently missed "unused" (a real DB status,
+     * set on voucher generation). Editing an unredeemed voucher — a reachable URL, since vouchers
+     * are plain HotspotUser rows — hit a <select> with no matching <option>, so the browser
+     * defaulted to "active" and submitting the form (even unchanged) silently activated/RADIUS-
+     * synced a voucher nobody had actually redeemed. Confirmed live via a real code audit, not
+     * theoretical.
+     */
+    public const STATUSES = ['unused', 'active', 'expired', 'offline'];
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'current_plan_id');

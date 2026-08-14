@@ -5,7 +5,9 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PlatformAdmin\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\RouterController;
+use App\Http\Controllers\OltController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PppoeUserController;
 use App\Http\Controllers\HotspotUserController;
@@ -15,6 +17,9 @@ use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\SmsSettingController;
 use App\Http\Controllers\MpesaSettingController;
+use App\Http\Controllers\CompanySettingController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\TenantBillingController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\PaymentPortalController;
@@ -24,6 +29,7 @@ use App\Http\Controllers\PlatformAdmin\TenantController;
 use App\Http\Controllers\PlatformAdmin\TenantDataExportController;
 use App\Http\Controllers\PlatformAdmin\TenantImportController;
 use App\Http\Controllers\PlatformAdmin\AdminActivityLogController;
+use App\Http\Controllers\PlatformAdmin\TenantInvoiceController;
 use App\Http\Controllers\NasProvisioningController;
 use App\Http\Controllers\CaptivePortalController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +42,15 @@ Route::get('/', function () {
 Route::middleware('auth')->get('/pending-approval', function () {
     return view('tenant.pending');
 })->name('tenant.pending');
+
+// Shown instead of the dashboard once a commission invoice has gone unpaid past its grace
+// period — deliberately outside the 'tenant.subscribed' group below (see EnsureTenantSubscribed),
+// along with the self-service payment actions so a locked-out tenant can still reach them.
+Route::middleware('auth')->group(function () {
+    Route::get('/subscription-required', [TenantBillingController::class, 'locked'])->name('billing.locked');
+    Route::post('/subscription-required/pay', [TenantBillingController::class, 'pay'])->name('billing.pay');
+    Route::get('/subscription-required/status/{invoice}', [TenantBillingController::class, 'status'])->name('billing.status');
+});
 
 // Public, unauthenticated customer self-service M-Pesa payment portal (no login — reached via a router's public_token)
 Route::get('/portal/{router:public_token}', [PaymentPortalController::class, 'show'])->name('portal.show');
@@ -53,9 +68,13 @@ Route::get('/captive/{router:public_token}', [CaptivePortalController::class, 's
 Route::post('/captive/{router:public_token}/lookup', [CaptivePortalController::class, 'lookup'])
     ->middleware('throttle:6,1')
     ->name('captive.lookup');
+Route::post('/captive/{router:public_token}/free-mode', [CaptivePortalController::class, 'freeMode'])
+    ->middleware('throttle:6,1')
+    ->name('captive.free-mode');
 
 // Platform-team only: manage ISP tenant accounts
 Route::middleware(['auth', 'platform.admin'])->prefix('platform-admin')->name('platform-admin.')->group(function () {
+    Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
     Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
     Route::get('/tenants/import', [TenantImportController::class, 'importForm'])->name('tenants.import-form');
     Route::get('/tenants/import/template', [TenantImportController::class, 'template'])->name('tenants.import-template');
@@ -70,15 +89,17 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform-admin')->name('p
     Route::post('/tenants/{tenant}/reactivate', [TenantController::class, 'reactivate'])->name('tenants.reactivate');
     Route::get('/tenants/{tenant}/export-data', [TenantDataExportController::class, 'exportTenantData'])->name('tenants.export-data');
     Route::get('/activity-log', [AdminActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/invoices', [TenantInvoiceController::class, 'index'])->name('invoices.index');
+    Route::post('/invoices/{invoice}/mark-paid', [TenantInvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
 });
 
 // All routes wrapped in auth to ensure only logged-in, approved ISPs can access them
-Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
+Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', 'tenant.timezone'])->group(function () {
 
     // The Command Center Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/live-count', [DashboardController::class, 'liveCount'])->name('dashboard.live-count');
     Route::get('/dashboard/live-snapshot', [DashboardController::class, 'liveSnapshot'])->name('dashboard.live-snapshot');
+    Route::get('/search', [SearchController::class, 'index'])->name('search');
 
     // === NOTIFICATIONS ===
     Route::get('/settings/notifications', [NotificationPreferenceController::class, 'edit'])->name('settings.notifications.edit');
@@ -97,9 +118,15 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
     Route::resource('routers', RouterController::class)->only(['index']);
     Route::get('/routers-noc', [RouterController::class, 'noc'])->name('routers.noc');
 
+    // === OLT MANAGEMENT (GPON/EPON — VSOL, Hioso) ===
+    Route::resource('olts', OltController::class)->only(['index']);
+
     Route::middleware('restrict.sales-agent')->group(function () {
-        // This single line handles create, store, show, update, and destroy (index is registered above)
-        Route::resource('routers', RouterController::class)->except(['index']);
+        // This single line handles create, store, show, and update (index is registered above;
+        // destroy is replaced by the two-step code-verified decommission flow below).
+        Route::resource('routers', RouterController::class)->except(['index', 'destroy']);
+        Route::post('/routers/{router}/decommission/request', [RouterController::class, 'requestDecommission'])->name('routers.decommission.request');
+        Route::post('/routers/{router}/decommission/confirm', [RouterController::class, 'confirmDecommission'])->name('routers.decommission.confirm');
 
         // Custom ZTP Step 2: Copy Script & Check Status
         Route::get('/routers/{router}/provision', [RouterController::class, 'provision'])->name('routers.provision');
@@ -132,6 +159,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
 
         // === CAPTIVE PORTAL SETTINGS ===
         Route::post('/routers/{router}/captive-portal', [RouterController::class, 'updateCaptivePortal'])->name('routers.captive-portal.update');
+        Route::post('/routers/{router}/captive-portal/push', [RouterController::class, 'pushCaptivePortalFiles'])->name('routers.captive-portal.push');
 
         // === REMOTE CONTROL ACTIONS (Live Monitor's action buttons) ===
         Route::post('/routers/{router}/actions/reboot', [RouterController::class, 'reboot'])->name('routers.actions.reboot');
@@ -143,6 +171,11 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
         // === LIVE TERMINAL/CONSOLE ===
         Route::get('/routers/{router}/terminal/history', [RouterController::class, 'terminalHistory'])->name('routers.terminal.history');
         Route::post('/routers/{router}/terminal/execute', [RouterController::class, 'terminalExecute'])->name('routers.terminal.execute');
+
+        Route::resource('olts', OltController::class)->except(['index', 'edit', 'update']);
+        Route::post('/olts/{olt}/test-connection', [OltController::class, 'testConnection'])->name('olts.test-connection');
+        Route::get('/olts/{olt}/terminal/history', [OltController::class, 'terminalHistory'])->name('olts.terminal.history');
+        Route::post('/olts/{olt}/terminal/execute', [OltController::class, 'terminalExecute'])->name('olts.terminal.execute');
     });
 
     // === PLAN MANAGEMENT ===
@@ -155,8 +188,19 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
     // show route (first-registered-wins route matching).
     Route::get('/pppoe-users/live-status', [PppoeUserController::class, 'liveStatus'])->name('pppoe-users.live-status');
     Route::get('/hotspot-users/live-status', [HotspotUserController::class, 'liveStatus'])->name('hotspot-users.live-status');
+    // Bulk purge, registered before the resource routes for the same reason as live-status above.
+    Route::post('/pppoe-users/purge-expired', [PppoeUserController::class, 'purgeExpired'])->name('pppoe-users.purge-expired');
+    Route::post('/hotspot-users/purge-expired', [HotspotUserController::class, 'purgeExpired'])->name('hotspot-users.purge-expired');
+    Route::post('/hotspot-users/purge-unused', [HotspotUserController::class, 'purgeUnused'])->name('hotspot-users.purge-unused');
     Route::resource('pppoe-users', PppoeUserController::class);
     Route::resource('hotspot-users', HotspotUserController::class);
+    Route::post('/pppoe-users/{pppoe_user}/extend', [PppoeUserController::class, 'extendExpiry'])->name('pppoe-users.extend');
+    Route::post('/pppoe-users/{pppoe_user}/disconnect', [PppoeUserController::class, 'forceDisconnect'])->name('pppoe-users.disconnect');
+    Route::get('/pppoe-users/{pppoe_user}/panel', [PppoeUserController::class, 'panel'])->name('pppoe-users.panel');
+    Route::post('/hotspot-users/{hotspot_user}/extend', [HotspotUserController::class, 'extendExpiry'])->name('hotspot-users.extend');
+    Route::post('/hotspot-users/{hotspot_user}/disconnect', [HotspotUserController::class, 'forceDisconnect'])->name('hotspot-users.disconnect');
+    Route::post('/hotspot-users/{hotspot_user}/reset-mac', [HotspotUserController::class, 'resetMac'])->name('hotspot-users.reset-mac');
+    Route::get('/hotspot-users/{hotspot_user}/panel', [HotspotUserController::class, 'panel'])->name('hotspot-users.panel');
 
     // === LEADS (CRM) ===
     Route::resource('leads', LeadController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -179,7 +223,13 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
         Route::put('/sms/settings', [SmsSettingController::class, 'update'])->name('sms-settings.update');
         Route::get('/mpesa/settings', [MpesaSettingController::class, 'edit'])->name('mpesa-settings.edit');
         Route::put('/mpesa/settings', [MpesaSettingController::class, 'update'])->name('mpesa-settings.update');
+        Route::get('/billing', [TenantBillingController::class, 'edit'])->name('billing.edit');
+        Route::get('/billing/invoices/{invoice}/print', [TenantBillingController::class, 'printInvoice'])->name('billing.print');
     });
+
+    // Public-facing contact info shown on captive portals — not a credential, so open to every role.
+    Route::get('/company/settings', [CompanySettingController::class, 'edit'])->name('company-settings.edit');
+    Route::put('/company/settings', [CompanySettingController::class, 'update'])->name('company-settings.update');
 
     // === VOUCHERS ===
     Route::get('/vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
@@ -199,12 +249,14 @@ Route::middleware(['auth', 'verified', 'tenant.approved'])->group(function () {
     Route::get('/reports/fixed-sales', [ReportController::class, 'fixedSales'])->name('reports.fixed-sales');
     Route::get('/reports/hotspot-sales', [ReportController::class, 'hotspotSales'])->name('reports.hotspot-sales');
     Route::get('/reports/access-log', [ReportController::class, 'accessLog'])->name('reports.access-log');
+    Route::get('/reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
 });
 
 // Default Laravel Breeze Profile Routes
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/dashboard-layout', [ProfileController::class, 'updateDashboardLayout'])->name('profile.dashboard-layout');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

@@ -149,42 +149,10 @@
                                 <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
                                 <span class="ml-3 text-xs text-gray-400">radiuspoint.co.ke/dashboard</span>
                             </div>
-                            <div class="flex bg-white">
-                                <div class="w-32 bg-slate-900 text-slate-300 text-xs py-4 hidden sm:block shrink-0">
-                                    <div class="px-4 py-2 bg-indigo-600 text-white font-medium">Dashboard</div>
-                                    <div class="px-4 py-2 text-slate-400">Routers</div>
-                                    <div class="px-4 py-2 text-slate-400">Plans</div>
-                                    <div class="px-4 py-2 text-slate-400">Hotspot Users</div>
-                                </div>
-                                <div class="flex-1 p-5 bg-gray-50">
-                                    <div class="grid grid-cols-2 gap-3 mb-4">
-                                        <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Income Today</p>
-                                            <p class="text-base font-semibold text-gray-900">KES 12,450</p>
-                                        </div>
-                                        <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Income (Month)</p>
-                                            <p class="text-base font-semibold text-gray-900">KES 284,900</p>
-                                        </div>
-                                        <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Active Users</p>
-                                            <p class="text-base font-semibold text-gray-900">213</p>
-                                        </div>
-                                        <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Routers Offline</p>
-                                            <p class="text-base font-semibold text-gray-900">0</p>
-                                        </div>
-                                    </div>
-                                    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                                        <p class="text-xs font-medium text-gray-500 mb-3">Recent Transactions</p>
-                                        <div class="space-y-2 text-xs text-gray-600">
-                                            <div class="flex justify-between border-b border-gray-50 pb-2"><span>0712***456</span><span>Daily Unlimited</span><span class="text-green-600">KES 50</span></div>
-                                            <div class="flex justify-between border-b border-gray-50 pb-2"><span>0722***890</span><span>Weekly 5GB</span><span class="text-green-600">KES 250</span></div>
-                                            <div class="flex justify-between"><span>0701***234</span><span>Hourly</span><span class="text-green-600">KES 10</span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            {{-- A real screenshot of the actual product dashboard, rendered against a
+                                 dedicated internal demo tenant with realistic-but-fake data — not real
+                                 customer phone numbers/revenue, and not a hand-built HTML mockup. --}}
+                            <img src="{{ asset('images/marketing/dashboard-preview.png') }}" alt="RadiusPoint dashboard showing income, recent transactions, and live customer activity" class="w-full h-auto block">
                         </div>
                     </div>
                 </div>

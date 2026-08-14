@@ -18,7 +18,8 @@
             <div class="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">
                 <div class="col-span-1 text-center">Status</div>
                 <div class="col-span-5">Physical Interface</div>
-                <div class="col-span-6">Service Assignment</div>
+                <div class="col-span-3 text-center">Hotspot</div>
+                <div class="col-span-3 text-center">PPPoE</div>
             </div>
 
             <div class="divide-y divide-gray-100 dark:divide-gray-800 p-2">
@@ -27,6 +28,12 @@
                 @foreach($interfaces as $interface)
                     @if(in_array($interface['type'] ?? 'ether', ['ether', 'wlan', 'bridge', 'vlan']))
                         @php $validInterfacesFound = true; @endphp
+
+                        {{-- Every shown interface is tracked here regardless of whether either box
+                             ends up checked, so savePorts() can still explicitly set it to "none"
+                             (matching the previous dropdown's default option) rather than silently
+                             skipping it. --}}
+                        <input type="hidden" name="all_interfaces[]" value="{{ $interface['name'] }}">
 
                         <div class="grid grid-cols-12 gap-4 items-center px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors rounded-lg group">
 
@@ -48,13 +55,18 @@
                                 @endif
                             </div>
 
-                            <div class="col-span-6">
-                                <select name="ports[{{ $interface['name'] }}]" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer outline-none transition-colors">
-                                    <option value="none">Unassigned / Bypass</option>
-                                    <option value="hotspot">Hotspot Gateway</option>
-                                    <option value="pppoe">PPPoE Server</option>
-                                    <option value="both">Hybrid (Hotspot + PPPoE)</option>
-                                </select>
+                            <div class="col-span-3 flex justify-center">
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="hotspot_ports[]" value="{{ $interface['name'] }}" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                    <span class="text-xs text-gray-600 dark:text-gray-400 sm:hidden">Hotspot</span>
+                                </label>
+                            </div>
+
+                            <div class="col-span-3 flex justify-center">
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="pppoe_ports[]" value="{{ $interface['name'] }}" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                    <span class="text-xs text-gray-600 dark:text-gray-400 sm:hidden">PPPoE</span>
+                                </label>
                             </div>
 
                         </div>
@@ -68,6 +80,7 @@
                     </div>
                 @endif
             </div>
+            <p class="px-6 py-3 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-800">Check both boxes on an interface to run Hotspot and PPPoE together on the same port.</p>
         </div>
 
         <div class="flex items-center justify-between p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/40 rounded-xl">

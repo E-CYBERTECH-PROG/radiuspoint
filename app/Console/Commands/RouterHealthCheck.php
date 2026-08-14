@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Controllers\RouterController;
 use App\Models\Router;
 use App\Notifications\RouterCriticalLog;
 use App\Notifications\RouterOffline;
@@ -38,6 +39,12 @@ class RouterHealthCheck extends Command
                     $api->query('/system/resource/print');
                     $router->update(['status' => 'active', 'last_seen' => now()]);
                     $this->scanCriticalLogs($api, $router);
+                    // Piggybacks on this command's already-open connection to retroactively push
+                    // /ppp/aaa's use-radius+interim-update to every router every minute — the only
+                    // path that reaches PPPoE-only routers (which never go through the
+                    // hotspot-gated provisionCaptivePortal() retroactive fix). Idempotent, cheap
+                    // (one read, one write only if actually different).
+                    (new RouterController())->enableRadiusOnDefaultProfiles($api);
                 } catch (Throwable $e) {
                     $reachable = false;
                     $router->update(['status' => 'offline']);
