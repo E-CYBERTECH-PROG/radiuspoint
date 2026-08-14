@@ -327,14 +327,12 @@ class HotspotUserController extends Controller
                 // Short timeout (default is 5s) — this endpoint is polled every 5s and connects
                 // to every distinct router in the visible list sequentially, one at a time. With
                 // the default timeout, a handful of slow/unreachable routers alone could take
-                // this single request past 30s, tying up a PHP-FPM worker for the whole time;
-                // confirmed live in php-fpm's own log (workers SIGKILLed after 48-140s, and a
-                // real "executing too slow (34.9 sec)" entry logging this exact endpoint by its
-                // phone_numbers[] query string) plus cascading "Connection reset by peer" errors
-                // on completely unrelated pages once the worker pool filled up. This is a
-                // best-effort snapshot — a router that doesn't answer in 2s isn't likely to
-                // answer meaningfully faster by waiting 5s, and a missing entry already renders
-                // as "unknown" client-side rather than a hard error.
+                // this single request past 30s, tying up a PHP-FPM worker for the whole time and
+                // risking worker-pool exhaustion under load, with cascading failures on
+                // completely unrelated pages. This is a best-effort snapshot — a router that
+                // doesn't answer in 2s isn't likely to answer meaningfully faster by waiting 5s,
+                // and a missing entry already renders as "unknown" client-side rather than a
+                // hard error.
                 $api = new MikrotikApiService();
                 if (! $api->connect($router->ip_address, $router->api_username, $router->api_password, timeout: 2)) {
                     continue;

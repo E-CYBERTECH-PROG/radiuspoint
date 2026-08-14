@@ -63,9 +63,8 @@ class ExpireOverdueUsers extends Command
      * until they happen to disconnect on their own. Adding their session's current IP to the
      * `radiuspoint-expired` address-list makes the `radiuspoint-expired-block` firewall rule (see
      * RouterController::enableRadiusOnDefaultProfiles()) cut their traffic immediately —
-     * independent of whether the disconnect call below actually succeeds, matching BillNasi's own
-     * `src-address-list=expired` firewall pattern (their real, working config, inspected this
-     * session) rather than relying solely on tearing the session down.
+     * independent of whether the disconnect call below actually succeeds, rather than relying
+     * solely on tearing the session down.
      */
     private function blockIfConnected(Router $router, string $activeEndpoint, string $activeUserField, string $username): void
     {

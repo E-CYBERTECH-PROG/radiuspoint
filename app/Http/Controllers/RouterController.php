@@ -128,9 +128,9 @@ class RouterController extends Controller
             'description' => "RadiusPoint router #{$router->id}",
         ]);
 
-        // Real Winbox/Web access, matching BillNasi's own working approach: unique ports on
-        // THIS server's public IP, forwarded via nginx's stream{} module through the WireGuard
-        // tunnel to the router's real ports. Deterministic from the router's own id (now known,
+        // Real Winbox/Web access: unique ports on THIS server's public IP, forwarded via
+        // nginx's stream{} module through the WireGuard tunnel to the router's real ports.
+        // Deterministic from the router's own id (now known,
         // post-create) — collision-free by construction, no allocation-scanning needed since
         // this is our own server's port namespace, not router-side state.
         $router->update([
@@ -144,8 +144,7 @@ class RouterController extends Controller
     /**
      * Step 2: Show the short bootstrap script. The router pastes only this — a
      * connectivity check plus a fetch+import of the real config from
-     * NasProvisioningController::startup() — so no credentials ever sit in
-     * copy-pasted text (matches the pattern BillNasi's own wizard uses).
+     * NasProvisioningController::startup() — so no credentials ever sit in copy-pasted text.
      */
     public function provision(Router $router)
     {
@@ -247,15 +246,12 @@ class RouterController extends Controller
             Log::warning("Could not enable RADIUS on /ppp/aaa: " . $e->getMessage());
         }
 
-        // Defense-in-depth against expired customers keeping internet access: reference
-        // BillNasi's own working config (`/ip firewall filter add action=drop chain=forward
-        // src-address-list=expired`) — a real device's exported provisioning script downloaded
-        // and inspected this session. Previously ExpireOverdueUsers only deleted the RADIUS
-        // credential and flipped status; it never touched an *already-connected* session, which
-        // RouterOS doesn't re-check against RADIUS mid-session (no CoA here) — so an expired
-        // customer who was online at the moment they expired kept full access until they
-        // happened to disconnect on their own. ExpireOverdueUsers now adds their session's IP to
-        // radiuspoint-expired (see that command) whenever this rule exists to actually enforce it.
+        // Defense-in-depth against expired customers keeping internet access: RouterOS doesn't
+        // re-check RADIUS mid-session, so deleting the credential alone doesn't touch a session
+        // that's already connected — a customer who was online at the moment they expired would
+        // otherwise keep full access until they happened to disconnect on their own.
+        // ExpireOverdueUsers adds their session's IP to radiuspoint-expired whenever this rule
+        // exists, so this firewall drop is what actually enforces the cutoff.
         try {
             $oldExpiredRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-expired-block');
             if ($oldExpiredRuleId) {
@@ -284,10 +280,9 @@ class RouterController extends Controller
         // connection's life — which means a connection that got fasttracked before a customer
         // expired can keep bypassing radiuspoint-expired-block above, and any already-fasttracked
         // connection bypasses FUP's simple-queue throttling too (see EnforceFairUsage). Disabling
-        // it (not removing it — matches BillNasi's own working config, inspected this session, and
-        // keeps the rule available to re-enable manually if a tenant ever needs the throughput)
-        // makes both of those guarantees actually hold for the connection's full lifetime, not
-        // just its first few packets.
+        // it (not removing it, so it can be re-enabled manually if a tenant ever needs the
+        // throughput) makes both guarantees hold for a connection's full lifetime, not just its
+        // first few packets.
         try {
             $fasttrackRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'defconf: fasttrack');
             if ($fasttrackRuleId) {
@@ -352,8 +347,7 @@ class RouterController extends Controller
      * Operational health-check for an already-configured router — unlike checkStatus()
      * (which is ZTP-flow-specific and marks the router 'provisioning'), this reflects
      * real reachability for a router that's already active, and returns live system
-     * info (identity, board name, RouterOS version, uptime, CPU/memory) for the UI,
-     * matching how BillNasi's own live status polling works.
+     * info (identity, board name, RouterOS version, uptime, CPU/memory) for the UI.
      */
     public function testConnection(Router $router)
     {
@@ -461,9 +455,9 @@ class RouterController extends Controller
         }
 
         // Unlike Hotspot (where use-radius is a per-profile property), PPP's RADIUS delegation
-        // is a single router-wide toggle — confirmed against real hardware: /ppp/profile/add
-        // rejects use-radius outright ("unknown parameter"). Setting it once here, before the
-        // per-interface loop, covers every PPPoE server this request provisions.
+        // is a single router-wide toggle — /ppp/profile/add rejects use-radius outright
+        // ("unknown parameter"). Setting it once here, before the per-interface loop, covers
+        // every PPPoE server this request provisions.
         if (in_array('pppoe', $ports, true) || in_array('both', $ports, true)) {
             $api->query('/ppp/aaa/set', ['use-radius' => 'yes']);
         }
@@ -555,8 +549,8 @@ class RouterController extends Controller
         // provisionHotspot()'s comment), which is why data-cap/FUP enforcement wasn't really
         // working. Scoped to profiles we created — recognizes both the current
         // "radiuspoint_hs_prof_" prefix and the older "rp_hs_prof_" one so routers provisioned
-        // before the BillNasi-style rename get migrated (not orphaned), never "everything except
-        // default" — an admin's own manually-named profile isn't ours to rewrite or rename.
+        // before the naming convention changed get migrated too (not orphaned), never "everything
+        // except default" — an admin's own manually-named profile isn't ours to rewrite or rename.
         $loginByFixed = 0;
         $interimUpdateFixed = 0;
         $renamed = 0;
@@ -580,8 +574,8 @@ class RouterController extends Controller
                 $loginByFixed++;
             }
             // RouterOS always reads this back normalized as "5m", never the "00:05:00" form
-            // used to set it — confirmed live (comparing against "00:05:00" here made this
-            // "retroactive fix" silently rewrite the same value on every single push).
+            // used to set it — comparing against "00:05:00" here would make this "retroactive
+            // fix" silently rewrite the same value on every single push.
             if (($profile['radius-interim-update'] ?? '') !== '5m') {
                 $api->setById('/ip/hotspot/profile/set', $profile['.id'], [
                     'radius-interim-update' => '00:05:00',
@@ -688,7 +682,7 @@ class RouterController extends Controller
             'interim_update_fixed' => $interimUpdateFixed,
             'idle_timeout_fixed' => $idleTimeoutFixed,
             'radius_address_fixed' => $radiusFixed,
-            'renamed_to_billnasi_style' => $renamed,
+            'profiles_renamed' => $renamed,
         ];
     }
 
@@ -832,7 +826,7 @@ class RouterController extends Controller
                 'interim_update_fixed' => $result['interim_update_fixed'],
                 'idle_timeout_fixed' => $result['idle_timeout_fixed'],
                 'radius_address_fixed' => $result['radius_address_fixed'],
-                'renamed_to_billnasi_style' => $result['renamed_to_billnasi_style'],
+                'profiles_renamed' => $result['profiles_renamed'],
                 'free_mode_profile' => $freeMode['profile'],
                 'free_mode_firewall' => $freeMode['firewall_rules'],
             ]);
@@ -851,10 +845,9 @@ class RouterController extends Controller
     /**
      * RouterOS marks a /ip hotspot server invalid=yes when it can never actually run — the
      * common cause is its interface being a bridge port, which provisionHotspot() didn't used
-     * to account for (confirmed live: 3 of 4 servers created this way sat invalid while only
-     * the one bound to the bridge itself worked). Removes the dead server plus its now-orphaned
-     * profile/pool so a router provisioned before that fix gets cleaned up the next time ports
-     * are saved, rather than accumulating dead config forever. Safe to call repeatedly.
+     * to account for. Removes the dead server plus its now-orphaned profile/pool so a router
+     * provisioned before that fix gets cleaned up the next time ports are saved, rather than
+     * accumulating dead config forever. Safe to call repeatedly.
      */
     protected function cleanupInvalidHotspotServers(MikrotikApiService $api): void
     {
@@ -914,8 +907,7 @@ class RouterController extends Controller
             // their session-start value (0) for the entire session and only become accurate once
             // the session actually ends. Every usage-based feature (FUP cap enforcement, the
             // "Data Usage" display) reads radacct live and was blind to real-time usage as a
-            // result. Value matches BillNasi's own working reference config (their routers use
-            // 3:45-6:30, randomized).
+            // result.
             $api->query('/ip/hotspot/profile/add', [
                 'name' => $profileName,
                 'hotspot-address' => $subnet['gateway'],
@@ -924,8 +916,8 @@ class RouterController extends Controller
                 'radius-interim-update' => '00:05:00',
             ]);
             // RouterOS defaults a new hotspot server to disabled=yes unless told otherwise —
-            // confirmed against real hardware: without this it sits inactive after "successful"
-            // provisioning, silently accepting no client traffic at all.
+            // without this it sits inactive after "successful" provisioning, silently accepting
+            // no client traffic at all.
             // idle-timeout must be set explicitly — RouterOS defaults a new hotspot server to
             // 5m, meaning a customer who just walks away (WiFi off, out of range) without a
             // proper logout isn't detected as offline — and radacct.acctstoptime isn't set, so
@@ -973,7 +965,7 @@ class RouterController extends Controller
      * Real PPPoE server on this interface: its own client pool + a named profile (again never
      * "default") bound via /interface/pppoe-server/server/add. RADIUS delegation itself is a
      * router-wide toggle (/ppp/aaa, set once in savePorts()), not a per-profile property —
-     * confirmed against real hardware that /ppp/profile/add rejects use-radius outright.
+     * /ppp/profile/add rejects use-radius outright.
      */
     protected function provisionPppoe(MikrotikApiService $api, string $interface): array
     {
@@ -1091,11 +1083,9 @@ class RouterController extends Controller
     }
 
     /**
-     * Live Monitor page shell — matches BillNasi's per-router monitor dashboard. Each tab's data
-     * loads lazily via its own AJAX call below rather than all upfront, since this hardware's
-     * real-world links have shown genuine latency/occasional flakiness this session; firing one
-     * request per tab on demand is both faster to first paint and more resilient to a single
-     * slow call.
+     * Live Monitor page shell. Each tab's data loads lazily via its own AJAX call below rather
+     * than all upfront — real-world router links can be slow or flaky, so firing one request per
+     * tab on demand is both faster to first paint and more resilient to a single slow call.
      */
     public function monitor(Router $router)
     {
@@ -1149,10 +1139,9 @@ class RouterController extends Controller
     /**
      * /interface/monitor-traffic normally streams continuous updates over a held-open connection
      * — a poor fit for this app's stateless request/response controllers. RouterOS's own "once"
-     * flag (confirmed against real hardware) makes it return exactly one snapshot instead, so the
-     * "live" chart is really the frontend polling this endpoint on a timer rather than a true
-     * persistent stream — far simpler and fits the same connect-per-request pattern as every
-     * other Live Monitor tab.
+     * flag makes it return exactly one snapshot instead, so the "live" chart is really the
+     * frontend polling this endpoint on a timer rather than a true persistent stream — far
+     * simpler and fits the same connect-per-request pattern as every other Live Monitor tab.
      */
     public function monitorTraffic(Request $request, Router $router)
     {
@@ -1448,8 +1437,7 @@ class RouterController extends Controller
     /**
      * RouterOS log messages in particular can carry raw non-UTF-8 bytes (e.g. from device
      * hostnames), which makes json_encode() fail outright rather than just mangling the
-     * character — confirmed against real hardware on the /log/print tab specifically. Scrub
-     * every string value before it ever reaches response()->json().
+     * character. Scrub every string value before it ever reaches response()->json().
      */
     protected function cleanUtf8(array $rows): array
     {

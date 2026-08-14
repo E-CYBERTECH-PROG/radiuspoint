@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Schema;
  * default accounting queries.conf expects on every INSERT, plus the unique key it relies on to
  * upsert (rather than duplicate) an in-progress session's interim updates. Every accounting
  * packet (session start, interim update, stop) was failing outright:
- * "ERROR 1054 (Unknown column 'framedipv6address' in 'INSERT INTO')" — confirmed live in
- * FreeRADIUS's own log. Net effect: authentication succeeded (radcheck/radreply/radpostauth all
+ * "ERROR 1054 (Unknown column 'framedipv6address' in 'INSERT INTO')" in FreeRADIUS's own log.
+ * Net effect: authentication succeeded (radcheck/radreply/radpostauth all
  * fine), but zero accounting rows were *ever* written, for any customer, voucher, or plan,
  * system-wide. That's why "online now" always read 0, vouchers never left "unused"
  * (ActivateUsedVouchers depends on radacct to detect first connect), and FUP/data-cap

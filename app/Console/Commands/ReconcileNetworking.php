@@ -29,9 +29,9 @@ class ReconcileNetworking extends Command
             // secret was silently never picked up: FreeRADIUS kept validating against whatever
             // secret it loaded at its last real startup, so the router got a genuine "Shared
             // secret is incorrect" rejection indistinguishable from "not responding" in the
-            // hotspot log — confirmed live against a real re-provisioned router. `restart` costs
-            // a ~1s interruption, acceptable since this only fires when the nas table actually
-            // changed (router added/removed/re-secreted), not on every run.
+            // hotspot log. `restart` costs a ~1s interruption, acceptable since this only fires
+            // when the nas table actually changed (router added/removed/re-secreted), not on
+            // every run.
             (new Process(['systemctl', 'restart', 'freeradius']))->run();
             $this->info('FreeRADIUS restarted (NAS clients and/or peers changed).');
         }
@@ -109,8 +109,8 @@ class ReconcileNetworking extends Command
     }
 
     /**
-     * Real Winbox/Web access, matching BillNasi's own working approach: each router with
-     * allocated ports gets a nginx stream{} config forwarding {public}:web_proxy_port and
+     * Real Winbox/Web access: each router with allocated ports gets a nginx stream{} config
+     * forwarding {public}:web_proxy_port and
      * {public}:winbox_proxy_port through the tunnel to that router's real 80/8291. aaPanel
      * already wires `stream { include .../tcp/*.conf; }` in nginx.conf, so dropping a file per
      * router into that directory is all that's needed — no nginx.conf changes required. Declarative

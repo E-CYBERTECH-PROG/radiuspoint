@@ -110,8 +110,8 @@ class Router extends Model {
         // only the actual service ports are unreachable). Adding the VPN interface to the LAN
         // list is the idiomatic fix — it satisfies that rule's exception directly rather than
         // trying to splice a new accept rule into a specific position in a firewall chain that,
-        // on a router with existing dynamic hotspot rules (e.g. from a prior BillNasi setup),
-        // may not land where a naive `place-before` expects.
+        // on a router with existing dynamic hotspot rules from a prior billing system, may not
+        // land where a naive `place-before` expects.
         $lines[] = "/interface list member add list=LAN interface={$tunnelInterface};";
 
         // Setting use-radius=yes on the default Hotspot/PPP profiles is handled separately via

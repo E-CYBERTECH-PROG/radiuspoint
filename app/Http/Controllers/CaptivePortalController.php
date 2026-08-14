@@ -29,10 +29,9 @@ class CaptivePortalController extends Controller
         $tenant = Tenant::find($router->tenant_id);
         $portal = CaptivePortal::where('router_id', $router->id)->first();
 
-        // One row per page load — the only visibility this session's earlier work gave into
-        // portal performance was after-the-fact (successful Transactions), with no way to tell
-        // "50 people bought" from "50 people bought out of 50 who ever saw the page" vs "out of
-        // 5000". Feeds the Reports > Analytics conversion-rate section.
+        // One row per page load — without this, portal performance is only visible after the
+        // fact via successful Transactions, with no way to tell "50 people bought" from "50 out
+        // of 50 who saw the page" vs "50 out of 5,000". Feeds the Analytics conversion-rate report.
         CaptivePortalVisit::create(['tenant_id' => $router->tenant_id, 'router_id' => $router->id]);
 
         // Same "no router restriction, or explicitly includes this router" rule PlanReconcile

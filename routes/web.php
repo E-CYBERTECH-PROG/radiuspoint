@@ -144,7 +144,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
         // Operational health-check for already-configured routers (index/show live status + Test Connection button)
         Route::post('/routers/{router}/test-connection', [RouterController::class, 'testConnection'])->name('routers.test-connection');
 
-        // === LIVE MONITOR (BillNasi-style per-router dashboard: logs, active sessions, interfaces) ===
+        // === LIVE MONITOR (per-router dashboard: logs, active sessions, interfaces) ===
         Route::get('/routers/{router}/monitor', [RouterController::class, 'monitor'])->name('routers.monitor');
         Route::get('/routers/{router}/monitor/logs', [RouterController::class, 'monitorLogs'])->name('routers.monitor.logs');
         Route::get('/routers/{router}/monitor/interfaces', [RouterController::class, 'monitorInterfaces'])->name('routers.monitor.interfaces');

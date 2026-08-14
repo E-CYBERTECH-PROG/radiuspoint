@@ -14,11 +14,10 @@ class MikrotikApiService
     /**
      * Default lowered from 5s to 3s — every routine action here (testConnection, reboot,
      * terminal, monitor tabs) targets a router that's already provisioned and normally answers
-     * in well under a second over the WireGuard tunnel (confirmed live this session, ~250-600ms
-     * round trip). 3s is still generous for a genuinely slow-but-working router while meaningfully
-     * shortening how long a truly unreachable one can tie up a request. First-contact ZTP
-     * (checkStatus()) explicitly passes a longer timeout since a freshly-booted router's API
-     * service can be slower to come up than an already-running one.
+     * in a few hundred ms over the WireGuard tunnel. 3s is still generous for a genuinely
+     * slow-but-working router while meaningfully shortening how long a truly unreachable one
+     * can tie up a request. First-contact ZTP (checkStatus()) explicitly passes a longer
+     * timeout since a freshly-booted router's API service can be slower to come up.
      */
     public function connect(string $host, string $username, string $password, int $port = 8728, int $timeout = 3): bool
     {
