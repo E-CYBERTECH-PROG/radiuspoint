@@ -1,5 +1,4 @@
-{{-- Canvas #revenueChart is initialized once in dashboard/partials/_scripts.blade.php —
-     safe to include this partial in exactly one layout per request (never twice on one page). --}}
+{{-- Canvas #revenueChart is initialized once in dashboard/partials/_scripts.blade.php. --}}
 <div class="bg-white dark:bg-gray-950 border border-gray-300/70 dark:border-green-900/40 p-5 rounded-xl shadow-sm flex flex-col h-full rp-rise" style="--rp-delay: {{ $delay ?? 0 }}ms">
     <div class="flex justify-between items-center mb-6">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Revenue Collections</h3>

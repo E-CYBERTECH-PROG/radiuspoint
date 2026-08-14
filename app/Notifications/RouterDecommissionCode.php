@@ -9,10 +9,8 @@ use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * The confirmation code required to decommission a router (see
- * RouterController::requestDecommission()). Always sent via database + push, ignoring the
- * tenant's general notification-channel preferences — a security code that could be silently
- * muted defeats the point of requiring it.
+ * Confirmation code to decommission a router (see RouterController::requestDecommission()).
+ * Always sent via database + push, ignoring tenant notification-channel preferences.
  */
 class RouterDecommissionCode extends Notification
 {

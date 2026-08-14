@@ -11,10 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
- * A tenant's view of, and self-service payment for, their own RadiusPoint commission invoices
- * — not to be confused with BillingController, which handles M-Pesa STK push callbacks for the
- * tenant's *customers* paying for hotspot/PPPoE plans. Changing tier/status directly is still a
- * platform-admin action (PlatformAdmin\TenantController); this only handles paying what's owed.
+ * Tenant self-service view and payment for their own RadiusPoint commission invoices.
+ * Not to be confused with BillingController, which handles customer hotspot/PPPoE payments.
+ * Tier/status changes remain a platform-admin action (PlatformAdmin\TenantController).
  */
 class TenantBillingController extends Controller
 {
@@ -27,8 +26,7 @@ class TenantBillingController extends Controller
     }
 
     /**
-     * A standalone, print-friendly invoice — same pattern as VoucherController::print(), its
-     * own bare <html> with a @media print rule, no sidebar chrome to accidentally print too.
+     * Standalone, print-friendly invoice view with no sidebar chrome.
      */
     public function printInvoice(int $invoice)
     {
@@ -41,9 +39,8 @@ class TenantBillingController extends Controller
     }
 
     /**
-     * Shown instead of the dashboard once a commission invoice has gone unpaid past its grace
-     * period (see EnsureTenantSubscribed) — this route itself sits outside that middleware so
-     * a locked-out tenant can still reach it.
+     * Shown instead of the dashboard once a commission invoice is overdue past its grace period.
+     * This route is excluded from EnsureTenantSubscribed so a locked-out tenant can still reach it.
      */
     public function locked()
     {
@@ -56,10 +53,9 @@ class TenantBillingController extends Controller
     }
 
     /**
-     * Triggers a real M-Pesa STK push against RadiusPoint's *own* till/paybill (configured by a
-     * platform admin at /mpesa-settings, stored under tenant_id=config('billing.platform_tenant_id'))
-     * — reuses the exact same MpesaSetting/MpesaService infrastructure a tenant's own customers
-     * pay through, just pointed at the platform's account instead of the tenant's.
+     * Triggers an M-Pesa STK push against RadiusPoint's own till/paybill, configured under
+     * tenant_id = config('billing.platform_tenant_id'), reusing the same MpesaSetting/MpesaService
+     * infrastructure used for customer payments.
      */
     public function pay(Request $request)
     {
@@ -79,7 +75,7 @@ class TenantBillingController extends Controller
             $phone = '254'.substr($phone, 1);
         }
 
-        // Same slot 1 (primary) / slot 2 (backup) fallback pattern as PaymentPortalController.
+        // Slot 1 is the primary gateway, slot 2 is the backup.
         $gateways = MpesaSetting::withoutGlobalScope('tenant')
             ->where('tenant_id', config('billing.platform_tenant_id'))
             ->whereIn('slot', [1, 2])
@@ -113,9 +109,8 @@ class TenantBillingController extends Controller
     }
 
     /**
-     * Polled by the locked page while an STK push is in flight — flips to "paid" the moment
-     * PlatformBillingController::handleCallback() processes Safaricom's confirmation, at which
-     * point the frontend redirects to the dashboard (which now passes EnsureTenantSubscribed).
+     * Polled by the locked page while an STK push is in flight; flips to "paid" once
+     * PlatformBillingController::handleCallback() processes Safaricom's confirmation.
      */
     public function status(Request $request, int $invoice)
     {
@@ -128,9 +123,7 @@ class TenantBillingController extends Controller
     }
 
     /**
-     * is_active alone isn't enough — a platform admin can flip the toggle on before actually
-     * entering real Daraja credentials, which would otherwise surface as a raw TypeError instead
-     * of a clear message (same guard as PaymentPortalController::isConfigured()).
+     * is_active alone isn't enough; the toggle can be on before real Daraja credentials are set.
      */
     private function isConfigured(?MpesaSetting $settings): bool
     {

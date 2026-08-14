@@ -58,9 +58,7 @@ class PaymentPortalController extends Controller
             'router_id' => $router->id,
         ]);
 
-        // Slot 1 (primary) is tried first; slot 2 (backup) — entirely optional — is only
-        // attempted if slot 1 fails to actually start the STK push. A customer never sees the
-        // first failure, they just end up paying through whichever gateway actually works.
+        // Try slot 1 (primary) first, then slot 2 (backup) if it fails to start.
         $gateways = MpesaSetting::withoutGlobalScope('tenant')
             ->where('tenant_id', $router->tenant_id)
             ->whereIn('slot', [1, 2])
@@ -98,10 +96,7 @@ class PaymentPortalController extends Controller
     }
 
     /**
-     * is_active alone isn't enough — a tenant can flip the toggle on before actually entering
-     * real Daraja credentials. Without this check, stkPush() throws an uncaught TypeError
-     * (withBasicAuth() rejecting a null consumer key), which the customer sees as a raw failure
-     * instead of a clear message.
+     * Checks that Daraja credentials are actually set, not just that the toggle is on.
      */
     private function isConfigured(?MpesaSetting $settings): bool
     {
@@ -113,10 +108,7 @@ class PaymentPortalController extends Controller
     }
 
     /**
-     * Returns the Daraja response array on a genuine success (a real CheckoutRequestID), or null
-     * on any failure — a thrown exception, a network error, or Safaricom rejecting the request —
-     * so the caller can uniformly try the next configured gateway without duplicating this
-     * try/catch at every call site.
+     * Returns the Daraja response array on success, or null on any failure.
      */
     private function attemptStkPush(MpesaSetting $settings, string $phone, Plan $plan, Transaction $transaction, Router $router): ?array
     {

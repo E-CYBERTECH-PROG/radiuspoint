@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('captive_portal_announcements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            // Nullable = applies to every one of the tenant's routers — same "empty means all"
-            // convention Plan::routers() already uses.
+            // Nullable = applies to every one of the tenant's routers.
             $table->foreignId('router_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('category')->default('info');
             $table->text('message');

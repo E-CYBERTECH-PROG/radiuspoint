@@ -10,9 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
- * OLT (GPON/EPON) remote access — see OltSshService's docblock for why this is a raw terminal
- * console rather than parsed ONU-list/provisioning screens (no verified CLI command reference for
- * VSOL/Hioso yet). Structurally mirrors RouterController's terminal feature.
+ * OLT (GPON/EPON) remote access via a raw terminal console rather than parsed ONU-list/
+ * provisioning screens (see OltSshService). Mirrors RouterController's terminal feature.
  */
 class OltController extends Controller
 {
@@ -69,9 +68,8 @@ class OltController extends Controller
     }
 
     /**
-     * Confirms SSH reachability only — opens a session, logs in, reads whatever banner/prompt
-     * comes back. Deliberately does not attempt to parse system info (e.g. "show version") since
-     * the exact command name/output format isn't confirmed per brand/model yet.
+     * Confirms SSH reachability only (connects, logs in, reads the banner). Doesn't parse
+     * system info since command output format varies by brand/model.
      */
     public function testConnection(Olt $olt)
     {
@@ -110,11 +108,9 @@ class OltController extends Controller
     }
 
     /**
-     * Runs exactly what the operator typed against the OLT's real CLI over SSH — this is a raw
-     * terminal, not a structured API call, so there is no command allow/deny-list the way
-     * RouterController's RouterOS console has one (that list works because RouterOS commands are
-     * structured API paths; a text CLI has no equivalent structural hook to filter on). Treat
-     * this like handing someone real SSH access, because that's what it is.
+     * Runs exactly what the operator typed against the OLT's CLI over SSH. Unlike
+     * RouterController's RouterOS console, there's no command allow/deny-list — a text CLI
+     * has no structural hook to filter on. This is effectively handing out real SSH access.
      */
     public function terminalExecute(Request $request, Olt $olt)
     {

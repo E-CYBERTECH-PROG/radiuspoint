@@ -16,11 +16,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * The actual captive portal experience a hotspot customer sees, hosted here rather than
- * uploaded as static files to each router's local storage — see the tiny redirect stub
- * RouterController writes to a router's own hotspot/login.html (routers.php provisioning),
- * which sends the customer here carrying RouterOS's own $(link-login-only)/$(link-orig)/
- * $(mac)/$(ip) template variables as query params.
+ * Captive portal page shown to hotspot customers, hosted here rather than on the router.
+ * RouterController writes a small redirect stub to the router's login.html that sends
+ * customers here with RouterOS's $(link-login-only)/$(link-orig)/$(mac)/$(ip) as query params.
  */
 class CaptivePortalController extends Controller
 {
@@ -29,13 +27,10 @@ class CaptivePortalController extends Controller
         $tenant = Tenant::find($router->tenant_id);
         $portal = CaptivePortal::where('router_id', $router->id)->first();
 
-        // One row per page load — without this, portal performance is only visible after the
-        // fact via successful Transactions, with no way to tell "50 people bought" from "50 out
-        // of 50 who saw the page" vs "50 out of 5,000". Feeds the Analytics conversion-rate report.
+        // Track the page view; feeds the Analytics conversion-rate report.
         CaptivePortalVisit::create(['tenant_id' => $router->tenant_id, 'router_id' => $router->id]);
 
-        // Same "no router restriction, or explicitly includes this router" rule PlanReconcile
-        // uses — a plan restricted to a different router shouldn't be sellable here.
+        // Plans with no router restriction, or explicitly including this router, are sellable here.
         $plans = Plan::withoutGlobalScope('tenant')
             ->where('tenant_id', $router->tenant_id)
             ->where('type', 'hotspot')
@@ -45,16 +40,14 @@ class CaptivePortalController extends Controller
             })
             ->get();
 
-        // All three templates share the same self-hosted partials (see the template files'
-        // own comment for why they can't use CDN assets) — only the hero/branding differs.
+        // Templates share the same self-hosted partials (no CDN assets); only hero/branding differs.
         $view = 'captive-portal.templates.'.($portal?->template ?? 'default');
         if (! view()->exists($view)) {
             $view = 'captive-portal.templates.default';
         }
 
-        // Unauthenticated route, so no tenant global scope applies anyway — explicit tenant_id
-        // filter matches the same pattern $plans above already uses. Non-expired, and either
-        // global (router_id null) or targeted at this specific router.
+        // Unauthenticated route, so filter tenant explicitly. Non-expired, and either global
+        // (router_id null) or targeted at this specific router.
         $announcements = CaptivePortalAnnouncement::withoutGlobalScope('tenant')
             ->where('tenant_id', $router->tenant_id)
             ->where(fn ($q) => $q->whereNull('router_id')->orWhere('router_id', $router->id))
@@ -63,13 +56,9 @@ class CaptivePortalController extends Controller
             ->limit(3)
             ->get();
 
-        // Silent cross-router reconnect: a customer with a still-active plan shouldn't have to
-        // do anything just because they moved to a different router/location, or left and came
-        // back — RouterOS already hands us their device's MAC on every portal hit ($mac below).
-        // Scoped by tenant_id only (not router_id), same as lookup() below, so it follows the
-        // customer across every router this tenant owns. HotspotUser.mac_address gets backfilled
-        // from their radacct session shortly after first connect (see SyncHotspotConnectionInfo),
-        // so this covers essentially every active customer, not just a lucky subset.
+        // Reconnect a returning customer by device MAC (RouterOS supplies $mac on every portal
+        // hit), scoped by tenant_id only so it follows them across all of this tenant's routers.
+        // mac_address is backfilled from radacct shortly after their first connect.
         $autoReconnect = null;
         if ($mac = $request->query('mac')) {
             $existing = HotspotUser::withoutGlobalScope('tenant')
@@ -103,9 +92,8 @@ class CaptivePortalController extends Controller
     }
 
     /**
-     * Phone-number self-service lookup — throttled at the route level (6/min) since this is an
-     * unauthenticated endpoint and a phone number is enough to find whether someone has a live
-     * plan, making it a real enumeration target without a tight limit.
+     * Phone-number self-service lookup for returning customers. Throttled at the route level
+     * (6/min) since it's unauthenticated and could otherwise be used to enumerate numbers.
      */
     public function lookup(Request $request, Router $router)
     {
@@ -143,10 +131,8 @@ class CaptivePortalController extends Controller
     }
 
     /**
-     * Paste-your-payment-message self-service lookup — for when someone doesn't have/remember
-     * the phone number they paid from (shared phone, business line paying for a customer, etc).
-     * Same throttle tier as lookup() above for the same reason: an unauthenticated endpoint that
-     * runs a DB lookup from user-supplied text is a real target without one.
+     * Self-service lookup by pasted M-Pesa payment message, for customers who don't know or
+     * remember the phone number they paid from. Same throttle tier as lookup() above.
      */
     public function lookupReceipt(Request $request, Router $router)
     {
@@ -154,9 +140,8 @@ class CaptivePortalController extends Controller
             'message' => ['required', 'string', 'max:500'],
         ]);
 
-        // M-Pesa receipt codes are ~10-char alphanumeric with at least one letter and one digit —
-        // filters out a phone number (all digits) or a plain word (all letters) that might also
-        // appear in the pasted text.
+        // M-Pesa receipt codes are ~10-char alphanumeric with at least one letter and one digit,
+        // which excludes phone numbers (all digits) and plain words (all letters).
         preg_match_all('/\b[A-Z0-9]{9,12}\b/', Str::upper($request->message), $matches);
         $code = collect($matches[0] ?? [])
             ->first(fn ($token) => preg_match('/[A-Z]/', $token) && preg_match('/[0-9]/', $token));
@@ -217,11 +202,10 @@ class CaptivePortalController extends Controller
     }
 
     /**
-     * Free Mode: a throwaway RADIUS credential, throttled to a low rate cap and (best-effort)
-     * restricted to WhatsApp/Facebook domains via the router-side rules RouterController's
-     * provisionFreeMode() sets up. Not a billing customer — no Plan, no HotspotUser row, just a
-     * short-lived radcheck/radreply pair that expires itself via Session-Timeout, no cron needed.
-     * Throttled at the route level (6/min) to stop someone scripting endless free sessions.
+     * Issues a throwaway RADIUS credential for Free Mode, rate-limited and restricted to
+     * WhatsApp/Facebook via the router-side rules RouterController::provisionFreeMode() sets up.
+     * Not a billing customer — no Plan/HotspotUser row, just a radcheck/radreply pair that
+     * expires itself via Session-Timeout. Throttled at the route level (6/min).
      */
     public function freeMode(Request $request, Router $router)
     {

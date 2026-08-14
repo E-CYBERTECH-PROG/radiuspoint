@@ -14,12 +14,10 @@ return new class extends Migration
         Schema::create('sms_triggers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            // One of App\Models\SmsTrigger::KEYS — a fixed catalog, not tenant-defined, so a
-            // plain string column is enough (no separate lookup table needed).
+            // One of App\Models\SmsTrigger::KEYS, a fixed catalog.
             $table->string('trigger_key');
             $table->foreignId('sms_template_id')->nullable()->constrained()->nullOnDelete();
-            // Off by default — enabling a trigger is an explicit opt-in to new SMS spend, never
-            // silently turned on by this migration for an existing tenant.
+            // Off by default; enabling is an explicit opt-in per tenant.
             $table->boolean('enabled')->default(false);
             $table->timestamps();
 

@@ -17,9 +17,8 @@ class NotificationController extends Controller
     }
 
     /**
-     * Polled by the sidebar bell every 20s so the badge count and list actually reflect new
-     * alerts arriving while the admin is browsing, instead of only ever reflecting whatever was
-     * true at the last full page load.
+     * Polled by the sidebar bell every 20s so the badge count and list reflect new alerts
+     * without a full page reload.
      */
     public function recent()
     {

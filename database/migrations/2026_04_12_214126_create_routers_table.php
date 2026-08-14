@@ -21,8 +21,8 @@ public function up(): void
         $table->string('secret_key')->nullable();
         $table->json('port_configuration')->nullable(); // Needed for step 3 of ZTP
         
-        // FIXED: Using a string instead of a strict enum prevents truncation errors
-        $table->string('status')->default('pending'); 
+        // String rather than an enum, so new status values don't get silently truncated
+        $table->string('status')->default('pending');
         
         $table->timestamps();
     });

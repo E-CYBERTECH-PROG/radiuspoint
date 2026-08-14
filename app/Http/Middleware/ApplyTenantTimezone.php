@@ -8,11 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Every timestamp in the app (transaction times, "expires in X", notification "created X ago")
- * runs through Carbon::now()/now(), which follows PHP's default timezone — previously hardcoded
- * to UTC in config/app.php regardless of where the tenant actually operates. This applies the
- * authenticated tenant's own timezone (set on Company Settings) for the lifetime of the request,
- * so every one of those calls is correct without touching each call site individually.
+ * Applies the authenticated tenant's timezone (from Company Settings) for the request,
+ * so Carbon::now()/now() calls throughout the app reflect local time.
  */
 class ApplyTenantTimezone
 {

@@ -6,13 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $tenant->company_name }} — WiFi</title>
     {{--
-        Everything on every captive-portal template is self-hosted (inline CSS, inline SVG
-        icons, vanilla JS) — no CDN scripts/stylesheets/fonts. A customer hitting this page
-        hasn't authenticated with the hotspot yet, so RouterOS's walled garden only lets their
-        browser reach the one domain we explicitly allowed (see
-        RouterController::provisionCaptivePortal). Any request to a third-party CDN silently
-        fails under that restriction — that's exactly what made the old CDN-based templates
-        render as unstyled text.
+        Self-hosted only (inline CSS, inline SVG icons, vanilla JS), no CDN assets. Pre-auth,
+        RouterOS's walled garden only allows the one domain configured in
+        RouterController::provisionCaptivePortal, so any CDN request fails.
     --}}
     @include('captive-portal.partials._styles')
     <style>

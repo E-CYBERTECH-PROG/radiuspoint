@@ -9,11 +9,9 @@ use App\Models\Transaction;
 use Illuminate\View\View;
 
 /**
- * The platform admin's landing page — before this existed, logging in as a platform admin sent
- * you straight to the bare tenant list (see AuthenticatedSessionController::store()) with no
- * overview at all. Everything here is cross-tenant by design (withoutGlobalScope throughout),
- * and excludes RadiusPoint's own internal tenant (config('billing.platform_tenant_id')) from
- * every count/sum — it's a staff container, not a real ISP customer.
+ * The platform admin's landing page. Everything here is cross-tenant (withoutGlobalScope
+ * throughout) and excludes RadiusPoint's own internal tenant (config('billing.platform_tenant_id'))
+ * from every count/sum, since it's a staff container, not a real ISP customer.
  */
 class DashboardController extends Controller
 {
@@ -50,8 +48,7 @@ class DashboardController extends Controller
             'overdue_count' => TenantInvoice::withoutGlobalScope('tenant')->where('status', 'pending')->where('due_at', '<', $now)->count(),
         ];
 
-        // Last 6 calendar months, oldest first — same window for both charts so they read
-        // together at a glance.
+        // Last 6 calendar months, oldest first, shared by both charts.
         $months = collect(range(5, 0))->map(fn ($i) => $now->copy()->subMonthsNoOverflow($i)->startOfMonth());
 
         $tenantGrowth = $months->map(fn ($m) => [
@@ -66,8 +63,7 @@ class DashboardController extends Controller
 
         $recentSignups = (clone $realTenants)->latest()->limit(6)->get();
 
-        // "At risk" = billing-locked (overdue past grace) OR trial ending within 3 days with no
-        // paid subscription yet — the two ways a tenant is about to lose (or has lost) access.
+        // "At risk" = overdue past grace, or trial ending within 3 days with no paid subscription.
         $atRiskTenantIds = TenantInvoice::withoutGlobalScope('tenant')
             ->where('status', 'pending')->where('due_at', '<', $now)
             ->pluck('tenant_id');

@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            // Adds the tenant_id column right after the 'id' column and links it to the ISPs table
             $table->foreignId('tenant_id')->after('id')->constrained('tenants')->cascadeOnDelete();
         });
     }

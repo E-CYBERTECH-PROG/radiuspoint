@@ -22,16 +22,9 @@ class ReconcileNetworking extends Command
         $this->reconcileProxyPorts();
 
         if ($peersChanged || $nasChanged) {
-            // Must be `restart`, not `reload`. FreeRADIUS's `read_clients`/`client_table = nas`
-            // loads NAS clients from SQL only at process startup — a `reload` (SIGHUP) only
-            // re-reads changed *files* ("HUP - No files changed. Ignoring" in its own log) and
-            // never re-queries the `nas` table. With `reload`, a new/changed router's RADIUS
-            // secret was silently never picked up: FreeRADIUS kept validating against whatever
-            // secret it loaded at its last real startup, so the router got a genuine "Shared
-            // secret is incorrect" rejection indistinguishable from "not responding" in the
-            // hotspot log. `restart` costs a ~1s interruption, acceptable since this only fires
-            // when the nas table actually changed (router added/removed/re-secreted), not on
-            // every run.
+            // Must be `restart`, not `reload`: FreeRADIUS only loads NAS clients from the `nas`
+            // table at process startup, so a SIGHUP reload won't pick up secret changes. The
+            // brief interruption is fine since this only fires when the nas table changed.
             (new Process(['systemctl', 'restart', 'freeradius']))->run();
             $this->info('FreeRADIUS restarted (NAS clients and/or peers changed).');
         }
@@ -58,7 +51,7 @@ class ReconcileNetworking extends Command
         $desiredKeys = $desired->pluck('wg_public_key')->all();
         $changed = false;
 
-        // Add missing peers
+        // Add missing peers.
         foreach ($desired as $router) {
             if (! in_array($router->wg_public_key, $currentPeers, true)) {
                 $add = new Process([
@@ -77,7 +70,7 @@ class ReconcileNetworking extends Command
             }
         }
 
-        // Remove peers for routers that no longer exist
+        // Remove peers for routers that no longer exist.
         foreach ($currentPeers as $peerKey) {
             if (! in_array($peerKey, $desiredKeys, true)) {
                 (new Process(['wg', 'set', 'wg0', 'peer', $peerKey, 'remove']))->run();
@@ -94,8 +87,7 @@ class ReconcileNetworking extends Command
     }
 
     /**
-     * FreeRADIUS's `read_clients` loads the `nas` table at startup/reload, not live per-request,
-     * so a reload is only actually needed when that table has changed since we last checked.
+     * A restart is only needed if the `nas` table changed since the last run.
      */
     private function nasTableChangedSinceLastRun(): bool
     {
@@ -109,13 +101,9 @@ class ReconcileNetworking extends Command
     }
 
     /**
-     * Real Winbox/Web access: each router with allocated ports gets a nginx stream{} config
-     * forwarding {public}:web_proxy_port and
-     * {public}:winbox_proxy_port through the tunnel to that router's real 80/8291. aaPanel
-     * already wires `stream { include .../tcp/*.conf; }` in nginx.conf, so dropping a file per
-     * router into that directory is all that's needed — no nginx.conf changes required. Declarative
-     * diff against desired state, same shape as reconcileWireguardPeers(): write/remove files to
-     * match, reload only if anything actually changed.
+     * Writes one nginx stream{} config per router, forwarding its public web/winbox proxy
+     * ports through the tunnel to the router's real 80/8291. aaPanel includes every .conf in
+     * this directory automatically. Diffs against desired state and reloads only on change.
      */
     private function reconcileProxyPorts(): void
     {
@@ -158,7 +146,7 @@ class ReconcileNetworking extends Command
             }
         }
 
-        // Remove config for routers that no longer exist or lost their port allocation
+        // Remove config for routers that no longer exist or lost their port allocation.
         foreach (glob(self::TCP_PROXY_DIR . '/radiuspoint-router-*.conf') as $existingFile) {
             if (! in_array($existingFile, $desiredFiles, true)) {
                 unlink($existingFile);

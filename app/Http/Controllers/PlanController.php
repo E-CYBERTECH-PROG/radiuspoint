@@ -13,7 +13,6 @@ use Illuminate\Validation\Rule;
 
 class PlanController extends Controller
 {
-    // Display all plans
     public function index(Request $request)
     {
         $search = $this->searchTerm($request);
@@ -27,9 +26,7 @@ class PlanController extends Controller
 
         $activeRouterCount = Router::where('tenant_id', Auth::user()->tenant_id)->where('status', 'active')->count();
 
-        // One aggregate query for every plan on the page, rather than a per-row query — grouped
-        // so the view can tell "fully synced" from "partially synced" from "sync failed
-        // somewhere" without re-deriving it per row.
+        // One aggregate query for sync status counts across all plans on the page.
         $syncCounts = PlanRouterSync::whereIn('plan_id', $plans->pluck('id'))
             ->selectRaw('plan_id, status, count(*) as c')
             ->groupBy('plan_id', 'status')
@@ -40,7 +37,6 @@ class PlanController extends Controller
         return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts'));
     }
 
-    // Show the "Create Plan" form
     public function create()
     {
         $routers = Router::where('tenant_id', Auth::user()->tenant_id)->orderBy('name')->get();
@@ -48,8 +44,7 @@ class PlanController extends Controller
         return view('plans.create', compact('routers'));
     }
 
-    // Save the plan — router sync happens separately via the plan:reconcile scheduled command
-    // (see app/Console/Commands/PlanReconcile.php), not inline here.
+    // Router sync happens separately via the plan:reconcile scheduled command.
     public function store(Request $request)
     {
         $request->validate([
@@ -59,11 +54,8 @@ class PlanController extends Controller
             'duration_value' => 'required|integer|min:1',
             'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
-            // Mikrotik-Rate-Limit's format is rx-rate/tx-rate (e.g. "5M/5M") — a "/" is required,
-            // not "." or any other separator. A malformed value here isn't a cosmetic issue: a
-            // string RouterOS can't parse is silently ignored, meaning the customer gets no rate
-            // limit applied at all. Confirmed live — an existing plan slipped in with "5m.5m"
-            // before this validation existed and would have gone completely uncapped.
+            // Mikrotik-Rate-Limit format is rx-rate/tx-rate (e.g. "5M/5M"); RouterOS silently
+            // ignores a value it can't parse, so an invalid separator leaves the plan uncapped.
             'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
@@ -82,8 +74,7 @@ class PlanController extends Controller
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
 
-        // Empty selection = "applies to every active router" (the pre-existing default
-        // behavior) — an empty sync() call correctly leaves the pivot with no rows for that case.
+        // Empty selection means the plan applies to every active router.
         $plan->routers()->sync($request->input('router_ids', []));
 
         return redirect()->route('plans.index')->with('success', 'Plan created — syncing to hardware within a minute.');
@@ -143,8 +134,7 @@ class PlanController extends Controller
     }
 
     /**
-     * Per-router sync status, read straight from what plan:reconcile last recorded — not a live
-     * query, so this loads instantly regardless of how many routers this tenant has.
+     * Per-router sync status, read from what plan:reconcile last recorded (not a live query).
      */
     public function syncStatus(Plan $plan)
     {

@@ -7,15 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Tenant-wide branding shown on every one of the tenant's captive portals (support contact,
- * location), plus timezone (applied per-request by ApplyTenantTimezone) and currency symbol —
- * distinct from CaptivePortal, which holds per-router customization (logo, color, notice board).
+ * Tenant-wide settings shown on every captive portal (support contact, location), plus
+ * timezone and currency. Distinct from CaptivePortal, which holds per-router customization.
  */
 class CompanySettingController extends Controller
 {
     /**
-     * A short curated list rather than all ~400 IANA zones — this is an ISP billing app
-     * operating in East Africa, not a global scheduling tool.
+     * Curated East Africa timezones, not the full IANA list.
      */
     public const TIMEZONES = [
         'Africa/Nairobi' => 'Africa/Nairobi (EAT, UTC+3)',

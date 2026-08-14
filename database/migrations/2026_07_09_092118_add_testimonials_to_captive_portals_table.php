@@ -9,9 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('captive_portals', function (Blueprint $table) {
-            // Optional, tenant-entered real testimonials — deliberately nullable with no seeded
-            // defaults, since fabricating "5000+ happy customers"-style trust copy would be
-            // dishonest. Rendered only if the tenant actually fills them in.
+            // Optional tenant-entered testimonials, nullable with no seeded defaults.
             $table->string('testimonial_1_text')->nullable()->after('notice_body');
             $table->string('testimonial_1_author')->nullable()->after('testimonial_1_text');
             $table->string('testimonial_2_text')->nullable()->after('testimonial_1_author');

@@ -1,5 +1,4 @@
-{{-- Base styles shared by every captive-portal template — modals, buttons, layout primitives.
-     Self-hosted only: see the walled-garden note in templates/default.blade.php for why. --}}
+{{-- Base styles shared by every captive-portal template. Self-hosted only, no CDN assets. --}}
 <style>
     :root { --brand: {{ $portal->primary_color ?? '#2563eb' }}; }
     * { box-sizing: border-box; }

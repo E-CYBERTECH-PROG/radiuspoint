@@ -1,8 +1,6 @@
 {{--
-    Expects $user in scope (ProfileController::edit() already passes it). Unlike the color
-    pickers above (client-only, localStorage), this submits immediately to the server — the
-    dashboard's actual HTML structure differs per layout, so it has to be known before
-    DashboardController renders, not toggled client-side after the fact.
+    Expects $user in scope. Unlike the color pickers, this submits immediately to the server
+    since the layout choice affects which HTML DashboardController renders.
 --}}
 @php
     $layouts = [

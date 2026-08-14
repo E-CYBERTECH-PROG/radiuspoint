@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pppoe_users', function (Blueprint $table) {
-            // Same "already acted on this cycle" pattern as fup_throttled_at — prevents
-            // App\Console\Commands\SendExpiryReminders from re-sending on every daily run, and
-            // gets cleared on renewal so the next cycle re-arms it.
+            // Prevents SendExpiryReminders from re-sending daily; cleared on renewal.
             $table->timestamp('expiry_reminder_sent_at')->nullable()->after('fup_throttled_at');
         });
     }

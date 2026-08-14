@@ -21,9 +21,7 @@ class RouterHealthCheck extends Command
 
     public function handle(): int
     {
-        // 'pending' routers haven't been through the provisioning wizard's own first-contact
-        // step yet (board detection, RADIUS wiring) — leave them alone so this command can't
-        // race that flow and mark one 'active' having skipped it.
+        // Skip 'pending' routers — they haven't finished the provisioning wizard yet.
         $routers = Router::withoutGlobalScope('tenant')
             ->whereNotIn('status', ['pending'])
             ->with('tenant.users')
@@ -39,11 +37,8 @@ class RouterHealthCheck extends Command
                     $api->query('/system/resource/print');
                     $router->update(['status' => 'active', 'last_seen' => now()]);
                     $this->scanCriticalLogs($api, $router);
-                    // Piggybacks on this command's already-open connection to retroactively push
-                    // /ppp/aaa's use-radius+interim-update to every router every minute — the only
-                    // path that reaches PPPoE-only routers (which never go through the
-                    // hotspot-gated provisionCaptivePortal() retroactive fix). Idempotent, cheap
-                    // (one read, one write only if actually different).
+                    // Reuses this connection to push RADIUS profile settings to every router;
+                    // the only path that reaches PPPoE-only routers. Idempotent and cheap.
                     (new RouterController())->enableRadiusOnDefaultProfiles($api);
                 } catch (Throwable $e) {
                     $reachable = false;
@@ -60,9 +55,8 @@ class RouterHealthCheck extends Command
     }
 
     /**
-     * Only fires for genuine active<->offline flips — deliberately excludes 'provisioning' (a
-     * router's first-ever successful contact isn't a "back online" recovery, it's a first
-     * contact) so day-one setup doesn't spam a "your router is back!" email nobody's expecting.
+     * Only fires for active<->offline flips. Excludes 'provisioning' so first contact during
+     * setup doesn't trigger a "back online" notification.
      */
     private function notifyTransition(Router $router, string $previousStatus, string $newStatus): void
     {
@@ -80,9 +74,8 @@ class RouterHealthCheck extends Command
     }
 
     /**
-     * RouterOS's own `time` field on log entries is a plain "Y-m-d H:i:s" string (confirmed
-     * against real hardware) — directly Carbon-parseable, so dedup compares real timestamps
-     * rather than relying on log .id stability (which isn't guaranteed once the buffer rotates).
+     * RouterOS log entries use a plain "Y-m-d H:i:s" `time` field. Dedup compares timestamps
+     * rather than log .id, since .id isn't stable once the buffer rotates.
      */
     private function scanCriticalLogs(MikrotikApiService $api, Router $router): void
     {

@@ -45,27 +45,22 @@ Route::middleware('auth')->get('/pending-approval', function () {
     return view('tenant.pending');
 })->name('tenant.pending');
 
-// Shown instead of the dashboard once a commission invoice has gone unpaid past its grace
-// period — deliberately outside the 'tenant.subscribed' group below (see EnsureTenantSubscribed),
-// along with the self-service payment actions so a locked-out tenant can still reach them.
+// Shown instead of the dashboard once a commission invoice is unpaid past its grace period.
 Route::middleware('auth')->group(function () {
     Route::get('/subscription-required', [TenantBillingController::class, 'locked'])->name('billing.locked');
     Route::post('/subscription-required/pay', [TenantBillingController::class, 'pay'])->name('billing.pay');
     Route::get('/subscription-required/status/{invoice}', [TenantBillingController::class, 'status'])->name('billing.status');
 });
 
-// Public, unauthenticated customer self-service M-Pesa payment portal (no login — reached via a router's public_token)
+// Public customer self-service M-Pesa payment portal, reached via a router's public_token
 Route::get('/portal/{router:public_token}', [PaymentPortalController::class, 'show'])->name('portal.show');
 Route::post('/portal/{router:public_token}/pay', [PaymentPortalController::class, 'pay'])->name('portal.pay');
 Route::get('/portal/{router:public_token}/status/{transaction}', [PaymentPortalController::class, 'status'])->name('portal.status');
 
-// Public, unauthenticated ZTP bootstrap fetch — a router's own script calls this to pull
-// its real config (see RouterController::provision() / Router::buildProvisioningScript()).
+// Public ZTP bootstrap fetch — a router's own script calls this to pull its config
 Route::get('/nas/startup/{router:public_token}', [NasProvisioningController::class, 'startup'])->name('nas.startup');
 
-// Public, unauthenticated hotspot captive portal — reached via the tiny local login.html
-// redirect stub RouterOS serves (see RouterController::provisionHotspot()'s walled-garden +
-// file-write step). Hosted here rather than on the router's own limited local storage.
+// Public hotspot captive portal, reached via the login.html redirect stub RouterOS serves
 Route::get('/captive/{router:public_token}', [CaptivePortalController::class, 'show'])->name('captive.show');
 Route::post('/captive/{router:public_token}/lookup', [CaptivePortalController::class, 'lookup'])
     ->middleware('throttle:6,1')
@@ -118,8 +113,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
     // === ROUTER MANAGEMENT & ZTP WIZARD ===
 
-    // Read-only for everyone, including Sales Agent — see the restrict.sales-agent group below
-    // for everything else (per-router detail/settings, Live Monitor, control actions, terminal).
+    // Read-only for everyone, including Sales Agent
     Route::resource('routers', RouterController::class)->only(['index']);
     Route::get('/routers-noc', [RouterController::class, 'noc'])->name('routers.noc');
 
@@ -127,8 +121,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::resource('olts', OltController::class)->only(['index']);
 
     Route::middleware('restrict.sales-agent')->group(function () {
-        // This single line handles create, store, show, and update (index is registered above;
-        // destroy is replaced by the two-step code-verified decommission flow below).
+        // destroy is replaced by the two-step code-verified decommission flow below
         Route::resource('routers', RouterController::class)->except(['index', 'destroy']);
         Route::post('/routers/{router}/decommission/request', [RouterController::class, 'requestDecommission'])->name('routers.decommission.request');
         Route::post('/routers/{router}/decommission/confirm', [RouterController::class, 'confirmDecommission'])->name('routers.decommission.confirm');
@@ -141,7 +134,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
         Route::get('/routers/{router}/ports', [RouterController::class, 'configurePorts'])->name('routers.ports');
         Route::post('/routers/{router}/ports', [RouterController::class, 'savePorts'])->name('routers.save-ports');
 
-        // Operational health-check for already-configured routers (index/show live status + Test Connection button)
+        // Test Connection button on already-configured routers
         Route::post('/routers/{router}/test-connection', [RouterController::class, 'testConnection'])->name('routers.test-connection');
 
         // === LIVE MONITOR (per-router dashboard: logs, active sessions, interfaces) ===
@@ -188,12 +181,9 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/plans/{plan}/sync-status', [PlanController::class, 'syncStatus'])->name('plans.sync-status');
 
     // === PPPoE / HOTSPOT CUSTOMER MANAGEMENT ===
-    // live-status routes must be registered before the resource routes below — otherwise
-    // /pppoe-users/live-status would be swallowed by the resource's /pppoe-users/{pppoe_user}
-    // show route (first-registered-wins route matching).
+    // Must be registered before the resource routes below, or /{pppoe_user} would swallow them.
     Route::get('/pppoe-users/live-status', [PppoeUserController::class, 'liveStatus'])->name('pppoe-users.live-status');
     Route::get('/hotspot-users/live-status', [HotspotUserController::class, 'liveStatus'])->name('hotspot-users.live-status');
-    // Bulk purge, registered before the resource routes for the same reason as live-status above.
     Route::post('/pppoe-users/purge-expired', [PppoeUserController::class, 'purgeExpired'])->name('pppoe-users.purge-expired');
     Route::post('/hotspot-users/purge-expired', [HotspotUserController::class, 'purgeExpired'])->name('hotspot-users.purge-expired');
     Route::post('/hotspot-users/purge-unused', [HotspotUserController::class, 'purgeUnused'])->name('hotspot-users.purge-unused');
@@ -220,9 +210,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::resource('sms', SmsMessageController::class)->only(['index', 'store', 'destroy']);
     Route::resource('sms-templates', SmsTemplateController::class)->only(['store', 'update', 'destroy']);
 
-    // Gateway credentials (SMS provider, M-Pesa Daraja keys) — tenant-wide config, not
-    // customer-facing work, so this stays out of Sales Agent's reach even though the SMS
-    // outbox itself (sending messages) doesn't.
+    // Gateway credentials (SMS provider, M-Pesa Daraja keys) — kept out of Sales Agent's reach
     Route::middleware('restrict.sales-agent')->group(function () {
         Route::get('/sms/settings', [SmsSettingController::class, 'edit'])->name('sms-settings.edit');
         Route::put('/sms/settings', [SmsSettingController::class, 'update'])->name('sms-settings.update');
@@ -233,7 +221,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
         Route::get('/billing/invoices/{invoice}/print', [TenantBillingController::class, 'printInvoice'])->name('billing.print');
     });
 
-    // Public-facing contact info shown on captive portals — not a credential, so open to every role.
+    // Public-facing contact info shown on captive portals, open to every role
     Route::get('/company/settings', [CompanySettingController::class, 'edit'])->name('company-settings.edit');
     Route::put('/company/settings', [CompanySettingController::class, 'update'])->name('company-settings.update');
 
@@ -243,8 +231,6 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/vouchers/print', [VoucherController::class, 'print'])->name('vouchers.print');
 
     // === CAPTIVE PORTAL ANNOUNCEMENTS ===
-    // Customer-facing marketing/ops content — same access tier as captive-portal template
-    // settings (RouterController::updateCaptivePortal), so it stays behind the same middleware.
     Route::middleware('restrict.sales-agent')->group(function () {
         Route::resource('captive-announcements', CaptivePortalAnnouncementController::class)->only(['index', 'store', 'destroy']);
     });

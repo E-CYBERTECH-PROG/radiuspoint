@@ -29,10 +29,7 @@
                     @if(in_array($interface['type'] ?? 'ether', ['ether', 'wlan', 'bridge', 'vlan']))
                         @php $validInterfacesFound = true; @endphp
 
-                        {{-- Every shown interface is tracked here regardless of whether either box
-                             ends up checked, so savePorts() can still explicitly set it to "none"
-                             (matching the previous dropdown's default option) rather than silently
-                             skipping it. --}}
+                        {{-- Tracks every shown interface so savePorts() can explicitly set unchecked ones to "none". --}}
                         <input type="hidden" name="all_interfaces[]" value="{{ $interface['name'] }}">
 
                         <div class="grid grid-cols-12 gap-4 items-center px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors rounded-lg group">

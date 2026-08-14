@@ -5,19 +5,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * `radacct` was created from an older/incomplete schema — missing 6 columns FreeRADIUS 3.0's
- * default accounting queries.conf expects on every INSERT, plus the unique key it relies on to
- * upsert (rather than duplicate) an in-progress session's interim updates. Every accounting
- * packet (session start, interim update, stop) was failing outright:
- * "ERROR 1054 (Unknown column 'framedipv6address' in 'INSERT INTO')" in FreeRADIUS's own log.
- * Net effect: authentication succeeded (radcheck/radreply/radpostauth all
- * fine), but zero accounting rows were *ever* written, for any customer, voucher, or plan,
- * system-wide. That's why "online now" always read 0, vouchers never left "unused"
- * (ActivateUsedVouchers depends on radacct to detect first connect), and FUP/data-cap
- * enforcement never triggered (it sums radacct's octet columns). Not specific to one voucher —
- * this was silently broken for every single session since whenever radacct was first created.
- * Columns copied verbatim from FreeRADIUS's own shipped schema
- * (/etc/freeradius/3.0/mods-config/sql/main/mysql/schema.sql).
+ * radacct was missing 6 columns FreeRADIUS 3.0's accounting queries expect on every insert,
+ * plus the unique key needed to upsert interim updates instead of duplicating them. Without
+ * them every accounting insert failed silently — RADIUS auth kept working, but online-count,
+ * voucher activation, and FUP/data-cap enforcement (all of which read from radacct) did not.
+ * Columns copied from FreeRADIUS's own shipped schema.
  */
 return new class extends Migration
 {
@@ -37,9 +29,7 @@ return new class extends Migration
             $table->string('class', 64)->nullable()->after('delegatedipv6prefix');
         });
 
-        // Duplicate/blank acctuniqueid values can already exist from the broken period (every
-        // failed insert that got partially retried) — de-duplicate before adding the unique key
-        // or the migration itself would fail the same way the accounting inserts did.
+        // De-duplicate existing rows before adding the unique key below, or it will fail.
         DB::statement('
             DELETE r1 FROM radacct r1
             INNER JOIN radacct r2

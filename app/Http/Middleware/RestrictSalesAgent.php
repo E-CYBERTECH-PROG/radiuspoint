@@ -7,11 +7,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Blocks the Sales Agent role from router control/settings, team management, and tenant-level
- * settings routes. Applied at the route-group level (routes/web.php) rather than scattered
- * abort_unless() calls per controller, so the full set of gated routes stays auditable in one
- * place. SuperAdmin/Admin/Technician are unaffected — their current (unrestricted) behavior is
- * left as-is since nothing asked for that boundary to change.
+ * Blocks the Sales Agent role from router, team, and tenant settings routes. Applied at the
+ * route-group level (routes/web.php) so the gated routes stay in one place.
  */
 class RestrictSalesAgent
 {

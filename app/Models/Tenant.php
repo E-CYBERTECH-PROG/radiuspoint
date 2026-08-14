@@ -10,7 +10,6 @@ class Tenant extends Model
 {
     use HasFactory;
 
-    // Tell Laravel we are allowed to save these fields
     protected $fillable = [
         'company_name',
         'support_phone',
@@ -50,9 +49,8 @@ class Tenant extends Model
     }
 
     /**
-     * Trial has run out and they haven't converted — display only; access is actually gated
-     * by unpaid commission invoices past their grace period (see isBillingLocked()), not by
-     * trial status alone, since billing only starts once a full calendar month has closed.
+     * Trial has run out. Display only — access is actually gated by
+     * isBillingLocked(), not trial status alone.
      */
     public function isTrialExpired(): bool
     {
@@ -60,13 +58,12 @@ class Tenant extends Model
     }
 
     /**
-     * True once a monthly commission invoice has gone unpaid past its grace period — the
-     * actual condition that blocks dashboard access (see EnsureTenantSubscribed).
+     * True once a commission invoice has gone unpaid past its grace period.
+     * Blocks dashboard access — see EnsureTenantSubscribed.
      */
     public function isBillingLocked(): bool
     {
-        // withoutGlobalScope: this must see every invoice belonging to *this* tenant regardless
-        // of which user (platform admin, or the tenant itself) triggered the check.
+        // Bypass the tenant scope so this checks all invoices regardless of who triggered it
         return $this->invoices()->withoutGlobalScope('tenant')
             ->where('status', 'pending')->where('due_at', '<', now())->exists();
     }

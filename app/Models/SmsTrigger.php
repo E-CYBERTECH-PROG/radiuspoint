@@ -11,9 +11,8 @@ class SmsTrigger extends Model
     use BelongsToTenant;
 
     /**
-     * Fixed catalog of lifecycle events a tenant can wire an SmsTemplate to. `pppoe_payment_receipt`
-     * is reserved — nothing fires it yet, since PPPoE renewals in this codebase are recorded
-     * manually (PppoeUserController::extendExpiry), not via an online payment flow.
+     * Lifecycle events a tenant can wire an SmsTemplate to. `pppoe_payment_receipt`
+     * is reserved for future use; PPPoE renewals are currently recorded manually.
      */
     public const KEYS = [
         'pppoe_expiry_reminder_3d',

@@ -1,8 +1,5 @@
-{{-- Ops-first: what needs your attention right now — expiring customers, recent payments,
-     router/gateway health — comes before any historical chart. Pick this if you check the
-     dashboard mainly to handle today's work, not to review trends. Also the one layout using
-     the split stat-card treatment (5 separate tiles) instead of the consolidated single card —
-     bigger, more distinct numbers for a quick scan. --}}
+{{-- Ops-first layout: expiring customers, payments, and router health lead over charts.
+     Uses the split stat-card treatment (5 tiles) instead of the consolidated card. --}}
 <x-sidebar-layout title="Dashboard">
     <div x-data="dashboard({{ Illuminate\Support\Js::from($dashboardInitial) }})" x-init="startPolling()">
 

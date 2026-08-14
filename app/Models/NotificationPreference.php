@@ -11,9 +11,8 @@ class NotificationPreference extends Model
     protected $casts = ['channels' => 'array'];
 
     /**
-     * Channels for a user who hasn't customized this alert type yet. Mail+database are
-     * always-on infra that already works; sms/webpush stay opt-in since they need extra setup
-     * (provider credentials / browser permission) before they can actually deliver anything.
+     * Default channels when a user has no preference set. SMS and webpush stay
+     * opt-in since they need extra setup (provider credentials / browser permission).
      */
     public static function defaultChannels(): array
     {
@@ -28,9 +27,7 @@ class NotificationPreference extends Model
     }
 
     /**
-     * Laravel's built-in channels ('mail', 'database') are referenced by string; custom
-     * channels need their FQCN. Keeps that mapping in one place rather than repeated in every
-     * Notification class's via().
+     * Maps channel names to their notification class. Built-in channels stay as strings.
      */
     public static function resolveChannelClasses(array $channels): array
     {

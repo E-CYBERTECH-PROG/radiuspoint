@@ -13,9 +13,8 @@ class TenantInvoiceController extends Controller
 {
     public function index(Request $request): View
     {
-        // withoutGlobalScope throughout: TenantInvoice uses BelongsToTenant, which would
-        // otherwise silently scope every query here to the platform admin's own internal
-        // tenant row instead of showing invoices across all tenants.
+        // withoutGlobalScope throughout: TenantInvoice's BelongsToTenant would otherwise
+        // scope these queries to the platform admin's own tenant instead of all tenants.
         $invoices = TenantInvoice::withoutGlobalScope('tenant')
             ->with('tenant')
             ->when($request->filled('status'), function ($q) use ($request) {

@@ -6,12 +6,9 @@ use App\Models\Transaction;
 use Illuminate\Console\Command;
 
 /**
- * A Transaction is created as 'pending' before the STK push is attempted, then updated to
- * 'success'/'failed' in the same request. If that request never finishes (a killed PHP-FPM
- * worker, a crashed process — confirmed happening on this server: workers SIGKILLed after
- * 48-140s under load), the row is orphaned at 'pending' forever with nothing to ever revisit it.
- * A real M-Pesa STK prompt expires within ~90s if unanswered, so anything still pending well
- * past that is dead, not "still waiting."
+ * If the request handling an STK push never finishes (killed worker, crashed process), the
+ * Transaction stays 'pending' forever. An M-Pesa STK prompt expires after ~90s, so anything
+ * still pending well past that is dead.
  */
 class ReapStaleTransactions extends Command
 {

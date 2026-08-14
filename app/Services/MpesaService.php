@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Notification;
 class MpesaService
 {
     /**
-     * Consecutive stkPush() failures before declaring the gateway "down" — high enough that a
-     * single flaky request doesn't trigger a false alarm, low enough to catch a real Safaricom
-     * outage within a handful of customer payment attempts.
+     * Consecutive stkPush() failures before declaring the gateway "down".
      */
     private const FAILURE_THRESHOLD = 3;
 
@@ -66,9 +64,8 @@ class MpesaService
     }
 
     /**
-     * Tracks consecutive failures and fires an alert once the threshold is crossed — not on
-     * every single failure, which would spam a notification per failed customer payment attempt
-     * during a real outage. Recovery fires once, on the first success after being "down."
+     * Tracks consecutive failures and fires an alert once the threshold is crossed.
+     * Recovery fires once, on the first success after being "down".
      */
     private function recordHealth(bool $success): void
     {

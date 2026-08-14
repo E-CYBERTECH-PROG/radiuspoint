@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plans', function (Blueprint $table) {
-            // The reduced speed a customer is throttled to once they exceed data_cap_mb
-            // (already existed but was never enforced). Both null = no FUP for this plan.
+            // Throttled speed once a customer exceeds data_cap_mb; null means no FUP for this plan.
             $table->string('fup_speed_limit')->nullable()->after('data_cap_mb');
         });
 

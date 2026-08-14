@@ -17,17 +17,14 @@ return new class extends Migration
             $table->decimal('commission_rate', 5, 4)->default(0.03);
             $table->decimal('amount_due', 12, 2);
             $table->enum('status', ['pending', 'paid'])->default('pending');
-            // Grace-period deadline — set at generation time (now + grace days) rather than
-            // computed on the fly, so a later change to the grace-period length doesn't
-            // retroactively alter already-issued invoices.
+            // Grace-period deadline, fixed at generation time so later config changes don't affect it.
             $table->timestamp('due_at');
             $table->timestamp('paid_at')->nullable();
             $table->foreignId('marked_paid_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('notes')->nullable();
             $table->timestamps();
 
-            // One invoice per tenant per billing period — the generator command relies on this
-            // for idempotency (safe to re-run without duplicating an already-issued invoice).
+            // One invoice per tenant per billing period, so the generator command is idempotent.
             $table->unique(['tenant_id', 'period_start', 'period_end']);
         });
     }

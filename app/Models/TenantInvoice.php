@@ -7,11 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A monthly commission bill: 3% of a tenant's total successful-transaction revenue for one
- * calendar month, issued on the 1st of the following month (see GenerateTenantInvoices).
- * Paid either via self-service M-Pesa STK push (TenantBillingController::pay(), verified
- * automatically by PlatformBillingController::handleCallback()) or manually marked paid by a
- * platform admin as a fallback for any other payment channel.
+ * A monthly commission bill: 3% of a tenant's revenue for one calendar month,
+ * issued on the 1st of the following month. Paid via M-Pesa STK push or
+ * manually marked paid by a platform admin.
  */
 class TenantInvoice extends Model
 {

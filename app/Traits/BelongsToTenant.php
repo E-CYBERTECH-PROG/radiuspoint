@@ -8,7 +8,7 @@ trait BelongsToTenant
 {
     protected static function booted()
     {
-        // Whenever a model is queried, automatically filter by the logged-in ISP's ID
+        // Scope all queries to the logged-in tenant
         if (auth()->check()) {
             static::addGlobalScope('tenant', function (Builder $builder) {
                 $builder->where('tenant_id', auth()->user()->tenant_id);
@@ -16,7 +16,7 @@ trait BelongsToTenant
         }
     }
 
-    // Automatically assign the ISP's ID when they create a new router or plan
+    // Assign the current tenant ID when creating a model
     protected static function bootBelongsToTenant()
     {
         static::creating(function ($model) {

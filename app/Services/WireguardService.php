@@ -8,10 +8,8 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 class WireguardService
 {
     /**
-     * Generate a fresh WireGuard keypair for a router. Pure cryptographic operations
-     * (no root / CAP_NET_ADMIN needed) — safe to run inline in a web request. Applying
-     * the resulting public key as a live peer on the server's wg0 interface is a
-     * separate, privileged step handled by the ReconcileNetworking command instead.
+     * Generates a fresh WireGuard keypair for a router. Safe to run inline in a web
+     * request; applying the public key as a live peer is handled by ReconcileNetworking.
      */
     public function generateKeypair(): array
     {

@@ -20,21 +20,15 @@ class GenerateTenantInvoices extends Command
 
         $issued = 0;
 
-        // withoutGlobalScope: this runs outside any authenticated tenant context.
+        // Runs outside any authenticated tenant context.
         foreach (Tenant::withoutGlobalScope('tenant')->where('status', 'active')->get() as $tenant) {
-            // Tenants with no expiry set were never enrolled in the trial-then-billing flow —
-            // pre-existing accounts from before this feature shipped, or bulk-imported ISPs.
-            // Grandfathered in until a platform admin explicitly sets their subscription terms
-            // (via the tenant edit form), rather than surprise-billing accounts that never
-            // agreed to this. Only tenants whose trial had already fully ended before this
-            // billing period started are eligible.
+            // Tenants with no subscription expiry are grandfathered in until a platform admin
+            // sets their terms. Only bill tenants whose trial ended before this period started.
             if (! $tenant->subscription_expires_at || $tenant->subscription_expires_at->gt($periodStart)) {
                 continue;
             }
 
-            // Idempotent: re-running this command (e.g. after a fixed bug) never double-bills
-            // a period that's already invoiced, thanks to the unique(tenant_id, period_start,
-            // period_end) constraint — this check just avoids a needless query exception.
+            // Skip periods already invoiced (also enforced by a unique DB constraint).
             $alreadyInvoiced = TenantInvoice::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)
                 ->where('period_start', $periodStart->toDateString())
@@ -50,8 +44,7 @@ class GenerateTenantInvoices extends Command
                 ->whereBetween('created_at', [$periodStart, $periodEnd])
                 ->sum('amount');
 
-            // No revenue, no commission owed — skip rather than issue a KES 0 invoice that
-            // would otherwise sit "pending" forever with nothing to actually pay.
+            // Skip zero-revenue tenants rather than issue a KES 0 invoice.
             if ($revenue <= 0) {
                 continue;
             }

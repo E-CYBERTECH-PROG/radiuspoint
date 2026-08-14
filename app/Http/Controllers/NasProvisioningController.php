@@ -8,10 +8,9 @@ use Illuminate\Http\Response;
 class NasProvisioningController extends Controller
 {
     /**
-     * Public, unauthenticated (but public_token-scoped) endpoint a router's own bootstrap
-     * script fetches and imports — see Router::buildProvisioningScript() and
-     * RouterController::provision(). Generated fresh on every request so it always reflects
-     * this router's current credentials, never hand-copied into a visible script.
+     * Public, public_token-scoped endpoint that a router's bootstrap script fetches and imports.
+     * See Router::buildProvisioningScript() and RouterController::provision(). Generated fresh
+     * on every request so it always reflects current credentials.
      */
     public function startup(Router $router): Response
     {

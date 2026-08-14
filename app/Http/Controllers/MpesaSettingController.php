@@ -7,9 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Manages two independent M-Pesa gateways per tenant (slot 1 = primary, slot 2 = backup) — see
- * PaymentPortalController::pay(), which tries slot 1 first and automatically falls back to slot
- * 2 if it fails to initiate, so a customer can still pay if one Till/Paybill has an issue.
+ * Manages two independent M-Pesa gateways per tenant (slot 1 = primary, slot 2 = backup).
+ * PaymentPortalController::pay() tries slot 1 first and falls back to slot 2 on failure.
  */
 class MpesaSettingController extends Controller
 {
@@ -68,9 +67,7 @@ class MpesaSettingController extends Controller
             $setting->passkey = $request->input("{$prefix}_passkey");
         }
 
-        // Slot 2 (backup) is entirely optional — don't create a blank, "active but unconfigured"
-        // row just because the primary form was submitted. Only persist it once something's
-        // actually been filled in.
+        // Slot 2 is optional; don't save a blank row unless something's actually been filled in.
         if ($slot === 2 && ! $setting->exists && ! $request->filled('backup_shortcode') && ! $request->filled('backup_consumer_key')) {
             return;
         }

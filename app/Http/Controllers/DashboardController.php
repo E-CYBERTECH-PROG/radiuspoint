@@ -62,7 +62,7 @@ class DashboardController extends Controller
             ->take(4)
             ->values();
 
-        // 4. Real revenue-by-month data for the chart (last 6 months, no more fabricated numbers)
+        // 4. Revenue by month for the chart (last 6 months)
         $chartLabels = [];
         $chartData = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -74,11 +74,11 @@ class DashboardController extends Controller
                 ->sum('amount');
         }
 
-        // 5. Real router status list (replaces the old fabricated "Recent Router Logs" panel)
+        // 5. Router status list
         $routers = $this->routerStatusSnapshot();
 
-        // 6. New customers per month, last 6 months — hotspot + PPPoE combined, same window as
-        // the revenue chart so the two read together (are we growing, and is it paying off).
+        // 6. New customers per month, last 6 months (hotspot + PPPoE combined), same window
+        // as the revenue chart.
         $growthLabels = [];
         $growthData = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -88,8 +88,7 @@ class DashboardController extends Controller
                 + PppoeUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count();
         }
 
-        // 7. Most-purchased packages — same query Reports > Analytics uses, capped to the top 5
-        // so it fits a dashboard tile rather than duplicating that page's full top-10 table.
+        // 7. Most-purchased packages, top 5 (Reports > Analytics uses the same query for top 10).
         $topPackages = Transaction::where('status', 'success')
             ->selectRaw('package_name, COUNT(*) as purchase_count')
             ->groupBy('package_name')
@@ -97,8 +96,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // 8. View-layer values every layout needs — computed once here instead of duplicated as
-        // a @php block at the top of each of the 3 layout templates.
+        // 8. View-layer values needed by all 3 layout templates, computed once here.
         $currency = Auth::user()->tenant?->currency_symbol ?? 'KES';
         $currentTimezone = Auth::user()->tenant?->timezone ?? config('app.timezone');
 
@@ -116,8 +114,8 @@ class DashboardController extends Controller
             'mpesa_status' => $stats['mpesa_status'],
         ];
 
-        // Which of the 3 arrangements this user picked in Profile > Appearance — falls back to
-        // 'standard' for garbage/unrecognized values rather than a missing-view error.
+        // User's dashboard layout choice from Profile > Appearance; falls back to 'standard'
+        // for invalid values.
         $layout = in_array(Auth::user()->dashboard_layout, \App\Models\User::DASHBOARD_LAYOUTS, true)
             ? Auth::user()->dashboard_layout
             : 'standard';
@@ -144,9 +142,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Polled by the dashboard every 10s — a single combined snapshot (online count, recent
-     * transactions, router status, M-Pesa health) so the page makes one request per tick
-     * instead of two separate timers hitting the server at different intervals.
+     * Polled by the dashboard every 10s; combines online count, recent transactions,
+     * router status, and M-Pesa health into a single response.
      */
     public function liveSnapshot(): \Illuminate\Http\JsonResponse
     {
@@ -159,14 +156,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * Three real states, not the old two-state "Active/Not Configured" that never reflected an
-     * actual outage — MpesaService::stkPush() tracks consecutive_failures on every real attempt,
-     * so "degraded" here means real customer payments have been failing repeatedly, not a guess.
-     */
-    /**
-     * Reflects both gateways, not just the primary — if slot 1 is down but slot 2 (backup) is
-     * healthy, customers can still pay, so this reports "active" (with a note) rather than
-     * "degraded", matching what PaymentPortalController::pay() actually does at checkout time.
+     * Reports 'not_configured', 'active', or 'degraded' based on consecutive_failures on each
+     * M-Pesa slot. If the primary is down but the backup is healthy, still reports 'active',
+     * matching what PaymentPortalController::pay() does at checkout.
      */
     private function mpesaStatusSnapshot(): array
     {

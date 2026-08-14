@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Matches FreeRADIUS's standard SQL schema (mods-config/sql/main/mysql/schema.sql)
-        // exactly, since the `sql` module's read_clients feature queries this table directly.
+        // Matches FreeRADIUS's standard SQL schema; queried directly by the sql module's read_clients.
         Schema::create('nas', function (Blueprint $table) {
             $table->id();
             $table->string('nasname', 128);

@@ -39,8 +39,7 @@ class VoucherController extends Controller
                 ? $request->username
                 : Str::upper(Str::random(8));
 
-            // Vouchers start "unused" with no expiry — the clock only starts once the
-            // customer actually redeems the code and connects for the first time
+            // Starts "unused" with no expiry; the clock starts on first redemption
             // (see App\Console\Commands\ActivateUsedVouchers).
             HotspotUser::create([
                 'tenant_id' => Auth::user()->tenant_id,
@@ -50,9 +49,8 @@ class VoucherController extends Controller
                 'expires_at' => null,
             ]);
 
-            // Credentials must exist now so the voucher can actually authenticate on
-            // the captive portal — but no Expiration is set yet, since the validity
-            // window hasn't started.
+            // RADIUS credentials must exist now to authenticate on the captive portal,
+            // but no expiration is set until the validity window starts.
             RadiusSyncService::sync($code, $code, $plan->speed_limit);
 
             $vouchers[] = [

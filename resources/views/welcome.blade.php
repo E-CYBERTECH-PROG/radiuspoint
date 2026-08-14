@@ -149,9 +149,7 @@
                                 <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
                                 <span class="ml-3 text-xs text-gray-400">radiuspoint.co.ke/dashboard</span>
                             </div>
-                            {{-- A real screenshot of the actual product dashboard, rendered against a
-                                 dedicated internal demo tenant with realistic-but-fake data — not real
-                                 customer phone numbers/revenue, and not a hand-built HTML mockup. --}}
+                            {{-- Real screenshot of the dashboard against a demo tenant, not a mockup. --}}
                             <img src="{{ asset('images/marketing/dashboard-preview.png') }}" alt="RadiusPoint dashboard showing income, recent transactions, and live customer activity" class="w-full h-auto block">
                         </div>
                     </div>

@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('routers', function (Blueprint $table) {
-            // Tracks how far the critical-log scanner has already alerted on, so the same
-            // RouterOS log line (e.g. a bridge-loop-detection message) isn't re-alerted every
-            // minute for as long as it stays in the router's own log buffer.
+            // Tracks the last critical log line alerted on, to avoid re-alerting the same one.
             $table->timestamp('last_log_alert_at')->nullable()->after('last_seen');
         });
     }

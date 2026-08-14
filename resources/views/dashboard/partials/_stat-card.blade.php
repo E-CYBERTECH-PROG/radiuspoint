@@ -1,9 +1,7 @@
 {{--
-    One card, five compact cells with thin internal dividers plus a date/time strip along the
-    top — shared by all 3 dashboard layouts since every one of them wants this at the very top.
-    Expects the parent's $stats/$currency/$incomeTodayDelta/$incomeMonthDelta already in scope
-    (Blade @include shares the caller's scope by default) and an optional $delay (ms, for the
-    .rp-rise stagger — see the <style> block in dashboard/partials/_scripts.blade.php).
+    Five compact stat cells with a date/time strip, shared by all 3 dashboard layouts.
+    Expects the parent's $stats/$currency/$incomeTodayDelta/$incomeMonthDelta in scope,
+    plus an optional $delay (ms).
 --}}
 <div class="bg-white dark:bg-gray-950 border border-gray-300/70 dark:border-green-900/40 rounded-xl shadow-sm overflow-hidden mb-3 rp-rise" style="--rp-delay: {{ $delay ?? 0 }}ms" x-data="rpClock()" x-init="tick()">
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">

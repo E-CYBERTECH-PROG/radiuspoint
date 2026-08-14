@@ -7,11 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The endpoint Safaricom Daraja pings once a tenant completes (or cancels) an STK push for
- * their own commission invoice — mirrors BillingController::handleCallback() exactly, just
- * keyed to a TenantInvoice instead of a customer-facing Transaction. Marking an invoice paid
- * here is what makes EnsureTenantSubscribed unlock the dashboard on the tenant's very next
- * request, with zero platform-admin involvement.
+ * M-Pesa callback for a tenant's platform commission invoice. Marking an invoice paid here
+ * lets EnsureTenantSubscribed unlock the dashboard on the tenant's next request.
  */
 class PlatformBillingController extends Controller
 {
@@ -40,8 +37,7 @@ class PlatformBillingController extends Controller
                 'paid_at' => now(),
             ]);
         } else {
-            // Leave it pending, not "failed" — invoices only have pending/paid (see migration);
-            // the tenant simply retries Pay Now, same as a customer would on a declined STK push.
+            // Leave it pending (invoices only have pending/paid); the tenant retries Pay Now.
             Log::warning("Platform commission STK push failed for invoice {$invoice->id}: {$resultDesc}");
         }
 

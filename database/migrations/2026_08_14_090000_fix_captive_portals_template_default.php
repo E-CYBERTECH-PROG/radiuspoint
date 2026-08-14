@@ -12,9 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // The 'minimal' template was removed; nothing ever saves this value, but the column
-        // default was never updated, so a raw insert bypassing the app would still land on a
-        // dead template name.
+        // The 'minimal' template was removed but the column default was never updated.
         DB::table('captive_portals')->where('template', 'minimal')->update(['template' => 'default']);
 
         Schema::table('captive_portals', function (Blueprint $table) {

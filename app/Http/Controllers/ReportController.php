@@ -14,9 +14,8 @@ use Illuminate\Support\Facades\DB;
 class ReportController extends Controller
 {
     /**
-     * Union of expired Hotspot + PPPoE accounts. Built as a union subquery (rather than
-     * fetching both collections and paginating in PHP) so search/date filters and pagination
-     * counts stay accurate against the combined set instead of each side independently.
+     * Union of expired Hotspot + PPPoE accounts, built as a union subquery so filters and
+     * pagination apply to the combined set.
      */
     public function expiredUsers(Request $request)
     {
@@ -50,8 +49,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Transaction receipts — search by M-Pesa receipt code (mirrors what a customer reads off
-     * their M-Pesa SMS) or date range, with a printable single-receipt view.
+     * Transaction receipts — search by M-Pesa receipt code or date range.
      */
     public function receipts(Request $request)
     {
@@ -71,8 +69,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Standalone printable receipt — same pattern as VoucherController::print() and
-     * TenantBillingController::printInvoice(): its own bare <html>, no sidebar chrome.
+     * Standalone printable receipt — bare <html>, no sidebar chrome.
      */
     public function receiptPrint(Transaction $transaction)
     {
@@ -146,25 +143,18 @@ class ReportController extends Controller
     }
 
     /**
-     * Four data-driven charts answering "where's the money/usage actually coming from": revenue
-     * and accumulated data-throughput per router (so a tenant can see which physical site is
-     * actually earning/carrying the load), top data-consuming customers, and which packages
-     * actually sell. All computed live from Transaction/radacct — nothing fabricated.
+     * Charts for revenue and data throughput per router, top data-consuming customers, and
+     * best-selling packages. Computed live from Transaction/radacct.
      */
     public function analytics()
     {
         $tenantId = Auth::user()->tenant_id;
         $routers = Router::where('tenant_id', $tenantId)->get();
 
-        // Revenue by router — only hotspot transactions carry a router link today (Transaction
-        // only has hotspot_user_id, no pppoe_user_id; PPPoE customers are managed manually per
-        // this project's schema, not sold self-service via M-Pesa), so this is explicitly
-        // hotspot-only revenue, not total revenue.
-        // withoutGlobalScope('tenant') + an explicit transactions.tenant_id filter: the
-        // BelongsToTenant trait's global scope writes an unqualified `tenant_id` column, which
-        // becomes ambiguous the moment this query joins two other tenant-scoped tables
-        // (hotspot_users, routers) that also have their own tenant_id column — confirmed via a
-        // real SQLSTATE 23000 "Column 'tenant_id' in WHERE is ambiguous" on first render.
+        // Hotspot-only revenue (Transaction has no pppoe_user_id; PPPoE isn't sold via M-Pesa).
+        // withoutGlobalScope + explicit transactions.tenant_id filter: the BelongsToTenant
+        // global scope uses an unqualified tenant_id column, which is ambiguous once this query
+        // joins other tenant-scoped tables (hotspot_users, routers) with their own tenant_id.
         $revenueByRouter = Transaction::withoutGlobalScope('tenant')
             ->where('transactions.tenant_id', $tenantId)
             ->where('transactions.status', 'success')
@@ -176,8 +166,7 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        // Accumulated data throughput + unique customer count per router, straight from radacct
-        // (same nasipaddress-scoping pattern as accessLog()/DashboardController::liveOnlineCount()).
+        // Accumulated data throughput + unique customer count per router, from radacct.
         $usageByRouter = DB::table('radacct')
             ->whereIn('nasipaddress', $routers->pluck('ip_address'))
             ->selectRaw('nasipaddress, SUM(acctinputoctets + acctoutputoctets) as total_bytes, COUNT(DISTINCT username) as unique_users')
@@ -195,8 +184,7 @@ class ReportController extends Controller
             ->sortByDesc('total_gb')
             ->values();
 
-        // Top 10 data-consuming customers across both hotspot and PPPoE, labeled back to
-        // whichever side actually owns that username.
+        // Top 10 data-consuming customers across hotspot and PPPoE.
         $hotspotByPhone = \App\Models\HotspotUser::where('tenant_id', $tenantId)->pluck('phone_number')->flip();
         $pppoeByUsername = \App\Models\PppoeUser::where('tenant_id', $tenantId)->pluck('username')->flip();
 
@@ -215,7 +203,7 @@ class ReportController extends Controller
             ])
             ->values();
 
-        // Most-purchased packages, any type — count and revenue.
+        // Most-purchased packages, any type.
         $topPackages = Transaction::where('tenant_id', $tenantId)
             ->where('status', 'success')
             ->selectRaw('package_name, COUNT(*) as purchase_count, SUM(amount) as total_revenue')
@@ -224,12 +212,8 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        // Portal funnel, last 30 days: visits (every real page load, logged in show()) vs. how
-        // many actually converted to a paid purchase or fell back to Free Mode — previously the
-        // only visibility into portal performance was after the fact (successful Transactions
-        // alone), with no way to tell "50 bought out of 50 who ever saw the page" from "out of
-        // 5,000". Free Mode sessions counted via radcheck's own created_at (their username is
-        // always the free_<random> pattern CaptivePortalController::freeMode() generates).
+        // Portal funnel, last 30 days: visits vs. paid conversions vs. Free Mode fallbacks.
+        // Free Mode sessions are counted via radcheck's created_at (username pattern free_<random>).
         $since = now()->subDays(30);
         $portalVisits = CaptivePortalVisit::where('tenant_id', $tenantId)->where('created_at', '>=', $since)->count();
         $portalConversions = Transaction::where('tenant_id', $tenantId)->where('status', 'success')->where('created_at', '>=', $since)->count();

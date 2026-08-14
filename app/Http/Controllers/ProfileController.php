@@ -42,10 +42,8 @@ class ProfileController extends Controller
     }
 
     /**
-     * Switch which of the 3 dashboard.blade.php arrangements this user sees (see
-     * DashboardController::index()). Unlike the Appearance color pickers this isn't just a CSS
-     * recolor — it's a different Blade view entirely — so it's persisted server-side rather than
-     * to localStorage, and takes effect the moment they next load the dashboard.
+     * Switch which dashboard layout this user sees. Persisted server-side since it's a
+     * different Blade view, not just a CSS recolor.
      */
     public function updateDashboardLayout(Request $request): RedirectResponse
     {

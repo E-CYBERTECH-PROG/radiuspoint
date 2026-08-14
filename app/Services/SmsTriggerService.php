@@ -6,11 +6,9 @@ use App\Models\SmsMessage;
 use App\Models\SmsTrigger;
 
 /**
- * Central dispatch point for every lifecycle SMS. A tenant maps a trigger key to one of their
- * own SmsTemplates (with {placeholder} variables) and enables it; call sites elsewhere in the
- * app just fire the event by key and don't need to know whether it's configured. Falling back to
- * a fixed message when nothing's configured means turning this on is opt-in — a tenant who never
- * touches the Automation tab sees no behavior change from what already existed at each call site.
+ * Central dispatch point for lifecycle SMS. A tenant maps a trigger key to one of
+ * their own SmsTemplates (with {placeholder} variables); call sites just fire the
+ * event by key. Falls back to a fixed message when nothing's configured.
  */
 class SmsTriggerService
 {

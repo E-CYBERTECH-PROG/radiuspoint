@@ -296,13 +296,8 @@
                             <i class="bx bx-bell text-2xl"></i>
                             <span x-show="unread > 0" x-cloak class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-950"></span>
                         </button>
-                        {{-- Confirmed via a real 360px-viewport render: right-0 anchors to *this
-                             button's own* position, not the true viewport edge — the profile
-                             avatar sits further right still, so a right-0 + vw-width panel
-                             clipped ~28px off the LEFT edge of the screen. fixed positioning with
-                             explicit left/right margins pins it to the actual viewport on small
-                             screens instead; sm:absolute reverts to the original flush-right
-                             dropdown once there's room for it not to matter. --}}
+                        {{-- Fixed positioning with explicit margins on small screens keeps the panel from
+                             clipping off the viewport edge; sm:absolute restores the flush-right dropdown. --}}
                         <div x-show="notifOpen" x-cloak x-transition @click.outside="notifOpen = false" class="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-[4.5rem] sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 sm:max-w-80 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-1 z-50 max-h-[calc(100vh-6rem)] sm:max-h-96 overflow-y-auto">
                             <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-950">
                                 <p class="text-xs font-bold uppercase tracking-wide text-gray-400">Notifications</p>

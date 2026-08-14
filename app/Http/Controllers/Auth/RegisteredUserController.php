@@ -30,7 +30,7 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // 1. Validate the incoming data (Now including company_name)
+        // Validate the incoming registration data.
         $request->validate([
             'company_name' => ['required', 'string', 'max:255', 'unique:tenants'],
             'name' => ['required', 'string', 'max:255'],
@@ -38,9 +38,9 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Create the ISP's Tenant Profile First (awaiting admin approval). 10-day free
-        // trial starts now — once it lapses, GenerateTenantInvoices starts billing 3%
-        // commission on their monthly revenue (see Tenant::isTrialExpired()).
+        // Create the tenant profile, pending admin approval, with a 10-day free
+        // trial. After it expires, GenerateTenantInvoices bills 3% commission on
+        // monthly revenue (see Tenant::isTrialExpired()).
         $tenant = Tenant::create([
             'company_name' => $request->company_name,
             'status' => 'pending',
@@ -48,13 +48,13 @@ class RegisteredUserController extends Controller
             'subscription_expires_at' => now()->addDays(10),
         ]);
 
-        // 3. Create the User and link them to the new Tenant
+        // Create the user and link them to the new tenant.
         $user = User::create([
-            'tenant_id' => $tenant->id, // Lock them to their ISP
+            'tenant_id' => $tenant->id,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'SuperAdmin', // The person registering the company gets top access
+            'role' => 'SuperAdmin', // first user of a tenant gets top access
         ]);
 
         event(new Registered($user));

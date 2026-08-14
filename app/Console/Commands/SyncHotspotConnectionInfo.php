@@ -7,13 +7,9 @@ use App\Services\RadiusSyncService;
 use Illuminate\Console\Command;
 
 /**
- * Backfills mac_address/current_router_id for customers who are already 'active' but never got
- * either set — the self-service M-Pesa flow (BillingController::activateHotspotUser()) creates
- * the customer as 'active' *before* they've ever connected, so at creation time there's no
- * radacct session yet to read a MAC or router from. This is the only point that gap ever gets
- * closed, once they've actually authenticated for the first time. ActivateUsedVouchers covers the
- * same two fields but only at the unused->active transition; this covers every other active
- * customer regardless of how they got activated.
+ * Backfills mac_address/current_router_id for 'active' customers who never got them set,
+ * e.g. self-service M-Pesa signups activated before their first connection. Complements
+ * ActivateUsedVouchers, which only handles the unused->active transition.
  */
 class SyncHotspotConnectionInfo extends Command
 {

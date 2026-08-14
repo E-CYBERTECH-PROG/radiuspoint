@@ -37,13 +37,9 @@ class ActivateUsedVouchers extends Command
             $voucher->update([
                 'status' => 'active',
                 'expires_at' => $expiresAt,
-                // A voucher code has no router context until redeemed — pick it up now from
-                // whichever router actually authenticated the first session, unless an admin
-                // already assigned one manually.
+                // Router of the first session, unless already assigned manually.
                 'current_router_id' => $voucher->current_router_id ?? RadiusSyncService::firstSessionRouterId($voucher->phone_number),
-                // Same story for the device MAC (RADIUS Calling-Station-Id) — FreeRADIUS has
-                // always captured this into radacct, nothing previously read it back onto the
-                // customer record.
+                // Device MAC from the RADIUS Calling-Station-Id, via radacct.
                 'mac_address' => $voucher->mac_address ?? RadiusSyncService::latestSessionMac($voucher->phone_number),
             ]);
 

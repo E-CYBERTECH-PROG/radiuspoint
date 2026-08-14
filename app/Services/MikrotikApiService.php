@@ -12,12 +12,9 @@ class MikrotikApiService
     protected ?Client $client = null;
 
     /**
-     * Default lowered from 5s to 3s — every routine action here (testConnection, reboot,
-     * terminal, monitor tabs) targets a router that's already provisioned and normally answers
-     * in a few hundred ms over the WireGuard tunnel. 3s is still generous for a genuinely
-     * slow-but-working router while meaningfully shortening how long a truly unreachable one
-     * can tie up a request. First-contact ZTP (checkStatus()) explicitly passes a longer
-     * timeout since a freshly-booted router's API service can be slower to come up.
+     * Default timeout is short since routine actions target an already-provisioned router
+     * over the WireGuard tunnel. checkStatus() passes a longer timeout for first-contact
+     * ZTP, since a freshly-booted router's API can be slower to come up.
      */
     public function connect(string $host, string $username, string $password, int $port = 8728, int $timeout = 3): bool
     {
@@ -51,9 +48,8 @@ class MikrotikApiService
     }
 
     /**
-     * The `.id` of the first item matching a filter on a /print endpoint, or null if none —
-     * used to reference an item by a real property (e.g. name) before setting it, since the
-     * API protocol has no inline "[find ...]" shorthand the way RouterOS's CLI/script parser does.
+     * The `.id` of the first item matching a filter on a /print endpoint, or null if none.
+     * The API protocol has no inline "[find ...]" shorthand like RouterOS's CLI does.
      */
     public function findId(string $printEndpoint, string $key, $value): ?string
     {
@@ -66,8 +62,8 @@ class MikrotikApiService
     }
 
     /**
-     * All matching rows from a /print endpoint filtered by a single key — like findId() but
-     * returns the whole row so callers can read other properties, not just .id.
+     * All matching rows from a /print endpoint filtered by a single key. Like findId()
+     * but returns whole rows, not just .id.
      */
     public function queryWhere(string $printEndpoint, string $key, $value): array
     {
@@ -90,15 +86,11 @@ class MikrotikApiService
     }
 
     /**
-     * Reads the raw RouterOS response and throws if it's a `!trap` (error) rather than `!done`
-     * (success) — the vendor library's own parser treats both identically and just returns
-     * whatever attributes followed either way, so a failed /add or /set otherwise looks
-     * indistinguishable from a successful one to every caller in this class. Confirmed against
-     * real hardware this was silently swallowing failures during provisioning.
+     * Reads the raw RouterOS response and throws if it's a `!trap` (error) rather than
+     * `!done` (success) — the vendor library's parser otherwise treats both the same,
+     * making a failed /add or /set indistinguishable from a successful one.
      *
-     * Returns a list of rows (each a flat key => value array), matching the shape the vendor
-     * library's own parsed output already had for /print-style multi-row queries, so no existing
-     * caller needs to change how it reads the result.
+     * Returns a list of rows (each a flat key => value array).
      */
     private function readResult($queryResult): array
     {
@@ -139,11 +131,9 @@ class MikrotikApiService
     }
 
     /**
-     * The first unused /24 under 172.20.0.0/16 — a block reserved for RadiusPoint-managed
-     * Hotspot/PPPoE client pools, distinct from the 10.0.0.0/24 WireGuard management subnet.
-     * Checks the router's *actual* current pools rather than deriving a fixed/hashed offset, so
-     * it can't collide with anything already configured on hardware with prior history (e.g. a
-     * router migrated from another platform that already has pools in this range).
+     * The first unused /24 under 172.20.0.0/16, reserved for Hotspot/PPPoE client pools.
+     * Checks the router's actual current pools so it can't collide with anything already
+     * configured on hardware with prior history.
      */
     public function allocateSubnet(): array
     {

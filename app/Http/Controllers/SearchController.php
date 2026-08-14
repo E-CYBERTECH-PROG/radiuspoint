@@ -10,10 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * One search box across the things a tenant actually looks people/hardware up by — a phone
- * number, a router name, a transaction. Not a full-text index, just targeted LIKE lookups
- * against the handful of fields that matter, each capped short since this is a "find the one
- * thing" tool, not a report.
+ * Search box across phone numbers, router names, and transactions. Targeted LIKE lookups,
+ * not a full-text index.
  */
 class SearchController extends Controller
 {

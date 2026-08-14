@@ -1,10 +1,7 @@
 {{--
-    Same 5 numbers as _stat-card.blade.php, but each in its own separate bordered/shadowed card
-    instead of one shared card with internal dividers — bigger, more distinct tiles for a quick
-    ops-style scan, at the cost of more vertical space on small screens. Used by dashboard/ops.blade.php
-    only; dashboard/standard.blade.php and dashboard/analytics.blade.php use the consolidated version.
-    Expects the same scope as _stat-card.blade.php ($stats/$currency/$incomeTodayDelta/$incomeMonthDelta),
-    plus an optional $delay (ms, applied to the first card — each subsequent card staggers +30ms).
+    Same 5 numbers as _stat-card.blade.php, split into separate cards instead of one shared card.
+    Used only by dashboard/ops.blade.php. Expects the same scope as _stat-card.blade.php, plus
+    an optional $delay (ms).
 --}}
 @php $d = $delay ?? 0; @endphp
 <div class="mb-3" x-data="rpClock()" x-init="tick()">

@@ -29,10 +29,8 @@ class TransactionController extends Controller
     }
 
     /**
-     * Polled by the index page while any visible row is still 'pending' — the M-Pesa STK
-     * callback (BillingController::handleCallback) flips status independently of anything the
-     * admin is looking at, so this just re-reads the current state of the given IDs rather than
-     * re-running the whole filtered/paginated query.
+     * Polled by the index page while a visible row is still 'pending'. Re-reads the current
+     * status of the given IDs instead of re-running the whole filtered/paginated query.
      */
     public function liveStatus(Request $request)
     {

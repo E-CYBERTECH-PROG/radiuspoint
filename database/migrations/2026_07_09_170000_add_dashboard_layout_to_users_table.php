@@ -9,11 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // Which of the 3 dashboard.blade.php arrangements this user sees (see
-            // DashboardController::index()) — a real layout swap, not just a CSS recolor like
-            // the Appearance color pickers, so it has to be known at server-render time rather
-            // than applied client-side after the fact (which would mean rendering all 3 layouts'
-            // worth of queries/charts on every page load just to hide two of them).
+            // Which dashboard layout this user sees; needed server-side to render the right one.
             $table->string('dashboard_layout')->default('standard')->after('is_platform_admin');
         });
     }

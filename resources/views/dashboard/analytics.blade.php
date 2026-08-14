@@ -1,6 +1,4 @@
-{{-- Analytics-first: revenue and growth trends lead, day-to-day operational lists (recent
-     transactions, quick actions) sit below. Pick this if you check the dashboard mainly to
-     review business performance rather than to handle individual customers. --}}
+{{-- Analytics-first layout: revenue and growth charts lead, operational lists sit below. --}}
 <x-sidebar-layout title="Dashboard">
     <div x-data="dashboard({{ Illuminate\Support\Js::from($dashboardInitial) }})" x-init="startPolling()">
 

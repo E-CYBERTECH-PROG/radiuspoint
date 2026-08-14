@@ -57,14 +57,10 @@ class ExpireOverdueUsers extends Command
     }
 
     /**
-     * Deleting the RADIUS credential only stops the customer's *next* login attempt — RouterOS
-     * never re-checks RADIUS for a session that's already authenticated (no CoA here), so a
-     * customer who was mid-session at the exact moment they expired keeps full internet access
-     * until they happen to disconnect on their own. Adding their session's current IP to the
-     * `radiuspoint-expired` address-list makes the `radiuspoint-expired-block` firewall rule (see
-     * RouterController::enableRadiusOnDefaultProfiles()) cut their traffic immediately —
-     * independent of whether the disconnect call below actually succeeds, rather than relying
-     * solely on tearing the session down.
+     * Removing the RADIUS credential only blocks the next login attempt, not an already-active
+     * session (no CoA support). This adds the session's IP to the `radiuspoint-expired`
+     * address-list so the firewall rule in RouterController::enableRadiusOnDefaultProfiles()
+     * cuts traffic immediately, regardless of whether the disconnect call below succeeds.
      */
     private function blockIfConnected(Router $router, string $activeEndpoint, string $activeUserField, string $username): void
     {
@@ -91,8 +87,7 @@ class ExpireOverdueUsers extends Command
                 ]);
             }
         } catch (Throwable $e) {
-            // Best-effort — the RADIUS credential removal above still stops their next login
-            // even if this block (or the disconnect call after it) can't reach the router.
+            // Best-effort; RADIUS removal above still blocks their next login.
         }
     }
 }

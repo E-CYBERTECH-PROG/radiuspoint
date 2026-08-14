@@ -1,7 +1,5 @@
-{{-- Shared by all 3 dashboard layouts — the JS/CSS is identical regardless of arrangement, only
-     the HTML layout differs between dashboard/{standard,ops,analytics}.blade.php. Expects
-     $currentTimezone, $currency, $chartLabels, $chartData, $growthLabels, $growthData,
-     $topPackages in scope. --}}
+{{-- Shared JS/CSS for all 3 dashboard layouts. Expects $currentTimezone, $currency, $chartLabels,
+     $chartData, $growthLabels, $growthData, $topPackages in scope. --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // Live clock in the tenant's own configured timezone (Company Settings), not the

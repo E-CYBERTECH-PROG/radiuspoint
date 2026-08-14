@@ -44,13 +44,9 @@ class RadiusSyncService
     }
 
     /**
-     * Set the FreeRADIUS "Expiration" check-attribute so the server itself rejects
-     * authentication once the wall-clock deadline passes — enforced regardless of
-     * connect/disconnect state, without needing an active session to "count down."
-     *
-     * Format matches the common rlm_expiration/SQL-schema convention ("d M Y H:i:s").
-     * Verify this matches your live FreeRADIUS server's configured date format if
-     * expiration doesn't take effect — some installs expect date-only ("d M Y").
+     * Sets the FreeRADIUS "Expiration" check-attribute so the server rejects
+     * authentication once the deadline passes. Date format follows the standard
+     * rlm_expiration convention ("d M Y H:i:s").
      */
     public static function setExpiration(string $username, Carbon $expiresAt): void
     {
@@ -66,9 +62,8 @@ class RadiusSyncService
     }
 
     /**
-     * Standard RADIUS Session-Timeout (not Mikrotik-vendor-specific) — tells the NAS to end
-     * the session itself after N seconds, no cron/disconnect call needed. Used by Free Mode to
-     * cap a session at a fixed window without any extra enforcement machinery.
+     * Standard RADIUS Session-Timeout attribute — tells the NAS to end the session
+     * itself after N seconds. Used by Free Mode to cap a session at a fixed window.
      */
     public static function setSessionTimeout(string $username, int $seconds): void
     {
@@ -79,12 +74,9 @@ class RadiusSyncService
     }
 
     /**
-     * Mikrotik-Group reply attribute — ties a RADIUS-authenticated session (which has no local
-     * account on the router) to a *local* `/ip/hotspot/user/profile` by name, so it inherits
-     * that profile's `address-list` tagging. Used by Free Mode alongside Mikrotik-Rate-Limit
-     * (belt-and-braces: the rate cap is the confirmed-working restriction; the group/address-list
-     * domain filter is the best-effort secondary layer — verify against a live device if the
-     * domain restriction doesn't seem to apply).
+     * Mikrotik-Group reply attribute — ties a RADIUS-authenticated session to a local
+     * hotspot user profile by name, so it inherits that profile's address-list tagging.
+     * Used by Free Mode alongside Mikrotik-Rate-Limit as a secondary domain-filter layer.
      */
     public static function setGroup(string $username, string $group): void
     {
@@ -95,11 +87,9 @@ class RadiusSyncService
     }
 
     /**
-     * Which router (by our own Router id, matched via nasipaddress) this username's first-ever
-     * RADIUS session actually came through, or null if they've never connected. Lets a voucher
-     * pick up its router link on activation the same way a self-service M-Pesa purchase does via
-     * Transaction::router_id — vouchers have no router context at creation time (a printed code
-     * is generic until redeemed), so this is the only point it can be captured.
+     * The Router this username's first-ever RADIUS session came through (matched via
+     * nasipaddress), or null if they've never connected. Lets a voucher pick up its
+     * router link on activation.
      */
     public static function firstSessionRouterId(string $username): ?int
     {
@@ -132,11 +122,8 @@ class RadiusSyncService
     }
 
     /**
-     * The device MAC address (RADIUS Calling-Station-Id, standard radacct column
-     * `callingstationid`) from this username's most recent session — RouterOS/FreeRADIUS have
-     * been capturing this into radacct the whole time; nothing in the app ever read it back onto
-     * HotspotUser.mac_address. Most-recent (not first) since a customer's actual device can
-     * change between sessions and the latest one is the one worth showing/binding.
+     * The device MAC address (radacct's callingstationid) from this username's most
+     * recent session — most recent since a customer's device can change between sessions.
      */
     public static function latestSessionMac(string $username): ?string
     {
@@ -148,9 +135,8 @@ class RadiusSyncService
     }
 
     /**
-     * Same idea as firstSessionRouterId() but from the most recent session — used to backfill an
-     * already-active customer's current_router_id after the fact, not just at voucher-activation
-     * time.
+     * Same as firstSessionRouterId() but from the most recent session — used to backfill
+     * an already-active customer's current_router_id.
      */
     public static function latestSessionRouterId(string $username): ?int
     {

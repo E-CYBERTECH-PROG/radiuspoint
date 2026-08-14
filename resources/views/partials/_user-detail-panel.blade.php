@@ -1,9 +1,6 @@
 {{--
-    Global slide-over quick-detail panel — click a username anywhere (Hotspot/PPPoE Users lists,
-    dashboard recent transactions) to see status/usage/expiry and act on the account (Extend,
-    Force Disconnect, Reset MAC) without leaving the current page. Included once in the shared
-    layout so every page gets it "for free" just by dispatching a window `open-user-panel` event
-    with a `panelUrl` (a route to HotspotUserController::panel()/PppoeUserController::panel()).
+    Global slide-over user detail panel. Open it from anywhere by dispatching a window
+    `open-user-panel` event with a `panelUrl`.
 --}}
 <div
     x-data="userDetailPanel()"

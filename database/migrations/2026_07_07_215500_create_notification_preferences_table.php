@@ -15,8 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('alert_type');
-            // Enabled channels for this alert type, e.g. ["mail","database"] — a JSON array
-            // rather than one row per channel keeps via() a single lookup per alert type.
+            // Enabled channels for this alert type, e.g. ["mail","database"]
             $table->json('channels');
             $table->timestamps();
 

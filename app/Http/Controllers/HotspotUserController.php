@@ -84,14 +84,8 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * JSON snapshot backing the slide-over quick-detail panel (clicking a username from the
-     * Hotspot Users list or the dashboard) — same data the full Edit page's Quick Actions card
-     * shows, just shaped for the panel instead of a server-rendered view.
-     */
-    /**
-     * No live router call here on purpose — the index page's existing liveStatus() poller
-     * already tracks online/offline for every visible row every 5s; the panel reuses that
-     * already-in-memory state client-side instead of paying for a second MikroTik round trip.
+     * JSON snapshot for the quick-detail slide-over panel. No live router call here — the
+     * index page's liveStatus() poller already tracks online/offline every 5s, reused client-side.
      */
     public function panel(HotspotUser $hotspot_user)
     {
@@ -122,9 +116,9 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * "Used X of Y this cycle" — same cycle definition EnforceFairUsage checks the cap against,
-     * via UsageCycleService, so what an admin sees here always matches what actually triggers a
-     * throttle. Cap-less plans still show usage, just without a percentage.
+     * "Used X of Y this cycle" — same cycle definition EnforceFairUsage checks via
+     * UsageCycleService, so this always matches what actually triggers a throttle.
+     * Cap-less plans still show usage, just without a percentage.
      */
     private function usageSnapshot(HotspotUser $hotspot_user): ?array
     {
@@ -193,12 +187,9 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * Either a quick "+N days" top-up from whichever is later (now or their current expiry, so
-     * extending an already-active customer doesn't lose their remaining time) or a direct
-     * date/time override for precise control — an admin picks whichever fits. Reactivates an
-     * expired account in the same action rather than requiring a separate status change, and
-     * clears fup_throttled_at since a new expiry pushes the usage cycle forward (see
-     * UsageCycleService) — fup:enforce will naturally restore full speed next run.
+     * Extends expiry by +N days (from now or the current expiry, whichever is later) or sets
+     * an exact date/time. Reactivates an expired account and clears fup_throttled_at so
+     * fup:enforce restores full speed on its next run.
      */
     public function extendExpiry(Request $request, HotspotUser $hotspot_user)
     {
@@ -272,10 +263,8 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * Bulk cleanup, matching the "Purge Expired" / "Purge Unused" pattern — expired accounts
-     * that were never renewed, and vouchers that were generated but never actually used, both
-     * just accumulate otherwise. Removes the RADIUS credential alongside each row so nothing
-     * orphaned is left in radcheck/radreply.
+     * Bulk-deletes expired or unused accounts and removes their RADIUS credentials so nothing
+     * is left orphaned in radcheck/radreply.
      */
     public function purgeExpired()
     {
@@ -301,9 +290,8 @@ class HotspotUserController extends Controller
 
     /**
      * Same batched-per-router pattern as PppoeUserController::liveStatus(). Matched by
-     * phone_number, not mac_address — RadiusSyncService::sync() always uses phone_number as the
-     * RADIUS username, so that's what RouterOS's own active-session "user" field will contain,
-     * regardless of what MAC the client connected from.
+     * phone_number since RadiusSyncService::sync() uses it as the RADIUS username, which is
+     * what RouterOS's active-session "user" field contains.
      */
     public function liveStatus(Request $request)
     {
@@ -324,15 +312,9 @@ class HotspotUserController extends Controller
             }
 
             try {
-                // Short timeout (default is 5s) — this endpoint is polled every 5s and connects
-                // to every distinct router in the visible list sequentially, one at a time. With
-                // the default timeout, a handful of slow/unreachable routers alone could take
-                // this single request past 30s, tying up a PHP-FPM worker for the whole time and
-                // risking worker-pool exhaustion under load, with cascading failures on
-                // completely unrelated pages. This is a best-effort snapshot — a router that
-                // doesn't answer in 2s isn't likely to answer meaningfully faster by waiting 5s,
-                // and a missing entry already renders as "unknown" client-side rather than a
-                // hard error.
+                // Short timeout (default 5s) — this endpoint polls every distinct router
+                // sequentially, so a slow/unreachable one could tie up a PHP-FPM worker well
+                // past 30s. Best-effort: a missing entry renders as "unknown" client-side.
                 $api = new MikrotikApiService();
                 if (! $api->connect($router->ip_address, $router->api_username, $router->api_password, timeout: 2)) {
                     continue;

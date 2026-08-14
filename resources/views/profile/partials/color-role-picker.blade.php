@@ -1,11 +1,8 @@
 {{--
-    One reusable picker for one color role (text / card / button) — three of these render on
-    the Appearance section, each independently persisted to its own localStorage key and its
-    own data-{role}-theme attribute (see layouts/sidebar.blade.php's flash-prevention script and
-    App\Support\ThemePalette for how the choice actually takes effect).
+    Reusable picker for one color role (text / card / button), persisted to its own localStorage key.
 
     Expects: $role ('text'|'card'|'button'), $label, $description, $themes (ThemePalette::COLORS),
-    $defaultLabel, $defaultSwatch (inline CSS background for the "unchanged" option's swatch).
+    $defaultLabel, $defaultSwatch.
 --}}
 <div x-data="{ theme: localStorage.getItem('rp_theme_{{ $role }}') || 'blue' }">
     <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ $label }}</h3>

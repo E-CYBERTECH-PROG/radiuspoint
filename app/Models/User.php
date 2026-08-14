@@ -30,8 +30,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'phone',
         'password',
-        'tenant_id', // Add this
-        'role',      // Add this
+        'tenant_id',
+        'role',
         'is_platform_admin',
         'dashboard_layout',
     ];

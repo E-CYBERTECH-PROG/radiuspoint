@@ -12,11 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            // GPON/EPON OLT vendors this integration targets — both are Telnet/SSH CLI driven
-            // (Cisco IOS-style config mode), not a structured binary API like MikroTik's, so the
-            // integration is a raw remote-terminal console first (OltSshService) rather than
-            // parsed ONU-list/provisioning screens, until we can verify exact CLI command syntax
-            // and output format against a real unit of each brand.
+            // GPON/EPON OLT vendors, managed via SSH CLI (OltSshService) rather than a binary API.
             $table->enum('brand', ['vsol', 'hioso', 'other'])->default('other');
             $table->string('ip_address');
             $table->unsignedInteger('ssh_port')->default(22);

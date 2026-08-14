@@ -11,8 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // A plan with no rows here applies to every active router (backward-compatible default
-        // for every plan that exists today); a plan WITH rows is restricted to just those.
+        // A plan with no rows here applies to every active router; rows restrict it to those.
         Schema::create('plan_router', function (Blueprint $table) {
             $table->id();
             $table->foreignId('plan_id')->constrained()->cascadeOnDelete();

@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('captive_portals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            // One portal config per router — a router with no row gets the built-in "minimal"
-            // default rather than needing an explicit row for every router.
+            // One portal config per router; a router with no row gets the "minimal" default.
             $table->foreignId('router_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('template')->default('minimal');
             $table->string('logo_url')->nullable();

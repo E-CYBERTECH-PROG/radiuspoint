@@ -61,9 +61,7 @@
     </div>
 </div>
 
-{{-- Paste-payment-message modal: extracts the M-Pesa receipt code server-side and matches it
-     against a successful Transaction — same idea as the phone lookup above, for when someone
-     doesn't have/remember the paying number handy. --}}
+{{-- Extracts the M-Pesa receipt code server-side and matches it to a Transaction. --}}
 <div class="modal-overlay" id="rp-modal-receipt">
     <div class="modal">
         <div id="rp-receipt-step-message">
@@ -89,8 +87,7 @@
     </div>
 </div>
 
-{{-- Voucher modal: a voucher code IS the login credential (username = password = code, see
-     VoucherController::generate) — no lookup needed, just submit it straight to the router. --}}
+{{-- Voucher code is itself the login credential (username = password = code), no lookup needed. --}}
 <div class="modal-overlay" id="rp-modal-voucher">
     <div class="modal">
         <div id="rp-voucher-step-code">
@@ -104,9 +101,7 @@
     </div>
 </div>
 
-{{-- Free Mode: connects instantly on a throttled, WhatsApp/Facebook-only session — no phone
-     number or payment needed. See RouterController::provisionFreeMode() for the router-side
-     enforcement and CaptivePortalController::freeMode() for the credential. --}}
+{{-- Connects instantly on a throttled, WhatsApp/Facebook-only session, no phone or payment needed. --}}
 <div class="modal-overlay" id="rp-modal-freemode">
     <div class="modal">
         <div id="rp-freemode-step-confirm">
@@ -127,9 +122,7 @@
     </div>
 </div>
 
-{{-- Shown instead of the plan list when CaptivePortalController::show() already matched this
-     device's MAC to a still-active plan — see the auto-reconnect block at the bottom of
-     _script.blade.php, which submits the login form immediately and reveals this overlay. --}}
+{{-- Shown when this device's MAC already matched an active plan; auto-submits the login form. --}}
 <div class="modal-overlay" id="rp-autoreconnect-overlay" style="display:none">
     <div class="modal">
         <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e5e7eb" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>

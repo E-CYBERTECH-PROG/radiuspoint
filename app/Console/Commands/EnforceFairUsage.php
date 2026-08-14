@@ -43,15 +43,14 @@ class EnforceFairUsage extends Command
         foreach ($users as $user) {
             $cycleStart = UsageCycleService::cycleStart($user->plan, $user->expires_at);
 
-            // A new cycle started since the customer was last throttled — restore full speed
-            // before checking usage against the new cycle's cap.
+            // New cycle since last throttle — restore full speed before re-checking usage.
             if ($user->fup_throttled_at && $cycleStart->gt($user->fup_throttled_at)) {
                 RadiusSyncService::updateRateLimit($user->{$usernameColumn}, $user->plan->speed_limit);
                 $user->update(['fup_throttled_at' => null]);
             }
 
             if ($user->fup_throttled_at) {
-                continue; // already throttled for the current cycle — nothing more to do
+                continue;
             }
 
             $usedBytes = UsageCycleService::bytesUsed($user->{$usernameColumn}, $cycleStart);
@@ -61,11 +60,8 @@ class EnforceFairUsage extends Command
             }
 
             RadiusSyncService::updateRateLimit($user->{$usernameColumn}, $user->plan->fup_speed_limit);
-            // radreply only takes effect on a customer's NEXT re-authentication (confirmed — no
-            // CoA capability exists in this app), so the throttle wouldn't bite until they
-            // happened to reconnect on their own. Forcing one disconnect now makes it immediate.
-            // Best-effort: radreply is already updated either way, so the throttle takes effect
-            // on their next reconnect regardless of whether this succeeds.
+            // radreply only applies on next re-auth (no CoA support), so force a disconnect
+            // to make the throttle take effect immediately. Best-effort either way.
             SessionDisconnectService::disconnect($user->router, $activeEndpoint, $activeUserField, $removeEndpoint, $user->{$usernameColumn});
             $user->update(['fup_throttled_at' => now()]);
         }

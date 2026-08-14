@@ -18,10 +18,8 @@ abstract class Controller
     }
 
     /**
-     * Resolve a "search" input for a LIKE query, capped to a sane length. Not a SQL injection
-     * concern — Query Builder always parameter-binds this value regardless of length — but an
-     * unbounded string repeated into a "%...%" scan on every keystroke of a debounced search box
-     * is needless work for no benefit, so it's capped here rather than left open-ended.
+     * Resolve a "search" input for a LIKE query, capped to a sane length. Not an injection
+     * concern (Query Builder parameter-binds it) — just avoids scanning an unbounded string.
      */
     protected function searchTerm(Request $request, string $key = 'search', int $maxLength = 100): ?string
     {

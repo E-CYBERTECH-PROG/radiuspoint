@@ -1,5 +1,4 @@
-{{-- Balanced default: operations (transactions/quick actions) and analytics (charts) get equal
-     billing, one below the other. Pick this if you don't have a strong preference. --}}
+{{-- Balanced default layout: operations and analytics get equal billing, stacked. --}}
 <x-sidebar-layout title="Dashboard">
     <div x-data="dashboard({{ Illuminate\Support\Js::from($dashboardInitial) }})" x-init="startPolling()">
 

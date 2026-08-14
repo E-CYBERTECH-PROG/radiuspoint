@@ -96,8 +96,7 @@ class PppoeUserController extends Controller
     }
 
     /**
-     * JSON snapshot backing the slide-over quick-detail panel — see
-     * HotspotUserController::panel() for why this doesn't make a live router call.
+     * JSON snapshot backing the slide-over quick-detail panel. Does not make a live router call.
      */
     public function panel(PppoeUser $pppoe_user)
     {
@@ -127,9 +126,8 @@ class PppoeUserController extends Controller
     }
 
     /**
-     * "Used X of Y this cycle" — same cycle definition EnforceFairUsage checks the cap against,
-     * via UsageCycleService, so what an admin sees here always matches what actually triggers a
-     * throttle. Cap-less plans still show usage, just without a percentage.
+     * "Used X of Y this cycle", using the same cycle definition EnforceFairUsage checks against.
+     * Cap-less plans still show usage, just without a percentage.
      */
     private function usageSnapshot(PppoeUser $pppoe_user): ?array
     {
@@ -202,12 +200,9 @@ class PppoeUserController extends Controller
     }
 
     /**
-     * Either a quick "+N days" top-up from whichever is later (now or their current expiry, so
-     * extending an already-active customer doesn't lose their remaining time) or a direct
-     * date/time override for precise control. Reactivates an expired account in the same action
-     * rather than requiring a separate status change, and clears fup_throttled_at since a new
-     * expiry pushes the usage cycle forward (see UsageCycleService) — fup:enforce will naturally
-     * restore full speed next run.
+     * Extends expiry by "+N days" from now or the current expiry (whichever is later), or sets
+     * an exact date/time. Reactivates an expired account and clears fup_throttled_at so
+     * fup:enforce restores full speed on its next run.
      */
     public function extendExpiry(Request $request, PppoeUser $pppoe_user)
     {
@@ -276,12 +271,8 @@ class PppoeUserController extends Controller
     }
 
     /**
-     * Bulk cleanup — expired accounts that were never renewed just accumulate otherwise. No
-     * "purge unused" here unlike HotspotUserController: PPPoE has no voucher/unused concept in
-     * this schema (only active/expired/offline), and "offline" means a real paying customer
-     * who's simply not connected right now — purging those would delete active subscribers.
-     * Removes the RADIUS credential alongside each row so nothing orphaned is left in
-     * radcheck/radreply.
+     * Bulk-deletes expired accounts and their RADIUS credentials. Only "expired" status is
+     * removed — "offline" means a paying customer who's simply not connected right now.
      */
     public function purgeExpired()
     {
@@ -296,9 +287,8 @@ class PppoeUserController extends Controller
     }
 
     /**
-     * Polled by the index page's "Live" column. Groups the visible usernames by router and
-     * does ONE /ppp/active/print call per distinct router represented on the page, rather than
-     * one call per row — a page of 20 users spanning 3 routers means 3 API calls, not 20.
+     * Polled by the index page's "Live" column. Makes one /ppp/active/print call per distinct
+     * router on the page instead of one call per user row.
      */
     public function liveStatus(Request $request)
     {
@@ -319,8 +309,7 @@ class PppoeUserController extends Controller
             }
 
             try {
-                // Short timeout — see HotspotUserController::liveStatus() for why (same
-                // sequential-per-router pattern, same confirmed PHP-FPM worker exhaustion).
+                // Short timeout to avoid exhausting PHP-FPM workers on unreachable routers.
                 $api = new MikrotikApiService();
                 if (! $api->connect($router->ip_address, $router->api_username, $router->api_password, timeout: 2)) {
                     continue;
@@ -335,9 +324,7 @@ class PppoeUserController extends Controller
                         : ['online' => false];
                 }
             } catch (Throwable $e) {
-                // Router unreachable — leave these usernames out of the result entirely rather
-                // than reporting a false "offline"; the frontend treats a missing entry as
-                // "unknown" (shows nothing) instead of a red badge.
+                // Router unreachable — omit these usernames rather than reporting false "offline".
             }
         }
 

@@ -10,12 +10,8 @@ use Illuminate\Support\Facades\Log;
 class SmsService
 {
     /**
-     * Sends via Africa's Talking — the dominant SMS gateway for Kenya-based ISPs, matching this
-     * tenant's own market. Returns false (and logs why) rather than throwing: a failed alert-SMS
-     * should never itself break the notification pipeline trying to warn someone about a
-     * DIFFERENT problem. No tenant has entered real credentials yet, so in practice this
-     * currently always hits the "not configured" branch — the moment a tenant fills in
-     * Settings > SMS with a real Africa's Talking username + API key, this starts sending live.
+     * Sends via Africa's Talking. Returns false and logs the reason rather than throwing,
+     * so a failed alert SMS doesn't break the notification pipeline it's part of.
      */
     public function send(string $phone, string $message, Tenant $tenant): bool
     {

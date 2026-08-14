@@ -12,19 +12,13 @@ class Plan extends Model
     use BelongsToTenant;
 
     /**
-     * Single source of truth for duration units — previously hand-duplicated across
-     * PlanController's two validation rules and two differently-styled Blade dropdowns (one a
-     * @foreach, one hand-typed <option> lines), with addDurationTo() below carrying its own
-     * *implicit* fifth copy via its match()'s default case. That shape is worse than a typical
-     * "N places to update" list: if a new unit were added to validation/forms but not to
-     * addDurationTo(), it wouldn't error — it would silently fall through to addDays(), applying
-     * the wrong duration with no visible failure. addDurationTo() now validates against this
-     * list explicitly instead of silently defaulting.
+     * Single source of truth for duration units, used by validation and dropdowns.
+     * addDurationTo() validates against this list explicitly rather than defaulting.
      */
     public const DURATION_UNITS = ['minutes', 'hours', 'days', 'weeks', 'months'];
 
     protected $fillable = [
-    'tenant_id', // Make sure this is here!
+    'tenant_id',
     'name',
     'type',
     'price',
@@ -50,11 +44,8 @@ class Plan extends Model
     }
 
     /**
-     * A plain-language "what can you actually do with this" label derived from the download
-     * side of speed_limit (rx/tx, e.g. "5M/5M") — not a fabricated data-quota estimate (most
-     * plans here are time-based/unlimited-data, not data-capped, so a "you get N hours of video"
-     * estimate would mostly be meaningless); just a deterministic mapping off the real configured
-     * Mbps value. Returns null if speed_limit isn't in the expected rx/tx format at all.
+     * Plain-language label derived from the download side of speed_limit (rx/tx, e.g. "5M/5M").
+     * Returns null if speed_limit isn't in that format.
      */
     public function speedTierLabel(): ?string
     {

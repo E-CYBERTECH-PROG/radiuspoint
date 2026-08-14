@@ -6,12 +6,9 @@ use App\Models\Router;
 use Throwable;
 
 /**
- * Force-ends a customer's live session on the router by username — looks up the matching active
- * session (RouterOS has no "disconnect by username" endpoint, only by internal .id) then removes
- * it. Previously duplicated inline in EnforceFairUsage; also backs the manual "Force Disconnect"
- * button on a customer's own edit page (HotspotUserController/PppoeUserController) and the
- * per-session disconnect buttons on the router's Live Monitor page share the same underlying
- * RouterOS calls, just already have the session .id in hand from their own active-list poll.
+ * Force-ends a customer's live session on the router by username. Looks up the
+ * matching active session and removes it, since RouterOS only supports disconnect
+ * by internal .id, not by username.
  */
 class SessionDisconnectService
 {

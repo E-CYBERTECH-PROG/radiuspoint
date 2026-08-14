@@ -1,5 +1,4 @@
-{{-- Only renders anything if the tenant actually filled in a real testimonial — no fabricated
-     "5000+ happy customers" copy. Shared across templates so any of them can @include it. --}}
+{{-- Renders only if the tenant filled in a real testimonial. Shared across templates. --}}
 @if($portal?->testimonial_1_text || $portal?->testimonial_2_text)
     <div class="testimonials">
         @if($portal->testimonial_1_text)
