@@ -13,6 +13,75 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    /**
+     * Union of expired Hotspot + PPPoE accounts. Built as a union subquery (rather than
+     * fetching both collections and paginating in PHP) so search/date filters and pagination
+     * counts stay accurate against the combined set instead of each side independently.
+     */
+    public function expiredUsers(Request $request)
+    {
+        $tenantId = Auth::user()->tenant_id;
+        $search = $this->searchTerm($request);
+
+        $hotspot = DB::table('hotspot_users')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'expired')
+            ->selectRaw("'hotspot' as type, id, phone_number as identifier, NULL as name, current_plan_id, current_router_id, expires_at");
+
+        $pppoe = DB::table('pppoe_users')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'expired')
+            ->selectRaw("'pppoe' as type, id, username as identifier, name, current_plan_id, current_router_id, expires_at");
+
+        $union = $hotspot->unionAll($pppoe);
+
+        $users = DB::query()->fromSub($union, 'expired_users')
+            ->when($search, fn ($q) => $q->where('identifier', 'like', "%{$search}%"))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('expires_at', '>=', $request->from))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('expires_at', '<=', $request->to))
+            ->orderByDesc('expires_at')
+            ->paginate($this->perPage($request))
+            ->withQueryString();
+
+        $plans = Plan::where('tenant_id', $tenantId)->get()->keyBy('id');
+        $routers = Router::where('tenant_id', $tenantId)->get()->keyBy('id');
+
+        return view('reports.expired-users', compact('users', 'plans', 'routers'));
+    }
+
+    /**
+     * Transaction receipts — search by M-Pesa receipt code (mirrors what a customer reads off
+     * their M-Pesa SMS) or date range, with a printable single-receipt view.
+     */
+    public function receipts(Request $request)
+    {
+        $tenantId = Auth::user()->tenant_id;
+        $code = trim((string) $request->query('receipt', ''));
+
+        $transactions = Transaction::where('tenant_id', $tenantId)
+            ->where('status', 'success')
+            ->when($code !== '', fn ($q) => $q->where('mpesa_receipt', 'like', "%{$code}%"))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->to))
+            ->latest()
+            ->paginate($this->perPage($request))
+            ->withQueryString();
+
+        return view('reports.receipts', compact('transactions'));
+    }
+
+    /**
+     * Standalone printable receipt — same pattern as VoucherController::print() and
+     * TenantBillingController::printInvoice(): its own bare <html>, no sidebar chrome.
+     */
+    public function receiptPrint(Transaction $transaction)
+    {
+        abort_unless($transaction->tenant_id === Auth::user()->tenant_id, 404);
+        abort_unless($transaction->status === 'success', 404);
+
+        return view('reports.receipt-print', compact('transaction'));
+    }
+
     public function pppoeBalances(Request $request)
     {
         $search = $this->searchTerm($request);

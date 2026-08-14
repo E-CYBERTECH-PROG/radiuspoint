@@ -250,6 +250,9 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/reports/hotspot-sales', [ReportController::class, 'hotspotSales'])->name('reports.hotspot-sales');
     Route::get('/reports/access-log', [ReportController::class, 'accessLog'])->name('reports.access-log');
     Route::get('/reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
+    Route::get('/reports/expired-users', [ReportController::class, 'expiredUsers'])->name('reports.expired-users');
+    Route::get('/reports/receipts', [ReportController::class, 'receipts'])->name('reports.receipts');
+    Route::get('/reports/receipts/{transaction}/print', [ReportController::class, 'receiptPrint'])->name('reports.receipts.print');
 });
 
 // Default Laravel Breeze Profile Routes
