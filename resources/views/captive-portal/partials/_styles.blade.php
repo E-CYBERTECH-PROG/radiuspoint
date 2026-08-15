@@ -100,4 +100,13 @@
          background and loading animation (see the template's own <style> block). --}}
     .rp-splash { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .35s ease, visibility .35s ease; }
     .rp-splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    {{-- Optional slim full-width navbar (see routers/show.blade.php's "Show top navbar"
+         toggle). Fixed positioning keeps it out of body's flex-centering flow entirely, so
+         .card still centers correctly whether the navbar is present or not — only the
+         body.has-navbar padding below reserves clearance so it never overlaps the card. --}}
+    .rp-navbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 30; background: var(--card-bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 20px; }
+    .rp-navbar img { height: 26px; object-fit: contain; }
+    .rp-navbar .rp-navbar-name { font-weight: 800; font-size: 14px; color: var(--text); }
+    body.has-navbar { padding-top: 64px; }
 </style>

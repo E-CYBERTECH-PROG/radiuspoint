@@ -25,8 +25,9 @@
             --free-border: rgba(74,222,128,.3);
             --spinner-track: rgba(255,255,255,.15);
         }
-        body { background: radial-gradient(circle at 50% 0%, #1e293b, #020617 70%); }
-        .card, .modal, .testimonial, .action-card { backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); }
+        body { background: radial-gradient(circle at 50% 0%, #1e293b, #020617 70%); background-size: 140% 140%; animation: rp-drift 18s ease-in-out infinite; }
+        @keyframes rp-drift { 0%, 100% { background-position: 50% 0%; } 50% { background-position: 45% 8%; } }
+        .card, .modal, .testimonial, .action-card, .rp-navbar { backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); }
 
         .hero { background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 50%, #0f172a), #0f172a 130%); color: #fff; text-align: center; padding: 34px 24px 28px; position: relative; overflow: hidden; }
         .hero::before { content: ""; position: absolute; top: -60%; left: -20%; width: 140%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,.1), transparent 60%); }
@@ -43,9 +44,18 @@
         @keyframes rp-breathe { 0%, 100% { transform: scale(.85); opacity: .6; } 50% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 30px 6px rgba(255,255,255,.15); } }
     </style>
 </head>
-<body>
+<body class="@if($portal?->show_navbar) has-navbar @endif">
     <script>window.__rpSplashStart = Date.now();</script>
     <div class="rp-splash" id="rp-splash"><div class="rp-splash-glow"></div></div>
+
+    @if($portal?->show_navbar)
+        <div class="rp-navbar">
+            @if($portal?->logo_url)
+                <img src="{{ $portal->logo_url }}" alt="{{ $tenant->company_name }}">
+            @endif
+            <span class="rp-navbar-name">{{ $tenant->company_name }}</span>
+        </div>
+    @endif
 
     <div class="card">
         <div class="hero">

@@ -52,6 +52,12 @@
             </div>
 
             <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Portal Caption <span class="text-gray-400 normal-case">(optional)</span></label>
+                <input type="text" name="caption" maxlength="255" value="{{ old('caption', $plan->caption) }}" placeholder="e.g. Best for streaming Netflix" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
+                <p class="text-xs text-gray-400 mt-2">Shown on the captive portal instead of the auto-generated "Good for browsing…" line. Leave blank to keep the automatic one.</p>
+            </div>
+
+            <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Data Cap (MB) <span class="text-gray-400 normal-case">(optional)</span></label>
                 <input type="number" name="data_cap_mb" min="1" value="{{ old('data_cap_mb', $plan->data_cap_mb) }}" placeholder="Unlimited if blank" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
                 <p class="text-xs text-gray-400 mt-2">1 GB = 1000 MB</p>

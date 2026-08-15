@@ -21,7 +21,9 @@
             background-color: #fafafa;
             background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
             background-size: 22px 22px;
+            animation: rp-grid-pan 20s linear infinite;
         }
+        @keyframes rp-grid-pan { 0% { background-position: 0 0, 0 0; } 100% { background-position: 22px 0, 0 22px; } }
 
         .hero { background: #fff; border-bottom: 2px solid #111827; text-align: left; padding: 24px; }
         .hero .row { display: flex; align-items: center; gap: 12px; }
@@ -45,9 +47,18 @@
         @keyframes rp-scan { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
-<body>
+<body class="@if($portal?->show_navbar) has-navbar @endif">
     <script>window.__rpSplashStart = Date.now();</script>
     <div class="rp-splash" id="rp-splash"><div class="rp-splash-scan"></div></div>
+
+    @if($portal?->show_navbar)
+        <div class="rp-navbar">
+            @if($portal?->logo_url)
+                <img src="{{ $portal->logo_url }}" alt="{{ $tenant->company_name }}">
+            @endif
+            <span class="rp-navbar-name" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace;">{{ $tenant->company_name }}</span>
+        </div>
+    @endif
 
     <div class="card">
         <div class="hero">

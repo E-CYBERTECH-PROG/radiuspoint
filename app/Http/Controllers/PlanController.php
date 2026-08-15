@@ -57,6 +57,7 @@ class PlanController extends Controller
             // Mikrotik-Rate-Limit format is rx-rate/tx-rate (e.g. "5M/5M"); RouterOS silently
             // ignores a value it can't parse, so an invalid separator leaves the plan uncapped.
             'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
@@ -71,6 +72,7 @@ class PlanController extends Controller
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
             'speed_limit' => $request->speed_limit,
+            'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
 
@@ -98,6 +100,7 @@ class PlanController extends Controller
             'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
             'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
@@ -111,6 +114,7 @@ class PlanController extends Controller
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
             'speed_limit' => $request->speed_limit,
+            'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
 

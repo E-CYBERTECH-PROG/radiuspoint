@@ -14,7 +14,8 @@
         body { background: radial-gradient(circle at 50% 0%, #eef2ff 0%, #f8fafc 55%, #f1f5f9 100%); }
 
         .hero { background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 65%, #818cf8)); color: #fff; text-align: center; padding: 32px 24px 28px; position: relative; overflow: hidden; }
-        .hero::before { content: ""; position: absolute; top: -50%; left: 50%; transform: translateX(-50%); width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.35), transparent 70%); }
+        .hero::before { content: ""; position: absolute; top: -50%; left: 50%; transform: translateX(-50%); width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.35), transparent 70%); animation: rp-hero-breathe 8s ease-in-out infinite; }
+        @keyframes rp-hero-breathe { 0%, 100% { transform: translateX(-50%) scale(1); opacity: .9; } 50% { transform: translateX(-50%) scale(1.15); opacity: 1; } }
         .hero img { position: relative; height: 46px; margin: 0 auto 10px; display: block; object-fit: contain; }
         .hero h1 { position: relative; font-size: 20px; margin: 6px 0 2px; font-weight: 800; }
         .hero p { position: relative; font-size: 13px; margin: 0; opacity: .9; }
@@ -28,9 +29,18 @@
         @keyframes rp-breathe-glow { 0%, 100% { transform: scale(.75); opacity: .45; } 50% { transform: scale(1.15); opacity: 1; } }
     </style>
 </head>
-<body>
+<body class="@if($portal?->show_navbar) has-navbar @endif">
     <script>window.__rpSplashStart = Date.now();</script>
     <div class="rp-splash" id="rp-splash"><div class="rp-splash-orb"></div></div>
+
+    @if($portal?->show_navbar)
+        <div class="rp-navbar">
+            @if($portal?->logo_url)
+                <img src="{{ $portal->logo_url }}" alt="{{ $tenant->company_name }}">
+            @endif
+            <span class="rp-navbar-name">{{ $tenant->company_name }}</span>
+        </div>
+    @endif
 
     <div class="card">
         <div class="hero">

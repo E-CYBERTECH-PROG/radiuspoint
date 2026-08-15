@@ -42,11 +42,20 @@
         @keyframes rp-fill { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
     </style>
 </head>
-<body>
+<body class="@if($portal?->show_navbar) has-navbar @endif">
     <script>window.__rpSplashStart = Date.now();</script>
     <div class="rp-splash" id="rp-splash">
         <div class="rp-splash-squares"><span></span><span></span><span></span></div>
     </div>
+
+    @if($portal?->show_navbar)
+        <div class="rp-navbar" style="border-bottom-width: 2px;">
+            @if($portal?->logo_url)
+                <img src="{{ $portal->logo_url }}" alt="{{ $tenant->company_name }}">
+            @endif
+            <span class="rp-navbar-name">{{ $tenant->company_name }}</span>
+        </div>
+    @endif
 
     <div class="card">
         <div class="hero">

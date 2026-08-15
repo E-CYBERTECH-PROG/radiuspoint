@@ -27,6 +27,7 @@ class Plan extends Model
     'duration_unit',
     'data_cap_mb',
     'speed_limit',
+    'caption',
     'fup_speed_limit',
 ];
 

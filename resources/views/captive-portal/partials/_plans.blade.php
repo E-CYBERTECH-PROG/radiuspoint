@@ -9,7 +9,7 @@
 <div class="body">
     <p class="section-label">Choose a plan</p>
 
-    <div class="plans-grid">
+    <div class="plans-grid" @if($portal?->columns_per_row) style="grid-template-columns: repeat({{ $portal->columns_per_row }}, 1fr);" @endif>
         @forelse($sortedPlans as $i => $plan)
             <div class="plan @if($i === $popularIndex) is-popular @endif">
                 @if($i === $popularIndex)
@@ -17,8 +17,8 @@
                 @endif
                 <svg class="box-icon" viewBox="0 0 24 24" fill="none"><path d="M3 8l9-5 9 5-9 5-9-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 8v8l9 5 9-5V8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 13v8" stroke="currentColor" stroke-width="1.5"/></svg>
                 <div class="name">{{ $plan->name }}</div>
-                <div class="meta">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }} &middot; {{ $plan->speed_limit }}</div>
-                @if($tier = $plan->speedTierLabel())
+                <div class="meta">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }}@if($portal?->show_speed ?? true) &middot; {{ $plan->speed_limit }}@endif</div>
+                @if($tier = $plan->caption ?: $plan->speedTierLabel())
                     <div class="tier">{{ $tier }}</div>
                 @endif
                 <div class="price">KES {{ number_format($plan->price) }}</div>

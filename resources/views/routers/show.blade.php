@@ -106,7 +106,7 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         @php
                             $templateOptions = [
                                 'light-lumen' => ['label' => 'Light Lumen', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #eef2ff, #f8fafc 70%);'],
@@ -114,6 +114,7 @@
                                 'grid' => ['label' => 'Grid', 'swatch' => 'background-color:#fafafa;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:8px 8px;border:1px solid #111827;'],
                                 'package' => ['label' => 'Package', 'swatch' => 'background:linear-gradient(135deg, #dbeafe, #fff);'],
                                 'raw' => ['label' => 'Raw', 'swatch' => 'background:#fff;border:2px solid #111827;'],
+                                'cyberpunk' => ['label' => 'Cyberpunk', 'swatch' => 'background:linear-gradient(135deg, #0a0014, #1a0533);box-shadow:inset 0 0 0 1px rgba(217,70,239,.4);'],
                             ];
                         @endphp
                         @foreach($templateOptions as $key => $opt)
@@ -134,6 +135,26 @@
                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Brand Color</label>
                         <input type="color" name="primary_color" value="{{ old('primary_color', $captivePortal->primary_color ?? '#2563eb') }}" class="w-full h-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer">
                     </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Plans Per Row</label>
+                        @php $columnsPerRow = old('columns_per_row', $captivePortal->columns_per_row ?? ''); @endphp
+                        <select name="columns_per_row" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+                            <option value="" @selected($columnsPerRow === '')>Auto (responsive)</option>
+                            @foreach([1, 2, 3, 4] as $n)
+                                <option value="{{ $n }}" @selected((string) $columnsPerRow === (string) $n)>{{ $n }} per row</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-2 h-11 cursor-pointer">
+                        <input type="checkbox" name="show_speed" value="1" @checked(old('show_speed', $captivePortal->show_speed ?? true)) class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Show plan speeds</span>
+                    </label>
+                    <label class="flex items-center gap-2 h-11 cursor-pointer">
+                        <input type="checkbox" name="show_navbar" value="1" @checked(old('show_navbar', $captivePortal->show_navbar ?? false)) class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Show top navbar</span>
+                    </label>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Title <span class="text-gray-400 normal-case">(optional)</span></label>

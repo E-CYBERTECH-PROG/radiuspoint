@@ -279,9 +279,12 @@ class RouterController extends Controller
     public function updateCaptivePortal(Request $request, Router $router)
     {
         $request->validate([
-            'template' => 'required|in:light-lumen,crystal,grid,package,raw',
+            'template' => 'required|in:light-lumen,crystal,grid,package,raw,cyberpunk',
             'logo_url' => 'nullable|url|max:255',
             'primary_color' => 'nullable|string|max:20',
+            'columns_per_row' => 'nullable|integer|in:1,2,3,4',
+            'show_speed' => 'nullable|boolean',
+            'show_navbar' => 'nullable|boolean',
             'notice_title' => 'nullable|string|max:255',
             'notice_body' => 'nullable|string|max:1000',
             'testimonial_1_text' => 'nullable|string|max:255',
@@ -297,6 +300,9 @@ class RouterController extends Controller
                 'template' => $request->template,
                 'logo_url' => $request->logo_url,
                 'primary_color' => $request->primary_color ?: '#2563eb',
+                'columns_per_row' => $request->columns_per_row ?: null,
+                'show_speed' => $request->boolean('show_speed'),
+                'show_navbar' => $request->boolean('show_navbar'),
                 'notice_title' => $request->notice_title,
                 'notice_body' => $request->notice_body,
                 'testimonial_1_text' => $request->testimonial_1_text,
