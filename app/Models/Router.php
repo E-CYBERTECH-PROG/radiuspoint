@@ -19,6 +19,16 @@ class Router extends Model {
         return $this->hasOne(CaptivePortal::class);
     }
 
+    /**
+     * Tenant-branded prefix for every RouterOS object this app creates (bridges, pools,
+     * profiles, the API user, firewall comments) — so a tenant's own technician sees their
+     * own ISP's name in Winbox, not a third-party vendor name.
+     */
+    public function namingSlug(): string
+    {
+        return \Illuminate\Support\Str::slug($this->tenant->company_name) ?: 'tenant';
+    }
+
     protected $fillable = [
         'tenant_id', 'name', 'ip_address', 'api_username', 'api_password',
         'status', 'port_configuration', 'last_seen', 'last_log_alert_at', 'public_token', 'routeros_version', 'board_model',

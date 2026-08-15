@@ -58,9 +58,10 @@ class ExpireOverdueUsers extends Command
 
     /**
      * Removing the RADIUS credential only blocks the next login attempt, not an already-active
-     * session (no CoA support). This adds the session's IP to the `radiuspoint-expired`
-     * address-list so the firewall rule in RouterController::enableRadiusOnDefaultProfiles()
-     * cuts traffic immediately, regardless of whether the disconnect call below succeeds.
+     * session (no CoA support). This adds the session's IP to the router's tenant-branded
+     * `{slug}-expired` address-list so the firewall rule in
+     * RouterController::enableRadiusOnDefaultProfiles() cuts traffic immediately, regardless
+     * of whether the disconnect call below succeeds.
      */
     private function blockIfConnected(Router $router, string $activeEndpoint, string $activeUserField, string $username): void
     {
@@ -80,7 +81,7 @@ class ExpireOverdueUsers extends Command
             $existing = $api->findId('/ip/firewall/address-list/print', 'address', $address);
             if (! $existing) {
                 $api->query('/ip/firewall/address-list/add', [
-                    'list' => 'radiuspoint-expired',
+                    'list' => $router->namingSlug().'-expired',
                     'address' => $address,
                     'timeout' => '1d',
                     'comment' => "expired: {$username}",

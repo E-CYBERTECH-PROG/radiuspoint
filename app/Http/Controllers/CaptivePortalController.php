@@ -213,7 +213,7 @@ class CaptivePortalController extends Controller
         $password = Str::random(12);
 
         RadiusSyncService::sync($username, $password, '96k/96k');
-        RadiusSyncService::setGroup($username, 'radiuspoint_free');
+        RadiusSyncService::setGroup($username, $router->namingSlug().'_free');
         RadiusSyncService::setSessionTimeout($username, 1800);
 
         return response()->json([

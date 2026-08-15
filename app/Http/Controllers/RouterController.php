@@ -92,12 +92,13 @@ class RouterController extends Controller
 
         $secretKey = Str::random(12);
         $wireguard = (new WireguardService())->generateKeypair();
+        $slug = Str::slug(Auth::user()->tenant->company_name) ?: 'tenant';
 
         $router = Router::create([
             'tenant_id' => Auth::user()->tenant_id,
             'name' => $request->name,
             'ip_address' => $ipAddress,
-            'api_username' => 'adm_' . Str::random(5),
+            'api_username' => "{$slug}_adm_" . Str::random(5),
             'api_password' => Str::random(16),
             'status' => 'pending',
             'public_token' => Str::random(24),
@@ -178,7 +179,7 @@ class RouterController extends Controller
                 }
 
                 $router->update($update);
-                $this->enableRadiusOnDefaultProfiles($api);
+                $this->enableRadiusOnDefaultProfiles($api, $router);
 
                 return response()->json(['status' => 'success', 'message' => 'Uplink Established!']);
             }
@@ -195,8 +196,10 @@ class RouterController extends Controller
      * Enables RADIUS auth on the default Hotspot profile and globally for PPP. Best-effort —
      * a fresh router may not have Hotspot configured yet.
      */
-    public function enableRadiusOnDefaultProfiles(MikrotikApiService $api): void
+    public function enableRadiusOnDefaultProfiles(MikrotikApiService $api, Router $router): void
     {
+        $slug = $router->namingSlug();
+
         try {
             $id = $api->findId('/ip/hotspot/profile/print', 'name', 'default');
 
@@ -218,28 +221,31 @@ class RouterController extends Controller
 
         // Defense-in-depth: RouterOS doesn't re-check RADIUS mid-session, so deleting the
         // credential alone doesn't cut off someone already connected. ExpireOverdueUsers adds
-        // their IP to radiuspoint-expired, which this rule then drops.
+        // their IP to {slug}-expired, which this rule then drops. Migrates a rule from either
+        // earlier naming generation (platform-wide, or the original short-lived name) in place.
         try {
-            $oldExpiredRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-expired-block');
-            if ($oldExpiredRuleId) {
-                $api->setById('/ip/firewall/filter/set', $oldExpiredRuleId, [
-                    'src-address-list' => 'radiuspoint-expired',
-                    'comment' => 'radiuspoint-expired-block',
-                ]);
+            foreach (['rp-expired-block', 'radiuspoint-expired-block'] as $oldComment) {
+                $oldId = $api->findId('/ip/firewall/filter/print', 'comment', $oldComment);
+                if ($oldId) {
+                    $api->setById('/ip/firewall/filter/set', $oldId, [
+                        'src-address-list' => "{$slug}-expired",
+                        'comment' => "{$slug}-expired-block",
+                    ]);
+                }
             }
 
-            $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-expired-block');
+            $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', "{$slug}-expired-block");
             if (! $dropRuleId) {
                 $api->query('/ip/firewall/filter/add', [
                     'chain' => 'forward',
                     'action' => 'drop',
-                    'src-address-list' => 'radiuspoint-expired',
-                    'comment' => 'radiuspoint-expired-block',
+                    'src-address-list' => "{$slug}-expired",
+                    'comment' => "{$slug}-expired-block",
                     'place-before' => '0',
                 ]);
             }
         } catch (Exception $e) {
-            Log::warning("Could not add the radiuspoint-expired firewall rule: " . $e->getMessage());
+            Log::warning("Could not add the {$slug}-expired firewall rule: " . $e->getMessage());
         }
 
         // RouterOS's default fasttrack rule skips further firewall/queue processing for a
@@ -330,7 +336,7 @@ class RouterController extends Controller
             }
 
             $router->update($update);
-            $this->enableRadiusOnDefaultProfiles($api);
+            $this->enableRadiusOnDefaultProfiles($api, $router);
 
             return response()->json([
                 'status' => 'online',
@@ -422,7 +428,7 @@ class RouterController extends Controller
 
             if (in_array($role, ['hotspot', 'both'], true)) {
                 try {
-                    $interfaceResult['hotspot'] = $this->provisionHotspot($api, $interface);
+                    $interfaceResult['hotspot'] = $this->provisionHotspot($api, $interface, $router);
                 } catch (Exception $e) {
                     Log::warning("Hotspot provisioning failed for {$router->name}/{$interface}: " . $e->getMessage());
                     $interfaceResult['hotspot_error'] = $e->getMessage();
@@ -431,7 +437,7 @@ class RouterController extends Controller
 
             if (in_array($role, ['pppoe', 'both'], true)) {
                 try {
-                    $interfaceResult['pppoe'] = $this->provisionPppoe($api, $interface);
+                    $interfaceResult['pppoe'] = $this->provisionPppoe($api, $interface, $router);
                 } catch (Exception $e) {
                     Log::warning("PPPoE provisioning failed for {$router->name}/{$interface}: " . $e->getMessage());
                     $interfaceResult['pppoe_error'] = $e->getMessage();
@@ -466,6 +472,7 @@ class RouterController extends Controller
      */
     protected function provisionCaptivePortal(MikrotikApiService $api, Router $router): array
     {
+        $slug = $router->namingSlug();
         $host = parse_url(config('app.url'), PHP_URL_HOST);
 
         $existingRule = $api->findId('/ip/hotspot/walled-garden/print', 'dst-host', $host);
@@ -473,7 +480,7 @@ class RouterController extends Controller
             $api->query('/ip/hotspot/walled-garden/add', [
                 'action' => 'allow',
                 'dst-host' => $host,
-                'comment' => 'RadiusPoint captive portal',
+                'comment' => "{$slug} captive portal",
             ]);
         }
 
@@ -488,20 +495,25 @@ class RouterController extends Controller
         }
 
         // Retroactive fix for routers provisioned before login-by/radius-interim-update were
-        // added. Only touches profiles we created (current or old naming prefix) — never an
-        // admin's own.
+        // added. Only touches profiles we created (current or an older naming generation) —
+        // never an admin's own. Migrates any older generation to today's tenant-branded name.
         $loginByFixed = 0;
         $interimUpdateFixed = 0;
         $renamed = 0;
         $profiles = $api->query('/ip/hotspot/profile/print');
         foreach ($profiles as $profile) {
             $name = $profile['name'] ?? '';
-            $isOurs = str_starts_with($name, 'radiuspoint_hs_prof_') || str_starts_with($name, 'rp_hs_prof_');
-            if (! $isOurs) {
+            $oldPrefix = match (true) {
+                str_starts_with($name, "{$slug}_hs_prof_") => null,
+                str_starts_with($name, 'radiuspoint_hs_prof_') => 'radiuspoint_hs_prof_',
+                str_starts_with($name, 'rp_hs_prof_') => 'rp_hs_prof_',
+                default => false,
+            };
+            if ($oldPrefix === false) {
                 continue;
             }
-            if (str_starts_with($name, 'rp_hs_prof_')) {
-                $name = 'radiuspoint_hs_prof_'.substr($name, strlen('rp_hs_prof_'));
+            if ($oldPrefix !== null) {
+                $name = "{$slug}_hs_prof_".substr($name, strlen($oldPrefix));
                 $api->setById('/ip/hotspot/profile/set', $profile['.id'], ['name' => $name]);
                 $renamed++;
             }
@@ -523,17 +535,22 @@ class RouterController extends Controller
         }
 
         // Retroactive fix for hotspot servers missing an explicit idle-timeout. Same
-        // recognize-current-and-old-prefix approach as the profile loop above.
+        // recognize-current-and-older-generations approach as the profile loop above.
         $idleTimeoutFixed = 0;
         $servers = $api->query('/ip/hotspot/print');
         foreach ($servers as $server) {
             $name = $server['name'] ?? '';
-            $isOurs = str_starts_with($name, 'radiuspoint_hs_server_') || str_starts_with($name, 'rp_hs_');
-            if (! $isOurs) {
+            $oldPrefix = match (true) {
+                str_starts_with($name, "{$slug}_hotspot_") => null,
+                str_starts_with($name, 'radiuspoint_hs_server_') => 'radiuspoint_hs_server_',
+                str_starts_with($name, 'rp_hs_') => 'rp_hs_',
+                default => false,
+            };
+            if ($oldPrefix === false) {
                 continue;
             }
-            if (str_starts_with($name, 'rp_hs_') && ! str_starts_with($name, 'radiuspoint_hs_server_')) {
-                $name = 'radiuspoint_hs_server_'.substr($name, strlen('rp_hs_'));
+            if ($oldPrefix !== null) {
+                $name = "{$slug}_hotspot_".substr($name, strlen($oldPrefix));
                 $api->setById('/ip/hotspot/set', $server['.id'], ['name' => $name]);
                 $renamed++;
             }
@@ -543,30 +560,44 @@ class RouterController extends Controller
             }
         }
 
-        // Renames old-prefix address pools to the current naming convention.
+        // Renames older-generation address pools to the current tenant-branded naming.
         $pools = $api->query('/ip/pool/print');
         foreach ($pools as $pool) {
             $name = $pool['name'] ?? '';
-            if (str_starts_with($name, 'rp_hs_') && ! str_starts_with($name, 'rp_hs_prof_')) {
-                $newName = 'radiuspoint_hs_pool_'.substr($name, strlen('rp_hs_'));
-                $api->setById('/ip/pool/set', $pool['.id'], ['name' => $newName]);
-                $renamed++;
-            } elseif (str_starts_with($name, 'rp_ppp_') && ! str_starts_with($name, 'rp_ppp_prof_')) {
-                $newName = 'radiuspoint_ppp_pool_'.substr($name, strlen('rp_ppp_'));
-                $api->setById('/ip/pool/set', $pool['.id'], ['name' => $newName]);
-                $renamed++;
+            if (str_starts_with($name, "{$slug}_hs_pool_") || str_starts_with($name, "{$slug}_pppoe_pool_")) {
+                continue;
             }
+            if (str_starts_with($name, 'rp_hs_') && ! str_starts_with($name, 'rp_hs_prof_')) {
+                $newName = "{$slug}_hs_pool_".substr($name, strlen('rp_hs_'));
+            } elseif (str_starts_with($name, 'radiuspoint_hs_pool_')) {
+                $newName = "{$slug}_hs_pool_".substr($name, strlen('radiuspoint_hs_pool_'));
+            } elseif (str_starts_with($name, 'rp_ppp_') && ! str_starts_with($name, 'rp_ppp_prof_')) {
+                $newName = "{$slug}_pppoe_pool_".substr($name, strlen('rp_ppp_'));
+            } elseif (str_starts_with($name, 'radiuspoint_ppp_pool_')) {
+                $newName = "{$slug}_pppoe_pool_".substr($name, strlen('radiuspoint_ppp_pool_'));
+            } else {
+                continue;
+            }
+            $api->setById('/ip/pool/set', $pool['.id'], ['name' => $newName]);
+            $renamed++;
         }
 
         // Same rename for PPPoE profiles.
         $pppProfiles = $api->query('/ppp/profile/print');
         foreach ($pppProfiles as $profile) {
             $name = $profile['name'] ?? '';
-            if (str_starts_with($name, 'rp_ppp_prof_')) {
-                $newName = 'radiuspoint_ppp_prof_'.substr($name, strlen('rp_ppp_prof_'));
-                $api->setById('/ppp/profile/set', $profile['.id'], ['name' => $newName]);
-                $renamed++;
+            if (str_starts_with($name, "{$slug}_pppoe_prof_")) {
+                continue;
             }
+            if (str_starts_with($name, 'rp_ppp_prof_')) {
+                $newName = "{$slug}_pppoe_prof_".substr($name, strlen('rp_ppp_prof_'));
+            } elseif (str_starts_with($name, 'radiuspoint_ppp_prof_')) {
+                $newName = "{$slug}_pppoe_prof_".substr($name, strlen('radiuspoint_ppp_prof_'));
+            } else {
+                continue;
+            }
+            $api->setById('/ppp/profile/set', $profile['.id'], ['name' => $newName]);
+            $renamed++;
         }
 
         // Retroactive fix: an older provisioning script pointed /radius at the server's public
@@ -611,20 +642,27 @@ class RouterController extends Controller
      */
     protected function provisionFreeMode(MikrotikApiService $api, Router $router): array
     {
-        // Migrate an old rp_free profile in place, including its address-list name.
-        $oldProfileId = $api->findId('/ip/hotspot/user/profile/print', 'name', 'rp_free');
-        if ($oldProfileId) {
-            $api->setById('/ip/hotspot/user/profile/set', $oldProfileId, [
-                'name' => 'radiuspoint_free',
-                'address-list' => 'radiuspoint-freemode',
-            ]);
+        $slug = $router->namingSlug();
+        $profileName = "{$slug}_free";
+        $freemodeList = "{$slug}-freemode";
+        $allowedList = "{$slug}-freemode-allowed";
+
+        // Migrate an older-generation profile in place, including its address-list name.
+        foreach (['rp_free', 'radiuspoint_free'] as $oldName) {
+            $oldProfileId = $api->findId('/ip/hotspot/user/profile/print', 'name', $oldName);
+            if ($oldProfileId) {
+                $api->setById('/ip/hotspot/user/profile/set', $oldProfileId, [
+                    'name' => $profileName,
+                    'address-list' => $freemodeList,
+                ]);
+            }
         }
 
-        $profileId = $api->findId('/ip/hotspot/user/profile/print', 'name', 'radiuspoint_free');
+        $profileId = $api->findId('/ip/hotspot/user/profile/print', 'name', $profileName);
         if (! $profileId) {
             $api->query('/ip/hotspot/user/profile/add', [
-                'name' => 'radiuspoint_free',
-                'address-list' => 'radiuspoint-freemode',
+                'name' => $profileName,
+                'address-list' => $freemodeList,
                 'rate-limit' => '96k/96k',
             ]);
         }
@@ -642,56 +680,60 @@ class RouterController extends Controller
             $existing = $api->findId('/ip/dns/static/print', 'regexp', $regexp);
             if ($existing) {
                 // Keep its address-list pointed at the current name.
-                $api->setById('/ip/dns/static/set', $existing, ['address-list' => 'radiuspoint-freemode-allowed']);
+                $api->setById('/ip/dns/static/set', $existing, ['address-list' => $allowedList]);
             } else {
                 $api->query('/ip/dns/static/add', [
                     'regexp' => $regexp,
                     'type' => 'FWD',
                     'forward-to' => '8.8.8.8',
-                    'address-list' => 'radiuspoint-freemode-allowed',
+                    'address-list' => $allowedList,
                     'ttl' => '1m',
-                    'comment' => 'RadiusPoint free mode',
+                    'comment' => "{$slug} free mode",
                 ]);
                 $dnsAdded++;
             }
         }
 
         // Same migrate-in-place approach for the two firewall rules.
-        $oldAcceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-freemode-allow');
-        if ($oldAcceptRuleId) {
-            $api->setById('/ip/firewall/filter/set', $oldAcceptRuleId, [
-                'src-address-list' => 'radiuspoint-freemode',
-                'dst-address-list' => 'radiuspoint-freemode-allowed',
-                'comment' => 'radiuspoint-freemode-allow',
-            ]);
+        foreach (['rp-freemode-allow', 'radiuspoint-freemode-allow'] as $oldComment) {
+            $oldAcceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', $oldComment);
+            if ($oldAcceptRuleId) {
+                $api->setById('/ip/firewall/filter/set', $oldAcceptRuleId, [
+                    'src-address-list' => $freemodeList,
+                    'dst-address-list' => $allowedList,
+                    'comment' => "{$slug}-freemode-allow",
+                ]);
+            }
         }
 
-        $acceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-freemode-allow');
+        $acceptRuleId = $api->findId('/ip/firewall/filter/print', 'comment', "{$slug}-freemode-allow");
         if (! $acceptRuleId) {
             $api->query('/ip/firewall/filter/add', [
                 'chain' => 'forward',
                 'action' => 'accept',
-                'src-address-list' => 'radiuspoint-freemode',
-                'dst-address-list' => 'radiuspoint-freemode-allowed',
-                'comment' => 'radiuspoint-freemode-allow',
+                'src-address-list' => $freemodeList,
+                'dst-address-list' => $allowedList,
+                'comment' => "{$slug}-freemode-allow",
             ]);
         }
 
-        $oldDropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'rp-freemode-block-rest');
-        if ($oldDropRuleId) {
-            $api->setById('/ip/firewall/filter/set', $oldDropRuleId, [
-                'src-address-list' => 'radiuspoint-freemode',
-                'comment' => 'radiuspoint-freemode-block-rest',
-            ]);
+        foreach (['rp-freemode-block-rest', 'radiuspoint-freemode-block-rest'] as $oldComment) {
+            $oldDropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', $oldComment);
+            if ($oldDropRuleId) {
+                $api->setById('/ip/firewall/filter/set', $oldDropRuleId, [
+                    'src-address-list' => $freemodeList,
+                    'comment' => "{$slug}-freemode-block-rest",
+                ]);
+            }
         }
 
-        $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'radiuspoint-freemode-block-rest');
+        $dropRuleId = $api->findId('/ip/firewall/filter/print', 'comment', "{$slug}-freemode-block-rest");
         if (! $dropRuleId) {
             $api->query('/ip/firewall/filter/add', [
                 'chain' => 'forward',
                 'action' => 'drop',
-                'src-address-list' => 'radiuspoint-freemode',
-                'comment' => 'radiuspoint-freemode-block-rest',
+                'src-address-list' => $freemodeList,
+                'comment' => "{$slug}-freemode-block-rest",
             ]);
         }
 
@@ -764,7 +806,7 @@ class RouterController extends Controller
      * Real Hotspot server on this interface: its own IP, address pool, and a named profile
      * (never "default") wired to authenticate via RADIUS.
      */
-    protected function provisionHotspot(MikrotikApiService $api, string $interface): array
+    protected function provisionHotspot(MikrotikApiService $api, string $interface, Router $router): array
     {
         // A hotspot server can't run on a bridge-port interface — resolve to the real bridge
         // first so every bridged port converges on the same server.
@@ -773,9 +815,10 @@ class RouterController extends Controller
             $interface = $bridgePort[0]['bridge'];
         }
 
-        $serverName = "radiuspoint_hs_server_{$interface}";
-        $poolName = "radiuspoint_hs_pool_{$interface}";
-        $profileName = "radiuspoint_hs_prof_{$interface}";
+        $slug = $router->namingSlug();
+        $serverName = "{$slug}_hotspot_{$interface}";
+        $poolName = "{$slug}_hs_pool_{$interface}";
+        $profileName = "{$slug}_hs_prof_{$interface}";
 
         // Idempotent — skip if a server with this name already exists (RouterOS rejects
         // duplicate names).
@@ -818,7 +861,7 @@ class RouterController extends Controller
             }
         } else {
             $api->query('/ip/dhcp-server/add', [
-                'name' => "radiuspoint_hs_dhcp_{$interface}",
+                'name' => "{$slug}_hs_dhcp_{$interface}",
                 'interface' => $interface,
                 'address-pool' => $poolName,
                 'lease-time' => '1h',
@@ -835,11 +878,12 @@ class RouterController extends Controller
      * router-wide toggle (/ppp/aaa, set once in savePorts()), not a per-profile property —
      * /ppp/profile/add rejects use-radius outright.
      */
-    protected function provisionPppoe(MikrotikApiService $api, string $interface): array
+    protected function provisionPppoe(MikrotikApiService $api, string $interface, Router $router): array
     {
+        $slug = $router->namingSlug();
         $subnet = $api->allocateSubnet();
-        $poolName = "radiuspoint_ppp_pool_{$interface}";
-        $profileName = "radiuspoint_ppp_prof_{$interface}";
+        $poolName = "{$slug}_pppoe_pool_{$interface}";
+        $profileName = "{$slug}_pppoe_prof_{$interface}";
 
         $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
         $api->query('/ppp/profile/add', [
@@ -848,7 +892,7 @@ class RouterController extends Controller
         ]);
         $api->query('/interface/pppoe-server/server/add', [
             'interface' => $interface,
-            'service-name' => 'radiuspoint',
+            'service-name' => $slug,
             'default-profile' => $profileName,
             'disabled' => 'no',
         ]);
@@ -1136,7 +1180,7 @@ class RouterController extends Controller
         return $this->monitorAction($router, fn ($api) => $api->query('/ip/hotspot/ip-binding/add', [
             'address' => $address,
             'type' => 'blocked',
-            'comment' => 'Blocked via RadiusPoint',
+            'comment' => 'Blocked via '.$router->namingSlug(),
         ]), 'Address blocked.');
     }
 

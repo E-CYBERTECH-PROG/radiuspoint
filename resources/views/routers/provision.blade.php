@@ -116,40 +116,19 @@
                 statusText.classList.replace('text-amber-600', 'text-blue-600');
                 statusPulse.classList.replace('bg-amber-500', 'bg-blue-500');
 
-                // Turn on Radar
                 radarSweep.classList.remove('hidden');
                 radarNode.classList.replace('bg-amber-500', 'bg-blue-500');
 
-                logsBox.innerHTML = ""; // Clear old logs
-
-                // Cinematic loading sequence
-                const simulatedLogs = [
-                    { text: "&gt; Initializing secure WireGuard tunnel over UDP...", progress: 15 },
-                    { text: "&gt; Target Lock: {{ $router->ip_address }}", progress: 30 },
-                    { text: "&gt; Pinging target hardware...", progress: 45 },
-                    { text: "&gt; Ping response received. Latency: <span class='text-green-400'>14ms</span>", progress: 60 },
-                    { text: "&gt; Generating 2048-bit RSA authentication keys...", progress: 75 },
-                    { text: "&gt; Initiating API handshake on Port 8728 for user: [{{ $router->api_username }}]", progress: 85 }
-                ];
-
-                for (let i = 0; i < simulatedLogs.length; i++) {
-                    await new Promise(r => setTimeout(r, 800));
-
-                    let logEntry = document.createElement('div');
-                    logEntry.className = "text-gray-300 animate-fade-in";
-                    logEntry.innerHTML = simulatedLogs[i].text;
-                    logsBox.appendChild(logEntry);
-
-                    progressBar.style.width = simulatedLogs[i].progress + "%";
-                    progressText.innerText = simulatedLogs[i].progress + "%";
-                }
-
-                await new Promise(r => setTimeout(r, 1000));
+                logsBox.innerHTML = "";
+                let waitingLog = document.createElement('div');
+                waitingLog.className = "text-gray-300 animate-fade-in";
+                waitingLog.innerHTML = "&gt; Contacting {{ $router->ip_address }}...";
+                logsBox.appendChild(waitingLog);
+                progressBar.style.width = "50%";
 
                 let finalLog = document.createElement('div');
 
                 try {
-                    // Actual backend connection check
                     const response = await fetch("{{ route('routers.check-status', $router->id) }}", {
                         method: "POST",
                         headers: {
@@ -168,7 +147,7 @@
                         radarSweep.classList.add('hidden');
                         radarNode.classList.replace('bg-blue-500', 'bg-green-500');
 
-                        finalLog.innerHTML = "&gt; <span class='text-green-400 font-bold'>[UPLINK VERIFIED] Root access granted. Hardware is online.</span>";
+                        finalLog.innerHTML = "&gt; <span class='text-green-400 font-bold'>[UPLINK VERIFIED] Hardware is online.</span>";
                         logsBox.appendChild(finalLog);
 
                         statusText.innerText = "HARDWARE ONLINE";
