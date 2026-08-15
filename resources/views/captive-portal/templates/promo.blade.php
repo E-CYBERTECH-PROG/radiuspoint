@@ -14,9 +14,20 @@
         .hero img { position: relative; height: 46px; margin: 0 auto 8px; display: block; object-fit: contain; }
         .hero h1 { position: relative; font-size: 21px; margin: 6px 0 2px; font-weight: 800; }
         .hero p { position: relative; font-size: 13px; margin: 0; opacity: .9; }
+
+        .rp-splash { background: linear-gradient(120deg, var(--brand), #7c3aed); }
+        .rp-splash-dots { display: flex; gap: 9px; }
+        .rp-splash-dots span { width: 13px; height: 13px; border-radius: 50%; background: #fff; animation: rp-bounce .6s ease-in-out infinite alternate; }
+        .rp-splash-dots span:nth-child(2) { animation-delay: .15s; }
+        .rp-splash-dots span:nth-child(3) { animation-delay: .3s; }
+        @keyframes rp-bounce { to { transform: translateY(-14px); opacity: .6; } }
     </style>
 </head>
 <body>
+    <script>window.__rpSplashStart = Date.now();</script>
+    <div class="rp-splash" id="rp-splash">
+        <div class="rp-splash-dots"><span></span><span></span><span></span></div>
+    </div>
 
     <div class="card">
         <div class="hero">

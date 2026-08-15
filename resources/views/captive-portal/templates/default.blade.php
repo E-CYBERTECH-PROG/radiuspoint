@@ -16,9 +16,14 @@
         .hero img { height: 48px; margin: 0 auto 8px; display: block; object-fit: contain; }
         .hero h1 { font-size: 19px; margin: 6px 0 2px; }
         .hero p { font-size: 13px; margin: 0; opacity: .85; }
+
+        .rp-splash { background: #fff; }
+        .rp-splash-ring { width: 44px; height: 44px; border: 4px solid #e5e7eb; border-top-color: var(--brand); border-radius: 50%; animation: rp-spin .8s linear infinite; }
     </style>
 </head>
 <body>
+    <script>window.__rpSplashStart = Date.now();</script>
+    <div class="rp-splash" id="rp-splash"><div class="rp-splash-ring"></div></div>
 
     <div class="card">
         <div class="hero">

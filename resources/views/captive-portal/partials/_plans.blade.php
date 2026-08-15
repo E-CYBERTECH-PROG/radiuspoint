@@ -1,23 +1,21 @@
 <div class="body">
     <p class="section-label">Choose a plan</p>
 
-    @forelse($plans as $plan)
-        <div class="plan">
-            <div>
+    <div class="plans-grid">
+        @forelse($plans as $plan)
+            <div class="plan">
                 <div class="name">{{ $plan->name }}</div>
                 <div class="meta">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }} &middot; {{ $plan->speed_limit }}</div>
                 @if($tier = $plan->speedTierLabel())
                     <div class="tier">{{ $tier }}</div>
                 @endif
+                <div class="price">KES {{ number_format($plan->price) }}</div>
+                <button type="button" class="btn btn-brand btn-buy" onclick="rpPortal.openBuy({{ $plan->id }}, {{ Illuminate\Support\Js::from($plan->name) }})">Buy</button>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span class="price">KES {{ number_format($plan->price) }}</span>
-                <button type="button" class="btn btn-brand" onclick="rpPortal.openBuy({{ $plan->id }}, {{ Illuminate\Support\Js::from($plan->name) }})">Buy</button>
-            </div>
-        </div>
-    @empty
-        <p class="empty">No packages are available on this network yet.</p>
-    @endforelse
+        @empty
+            <p class="empty">No packages are available on this network yet.</p>
+        @endforelse
+    </div>
 
     <div class="divider"></div>
     <div class="actions-row">

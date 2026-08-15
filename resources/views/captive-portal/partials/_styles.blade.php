@@ -19,15 +19,18 @@
     .notice .b { font-size: 13px; color: #b45309; margin-top: 2px; }
     .body { padding: 22px 24px 20px; }
     .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin: 0 0 10px; }
-    .plan { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
-    .plan .name { font-weight: 700; font-size: 14px; color: #111827; }
-    .plan .meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
-    .plan .tier { font-size: 11px; color: var(--brand); margin-top: 3px; font-weight: 600; }
+    .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 4px; }
+    .plan { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+    .plan:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.08); border-color: var(--brand); }
+    .plan .name { font-weight: 800; font-size: 14px; color: #111827; }
+    .plan .meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .plan .tier { font-size: 10px; color: var(--brand); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
     .testimonials { padding: 4px 24px 20px; }
     .testimonial { background: #f9fafb; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
     .testimonial .quote { font-size: 13px; color: #374151; font-style: italic; }
     .testimonial .author { font-size: 11px; color: #9ca3af; margin-top: 4px; }
-    .plan .price { font-weight: 700; color: var(--brand); font-size: 14px; white-space: nowrap; margin-left: 12px; }
+    .plan .price { font-weight: 800; color: var(--brand); font-size: 20px; margin-top: 12px; }
+    .plan .btn-buy { width: 100%; margin-top: 10px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 10px; font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; transition: opacity .15s; }
     .btn:disabled { opacity: .5; cursor: default; }
     .btn:not(:disabled):hover { opacity: .9; }
@@ -63,4 +66,9 @@
     .modal .close-link { display: block; margin-top: 14px; font-size: 13px; color: #6b7280; background: none; border: none; cursor: pointer; }
     .spin { animation: rp-spin 0.8s linear infinite; }
     @keyframes rp-spin { to { transform: rotate(360deg); } }
+
+    {{-- Splash overlay shell — shared positioning/transition, each template supplies its own
+         background and loading animation (see the template's own <style> block). --}}
+    .rp-splash { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .35s ease, visibility .35s ease; }
+    .rp-splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
 </style>

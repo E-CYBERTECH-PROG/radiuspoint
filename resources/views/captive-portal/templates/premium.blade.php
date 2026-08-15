@@ -18,9 +18,17 @@
         .hero p { font-size: 12px; margin: 0; opacity: .7; text-transform: uppercase; letter-spacing: .12em; font-weight: 600; position: relative; }
         .plan { border: 1px solid #eef0f3; background: linear-gradient(180deg, #fff, #fafafa); }
         .btn-brand { background: linear-gradient(135deg, var(--brand), #0f172a); }
+
+        .rp-splash { background: radial-gradient(circle at 50% 50%, #1e293b, #0f172a 70%); }
+        .rp-splash-glow { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); animation: rp-breathe 1.6s ease-in-out infinite; }
+        @keyframes rp-breathe { 0%, 100% { transform: scale(.85); opacity: .6; } 50% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 30px 6px rgba(255,255,255,.15); } }
     </style>
 </head>
 <body>
+    <script>window.__rpSplashStart = Date.now();</script>
+    <div class="rp-splash" id="rp-splash">
+        <div class="rp-splash-glow"></div>
+    </div>
 
     <div class="card">
         <div class="hero">

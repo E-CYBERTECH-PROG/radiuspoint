@@ -285,11 +285,30 @@
     // list entirely and log them straight back in — no click needed, covers both "moved to a
     // different router" and "left and came back".
     if (rpAutoReconnect && rpLinkLoginOnly) {
+        document.getElementById('rp-splash')?.classList.add('hide');
         document.getElementById('rp-autoreconnect-overlay').style.display = 'flex';
         document.getElementById('rp-login-username').value = rpAutoReconnect.username;
         document.getElementById('rp-login-password').value = rpAutoReconnect.password;
         const form = document.getElementById('rp-hotspot-login-form');
         form.action = rpLinkLoginOnly;
         form.submit();
+    } else {
+        // Reveal the real portal once everything (fonts, logo image) has actually loaded, with
+        // a small minimum display time so the splash never just flashes on a fast connection —
+        // never longer than the real load actually took. This script runs at the end of the
+        // page, so `load` may have already fired by now — check readyState rather than only
+        // listening for an event that could already be in the past.
+        const revealSplash = () => {
+            const minDelay = 350;
+            const elapsed = Date.now() - (window.__rpSplashStart || Date.now());
+            setTimeout(() => {
+                document.getElementById('rp-splash')?.classList.add('hide');
+            }, Math.max(0, minDelay - elapsed));
+        };
+        if (document.readyState === 'complete') {
+            revealSplash();
+        } else {
+            window.addEventListener('load', revealSplash);
+        }
     }
 </script>

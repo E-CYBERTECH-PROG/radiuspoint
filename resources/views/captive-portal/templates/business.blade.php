@@ -12,9 +12,20 @@
         .hero img { height: 44px; margin: 0 auto 10px; display: block; object-fit: contain; }
         .hero h1 { font-size: 20px; margin: 4px 0 2px; font-weight: 800; }
         .hero p { font-size: 13px; margin: 0; opacity: .75; }
+
+        .rp-splash { background: #111827; flex-direction: column; }
+        .rp-splash-brand { color: #fff; font-weight: 800; font-size: 16px; margin-bottom: 16px; letter-spacing: .01em; }
+        .rp-splash-bar { width: 140px; height: 4px; background: rgba(255,255,255,.15); border-radius: 999px; overflow: hidden; }
+        .rp-splash-bar-fill { width: 40%; height: 100%; background: var(--brand); border-radius: 999px; animation: rp-sweep 1.1s ease-in-out infinite; }
+        @keyframes rp-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
     </style>
 </head>
 <body>
+    <script>window.__rpSplashStart = Date.now();</script>
+    <div class="rp-splash" id="rp-splash">
+        <div class="rp-splash-brand">{{ $tenant->company_name }}</div>
+        <div class="rp-splash-bar"><div class="rp-splash-bar-fill"></div></div>
+    </div>
 
     <div class="card">
         <div class="hero">
