@@ -70,6 +70,10 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            // World-writable: the schedule runner writes as root (root's crontab) while
+            // web requests write as www (php-fpm pool user) — whichever creates a given
+            // day's file first would otherwise lock the other out.
+            'permission' => 0666,
             'replace_placeholders' => true,
         ],
 

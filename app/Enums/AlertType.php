@@ -9,6 +9,7 @@ enum AlertType: string
     case RouterCriticalLog = 'router_critical_log';
     case MpesaGatewayDown = 'mpesa_gateway_down';
     case MpesaGatewayRecovered = 'mpesa_gateway_recovered';
+    case ScheduledTaskFailed = 'scheduled_task_failed';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum AlertType: string
             self::RouterCriticalLog => 'Router reported a critical log entry',
             self::MpesaGatewayDown => 'M-Pesa payments appear to be failing',
             self::MpesaGatewayRecovered => 'M-Pesa payments are working again',
+            self::ScheduledTaskFailed => 'A scheduled task failed to run',
         };
     }
 }

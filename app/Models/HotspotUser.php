@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\BelongsToTenant;
 
 class HotspotUser extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     /**
      * Single source of truth for valid statuses, used by validation rules and views.

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -19,7 +20,11 @@ return new class extends Migration
             $table->integer('acctinterval')->nullable()->after('acctstoptime');
         });
 
-        DB::statement("ALTER TABLE radacct MODIFY acctsessiontime int(12) unsigned default NULL");
+        // Already an unsigned nullable integer from create_radius_tables — MySQL's own width
+        // display attribute (int(12)) has no SQLite equivalent and no functional effect.
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE radacct MODIFY acctsessiontime int(12) unsigned default NULL');
+        }
 
         Schema::table('radacct', function ($table) {
             $table->string('framedipv6address', 45)->default('')->after('framedipaddress');
@@ -30,18 +35,24 @@ return new class extends Migration
         });
 
         // De-duplicate existing rows before adding the unique key below, or it will fail.
+        // MySQL's multi-table DELETE...JOIN has no SQLite equivalent; this subquery form keeps
+        // the newest row per acctuniqueid on both drivers.
         DB::statement('
-            DELETE r1 FROM radacct r1
-            INNER JOIN radacct r2
-            WHERE r1.radacctid < r2.radacctid AND r1.acctuniqueid = r2.acctuniqueid
+            DELETE FROM radacct
+            WHERE radacctid NOT IN (SELECT MAX(radacctid) FROM radacct GROUP BY acctuniqueid)
         ');
 
-        DB::statement('ALTER TABLE radacct ADD UNIQUE KEY acctuniqueid (acctuniqueid)');
+        Schema::table('radacct', function (Blueprint $table) {
+            // Named explicitly to match the key name the original raw SQL created on
+            // already-migrated (production) databases — Laravel's default convention-based
+            // name (radacct_acctuniqueid_unique) would only match on a fresh install.
+            $table->unique('acctuniqueid', 'acctuniqueid');
+        });
     }
 
     public function down(): void
     {
-        Schema::table('radacct', function ($table) {
+        Schema::table('radacct', function (Blueprint $table) {
             $table->dropUnique('acctuniqueid');
             $table->dropColumn(['acctinterval', 'framedipv6address', 'framedipv6prefix', 'framedinterfaceid', 'delegatedipv6prefix', 'class']);
         });

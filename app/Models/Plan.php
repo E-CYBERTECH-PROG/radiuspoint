@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Traits\BelongsToTenant;
@@ -9,7 +10,7 @@ use Carbon\Carbon;
 
 class Plan extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     /**
      * Single source of truth for duration units, used by validation and dropdowns.

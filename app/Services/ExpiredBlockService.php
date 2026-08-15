@@ -21,7 +21,7 @@ class ExpiredBlockService
         }
 
         try {
-            $api = new MikrotikApiService();
+            $api = app(MikrotikApiService::class);
             if (! $api->connect($router->ip_address, $router->api_username, $router->api_password)) {
                 return;
             }
