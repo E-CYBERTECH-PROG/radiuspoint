@@ -32,35 +32,33 @@
                 <p class="text-xs text-gray-400 mt-3 text-center">Uplink LED reflects live connection status</p>
             </div>
 
-            <div class="lg:col-span-2 bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div class="lg:col-span-2 bg-white dark:bg-gray-950 p-6 rounded-xl border-0 shadow-[0_10px_24px_-20px_rgba(0,0,0,.32)] hover:shadow-[0_14px_28px_-20px_rgba(0,0,0,.4)] transition-shadow">
                 <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">Live System Info</h3>
                 <div class="grid grid-cols-2 gap-4 text-sm" x-show="!loaded">
                     <p class="text-gray-400 col-span-2">Checking connection...</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4 text-sm" x-show="loaded" x-cloak>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">Identity</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="identity || '—'"></p>
+                <div x-show="loaded" x-cloak class="flex flex-col sm:flex-row gap-6">
+                    <div class="grid grid-cols-2 gap-4 text-sm flex-1">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Identity</p>
+                            <p class="font-bold text-gray-900 dark:text-white" x-text="identity || '—'"></p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Detected Board</p>
+                            <p class="font-bold text-gray-900 dark:text-white" x-text="boardDetected || '—'"></p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">RouterOS Version</p>
+                            <p class="font-bold text-gray-900 dark:text-white" x-text="version || '—'"></p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Uptime</p>
+                            <p class="font-bold text-gray-900 dark:text-white" x-text="uptime || '—'"></p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">Detected Board</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="boardDetected || '—'"></p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">RouterOS Version</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="version || '—'"></p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">Uptime</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="uptime || '—'"></p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">CPU Load</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="cpuLoad ? cpuLoad + '%' : '—'"></p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide">Memory Free</p>
-                        <p class="font-bold text-gray-900 dark:text-white" x-text="memoryText"></p>
+                    <div class="flex items-start justify-center gap-6 shrink-0">
+                        <x-gauge-ring percent-expr="cpuLoad" value-expr="cpuLoad !== null ? cpuLoad + '%' : '—'" color="#2563eb" label="CPU Load" :size="84" />
+                        <x-gauge-ring percent-expr="memPercent" value-expr="memPercent !== null ? memPercent + '%' : '—'" detail-expr="memoryText" color="#16a34a" label="Memory Used" :size="84" />
                     </div>
                 </div>
 
@@ -249,6 +247,11 @@
                         const freeMb = Math.round(this.freeMemory / 1048576);
                         const totalMb = Math.round(this.totalMemory / 1048576);
                         return `${freeMb} MB / ${totalMb} MB`;
+                    },
+
+                    get memPercent() {
+                        if (!this.freeMemory || !this.totalMemory) return null;
+                        return Math.round(((this.totalMemory - this.freeMemory) / this.totalMemory) * 100);
                     },
 
                     init() {
