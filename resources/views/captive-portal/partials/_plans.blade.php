@@ -1,9 +1,21 @@
+@php
+    // Sorted by price so the "middle" plan (the Package theme's ribbon target) is a meaningful
+    // mid-tier choice rather than an arbitrary DB-order pick. Only tagged with 3+ plans — with
+    // fewer there's no real "middle" to highlight. Rendered for every theme; whether the ribbon
+    // and box-icon actually show is purely a CSS choice each template makes (see _styles.blade.php).
+    $sortedPlans = $plans->sortBy('price')->values();
+    $popularIndex = $sortedPlans->count() >= 3 ? intdiv($sortedPlans->count(), 2) : null;
+@endphp
 <div class="body">
     <p class="section-label">Choose a plan</p>
 
     <div class="plans-grid">
-        @forelse($plans as $plan)
-            <div class="plan">
+        @forelse($sortedPlans as $i => $plan)
+            <div class="plan @if($i === $popularIndex) is-popular @endif">
+                @if($i === $popularIndex)
+                    <div class="ribbon">Popular</div>
+                @endif
+                <svg class="box-icon" viewBox="0 0 24 24" fill="none"><path d="M3 8l9-5 9 5-9 5-9-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 8v8l9 5 9-5V8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 13v8" stroke="currentColor" stroke-width="1.5"/></svg>
                 <div class="name">{{ $plan->name }}</div>
                 <div class="meta">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }} &middot; {{ $plan->speed_limit }}</div>
                 @if($tier = $plan->speedTierLabel())
@@ -33,8 +45,8 @@
         </button>
     </div>
 
-    <button type="button" class="btn btn-block" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; margin-top:10px;" onclick="rpPortal.openFreeMode()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2 4 6v6c0 5 3.5 8.7 8 10 4.5-1.3 8-5 8-10V6l-8-4Z" stroke="#15803d" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    <button type="button" class="btn btn-block btn-free" style="margin-top:10px;" onclick="rpPortal.openFreeMode()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2 4 6v6c0 5 3.5 8.7 8 10 4.5-1.3 8-5 8-10V6l-8-4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         No money? Use Free Mode
     </button>
 </div>

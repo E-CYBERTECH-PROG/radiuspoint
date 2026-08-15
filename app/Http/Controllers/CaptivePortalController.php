@@ -41,9 +41,9 @@ class CaptivePortalController extends Controller
             ->get();
 
         // Templates share the same self-hosted partials (no CDN assets); only hero/branding differs.
-        $view = 'captive-portal.templates.'.($portal?->template ?? 'default');
+        $view = 'captive-portal.templates.'.($portal?->template ?? 'light-lumen');
         if (! view()->exists($view)) {
-            $view = 'captive-portal.templates.default';
+            $view = 'captive-portal.templates.light-lumen';
         }
 
         // Unauthenticated route, so filter tenant explicitly. Non-expired, and either global

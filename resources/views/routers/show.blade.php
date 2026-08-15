@@ -102,15 +102,25 @@
                 </a>
             </div>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Customize the page hotspot customers see when they connect to this router's WiFi.</p>
-            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'default') }}' }">
+            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'light-lumen') }}' }">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        @foreach(['default' => 'Modern', 'business' => 'Business', 'promo' => 'Promo', 'premium' => 'Premium'] as $key => $label)
-                            <label class="border rounded-lg p-3 cursor-pointer text-center transition-colors" :class="template === '{{ $key }}' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        @php
+                            $templateOptions = [
+                                'light-lumen' => ['label' => 'Light Lumen', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #eef2ff, #f8fafc 70%);'],
+                                'crystal' => ['label' => 'Frozen Crystal', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #334155, #020617 70%);'],
+                                'grid' => ['label' => 'Grid', 'swatch' => 'background-color:#fafafa;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:8px 8px;border:1px solid #111827;'],
+                                'package' => ['label' => 'Package', 'swatch' => 'background:linear-gradient(135deg, #dbeafe, #fff);'],
+                                'raw' => ['label' => 'Raw', 'swatch' => 'background:#fff;border:2px solid #111827;'],
+                            ];
+                        @endphp
+                        @foreach($templateOptions as $key => $opt)
+                            <label class="border rounded-lg p-2.5 cursor-pointer text-center transition-colors" :class="template === '{{ $key }}' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'">
                                 <input type="radio" name="template" value="{{ $key }}" x-model="template" class="sr-only">
-                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $label }}</span>
+                                <span class="block h-7 rounded-md mb-2" style="{{ $opt['swatch'] }}"></span>
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $opt['label'] }}</span>
                             </label>
                         @endforeach
                     </div>

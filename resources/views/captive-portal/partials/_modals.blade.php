@@ -10,7 +10,7 @@
             <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-buy')">Cancel</button>
         </div>
         <div id="rp-buy-step-waiting" style="display:none">
-            <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e5e7eb" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
+            <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--spinner-track)" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
             <h2>Check your phone</h2>
             <p class="sub">Enter your M-Pesa PIN to complete the payment. This closes automatically once it's done.</p>
         </div>
@@ -67,7 +67,7 @@
         <div id="rp-receipt-step-message">
             <h2>Paste Payment Message</h2>
             <p class="sub">Paste the full M-Pesa confirmation SMS you received — we'll find the receipt code in it.</p>
-            <textarea id="rp-receipt-message" rows="4" placeholder="e.g. TAx1B2C3D4 Confirmed. You have received Ksh20.00 from JOHN DOE 254712345678 on 14/8/26 at 3:45 PM..." style="width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:13px; outline:none; margin-bottom:14px; resize:vertical; font-family:inherit;"></textarea>
+            <textarea id="rp-receipt-message" rows="4" placeholder="e.g. TAx1B2C3D4 Confirmed. You have received Ksh20.00 from JOHN DOE 254712345678 on 14/8/26 at 3:45 PM..." style="font-size:13px; resize:vertical; font-family:inherit; text-align:left;"></textarea>
             <p class="error-text" id="rp-receipt-error" style="display:none"></p>
             <button type="button" class="btn btn-brand btn-block" id="rp-receipt-submit" onclick="rpPortal.submitReceipt()">Find My Plan</button>
             <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-receipt')">Cancel</button>
@@ -112,7 +112,7 @@
             <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-freemode')">Cancel</button>
         </div>
         <div id="rp-freemode-step-waiting" style="display:none">
-            <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e5e7eb" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
+            <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--spinner-track)" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
             <h2>Connecting…</h2>
         </div>
         <div id="rp-freemode-step-error" style="display:none">
@@ -125,7 +125,7 @@
 {{-- Shown when this device's MAC already matched an active plan; auto-submits the login form. --}}
 <div class="modal-overlay" id="rp-autoreconnect-overlay" style="display:none">
     <div class="modal">
-        <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e5e7eb" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
+        <svg class="icon spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--spinner-track)" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/></svg>
         <h2>Welcome back!</h2>
         <p class="sub">Reconnecting you automatically…</p>
     </div>
