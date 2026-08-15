@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\HotspotUser;
 use App\Models\Plan;
+use App\Models\Router;
 use App\Models\Transaction;
+use App\Services\ExpiredBlockService;
 use App\Services\RadiusSyncService;
 use App\Services\SmsTriggerService;
 use Illuminate\Http\Request;
@@ -82,6 +84,7 @@ class BillingController extends Controller
 
         $password = Str::password(10);
         RadiusSyncService::sync($hotspotUser->phone_number, $password, $plan->speed_limit);
+        ExpiredBlockService::clear(Router::withoutGlobalScope('tenant')->find($transaction->router_id), $hotspotUser->phone_number);
 
         SmsTriggerService::fire(
             $transaction->tenant_id, 'hotspot_purchase_confirmed', $hotspotUser->phone_number,

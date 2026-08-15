@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PppoeUser;
 use App\Models\Plan;
 use App\Models\Router;
+use App\Services\ExpiredBlockService;
 use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use App\Services\SessionDisconnectService;
@@ -236,6 +237,7 @@ class PppoeUserController extends Controller
             RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
         }
         RadiusSyncService::setExpiration($pppoe_user->username, $newExpiry);
+        ExpiredBlockService::clear($pppoe_user->router, $pppoe_user->username);
 
         SmsTriggerService::fire($pppoe_user->tenant_id, 'pppoe_renewed', $pppoe_user->phone_number, [
             'name' => $pppoe_user->name ?: $pppoe_user->username,

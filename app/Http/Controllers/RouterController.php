@@ -517,11 +517,17 @@ class RouterController extends Controller
                 $api->setById('/ip/hotspot/profile/set', $profile['.id'], ['name' => $name]);
                 $renamed++;
             }
+            // Strip "cookie" (RouterOS's own opaque per-device auto-relogin cache, which
+            // can re-authenticate a device with stale attributes and bypasses our own
+            // MAC-based reconnect flow entirely) and ensure http-pap is present.
             $current = $profile['login-by'] ?? '';
-            if (! str_contains($current, 'http-pap')) {
-                $api->setById('/ip/hotspot/profile/set', $profile['.id'], [
-                    'login-by' => $current ? $current.',http-pap' : 'http-pap',
-                ]);
+            $methods = array_filter(explode(',', $current), fn ($m) => $m !== '' && $m !== 'cookie');
+            if (! in_array('http-pap', $methods, true)) {
+                $methods[] = 'http-pap';
+            }
+            $desired = implode(',', $methods);
+            if ($desired !== $current) {
+                $api->setById('/ip/hotspot/profile/set', $profile['.id'], ['login-by' => $desired]);
                 $loginByFixed++;
             }
             // RouterOS reads this back as "5m", never the "00:05:00" form used to set it —
@@ -828,14 +834,18 @@ class RouterController extends Controller
             $api->query('/ip/address/add', ['address' => "{$subnet['gateway']}/24", 'interface' => $interface]);
             $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
             // login-by must include http-pap — RouterOS's default (cookie,http-chap) silently
-            // rejects the plain username+password POST our captive portal submits.
+            // rejects the plain username+password POST our captive portal submits. "cookie" is
+            // deliberately left out: it lets RouterOS silently re-authenticate a returning
+            // device from its own cached browser cookie, bypassing our MAC-based reconnect
+            // flow and re-using stale RADIUS attributes from the original login instead of
+            // re-checking the customer's current plan.
             // radius-interim-update must be set explicitly, or radacct usage stays at 0 until
             // the session ends — breaking FUP enforcement and live usage display.
             $api->query('/ip/hotspot/profile/add', [
                 'name' => $profileName,
                 'hotspot-address' => $subnet['gateway'],
                 'use-radius' => 'yes',
-                'login-by' => 'cookie,http-chap,http-pap',
+                'login-by' => 'http-chap,http-pap',
                 'radius-interim-update' => '00:05:00',
             ]);
             // RouterOS defaults a new hotspot server to disabled=yes unless told otherwise.
