@@ -15,6 +15,13 @@ class ReconcileNetworking extends Command
 
     private const TCP_PROXY_DIR = '/www/server/panel/vhost/nginx/tcp';
 
+    // Tracks whether any $this->error() fired below, so handle() can report a real failure
+    // instead of always returning SUCCESS — otherwise ->onFailureWithOutput() in
+    // routes/console.php never fires for a wg/nginx-level failure, and it can go unnoticed for
+    // as long as the underlying issue lasts (this is exactly how a stuck WireGuard peer once
+    // went undetected: the command kept "succeeding" every minute while silently not applying it).
+    private bool $hadErrors = false;
+
     public function handle(): int
     {
         $peersChanged = $this->reconcileWireguardPeers();
@@ -29,7 +36,14 @@ class ReconcileNetworking extends Command
             $this->info('FreeRADIUS restarted (NAS clients and/or peers changed).');
         }
 
-        return self::SUCCESS;
+        return $this->hadErrors ? self::FAILURE : self::SUCCESS;
+    }
+
+    public function error($string, $verbosity = null)
+    {
+        $this->hadErrors = true;
+
+        parent::error($string, $verbosity);
     }
 
     private function reconcileWireguardPeers(): bool
