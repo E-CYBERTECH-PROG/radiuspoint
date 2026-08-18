@@ -39,7 +39,7 @@ class RouterHealthCheck extends Command
                     $this->scanCriticalLogs($api, $router);
                     // Reuses this connection to push RADIUS profile settings to every router;
                     // the only path that reaches PPPoE-only routers. Idempotent and cheap.
-                    (new RouterController())->enableRadiusOnDefaultProfiles($api);
+                    (new RouterController())->enableRadiusOnDefaultProfiles($api, $router);
                 } catch (Throwable $e) {
                     $reachable = false;
                     $router->update(['status' => 'offline']);
