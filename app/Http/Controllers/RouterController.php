@@ -612,6 +612,29 @@ class RouterController extends Controller
             $renamed++;
         }
 
+        // Retroactive fix for PPPoE servers provisioned before one-session-per-host was added
+        // — only ones pointed at a profile we created (current or an older naming generation),
+        // never an admin's own. Without it, one customer's credentials can hold multiple
+        // simultaneous sessions from different devices.
+        $oneSessionFixed = 0;
+        $pppoeServers = $api->query('/interface/pppoe-server/server/print');
+        foreach ($pppoeServers as $server) {
+            $profileName = $server['default-profile'] ?? '';
+            $isOurs = str_starts_with($profileName, "{$slug}_pppoe_prof_")
+                || str_starts_with($profileName, 'rp_ppp_prof_')
+                || str_starts_with($profileName, 'radiuspoint_ppp_prof_');
+            if (! $isOurs) {
+                continue;
+            }
+            // RouterOS accepts yes/no on write but always reports this field back as
+            // true/false on read — comparing against 'yes' would never match and re-apply
+            // the same (harmless but noisy) fix on every single push.
+            if (($server['one-session-per-host'] ?? '') !== 'true') {
+                $api->setById('/interface/pppoe-server/server/set', $server['.id'], ['one-session-per-host' => 'yes']);
+                $oneSessionFixed++;
+            }
+        }
+
         // Retroactive fix: an older provisioning script pointed /radius at the server's public
         // IP instead of the tunnel-internal address FreeRADIUS binds to, and re-provisioning
         // could leave stale duplicate entries with an outdated secret. Scoped to
@@ -644,6 +667,7 @@ class RouterController extends Controller
             'idle_timeout_fixed' => $idleTimeoutFixed,
             'radius_address_fixed' => $radiusFixed,
             'profiles_renamed' => $renamed,
+            'one_session_per_host_fixed' => $oneSessionFixed,
         ];
     }
 
@@ -781,6 +805,7 @@ class RouterController extends Controller
                 'idle_timeout_fixed' => $result['idle_timeout_fixed'],
                 'radius_address_fixed' => $result['radius_address_fixed'],
                 'profiles_renamed' => $result['profiles_renamed'],
+                'one_session_per_host_fixed' => $result['one_session_per_host_fixed'],
                 'free_mode_profile' => $freeMode['profile'],
                 'free_mode_firewall' => $freeMode['firewall_rules'],
             ]);
@@ -911,6 +936,9 @@ class RouterController extends Controller
             'service-name' => $slug,
             'default-profile' => $profileName,
             'disabled' => 'no',
+            // Without this, one customer's credentials can hold multiple simultaneous
+            // sessions from different devices — lets an account get shared/resold.
+            'one-session-per-host' => 'yes',
         ]);
 
         return ['pool' => $poolName, 'profile' => $profileName, 'cidr' => $subnet['cidr']];

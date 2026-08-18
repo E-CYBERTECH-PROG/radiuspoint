@@ -190,7 +190,7 @@
                         pushing = true; pushResult = null;
                         fetch('{{ route('routers.captive-portal.push', $router) }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
                             .then(r => r.json().then(data => ({ ok: r.ok, data })))
-                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Login page: ' + data.login_html + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies).') : data.message; })
+                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Login page: ' + data.login_html + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).') : data.message; })
                             .catch(() => { pushOk = false; pushResult = 'Network error — could not reach the router.'; })
                             .finally(() => pushing = false);
                     " :disabled="pushing" class="shrink-0 inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs py-2 px-4 rounded-lg disabled:opacity-50 transition-colors">
