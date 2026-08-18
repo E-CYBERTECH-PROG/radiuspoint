@@ -106,7 +106,7 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                         @php
                             $templateOptions = [
                                 'light-lumen' => ['label' => 'Light Lumen', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #eef2ff, #f8fafc 70%);'],
@@ -115,6 +115,7 @@
                                 'package' => ['label' => 'Package', 'swatch' => 'background:linear-gradient(135deg, #dbeafe, #fff);'],
                                 'raw' => ['label' => 'Raw', 'swatch' => 'background:#fff;border:2px solid #111827;'],
                                 'cyberpunk' => ['label' => 'Cyberpunk', 'swatch' => 'background:linear-gradient(135deg, #0a0014, #1a0533);box-shadow:inset 0 0 0 1px rgba(217,70,239,.4);'],
+                                'lipa' => ['label' => 'Lipa na M-Pesa', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #0f2417, #05100a 70%);box-shadow:inset 0 0 0 1px rgba(0,166,81,.5);'],
                             ];
                         @endphp
                         @foreach($templateOptions as $key => $opt)

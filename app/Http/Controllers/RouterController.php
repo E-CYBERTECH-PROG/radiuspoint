@@ -279,7 +279,7 @@ class RouterController extends Controller
     public function updateCaptivePortal(Request $request, Router $router)
     {
         $request->validate([
-            'template' => 'required|in:light-lumen,crystal,grid,package,raw,cyberpunk',
+            'template' => 'required|in:light-lumen,crystal,grid,package,raw,cyberpunk,lipa',
             'logo_url' => 'nullable|url|max:255',
             'primary_color' => 'nullable|string|max:20',
             'columns_per_row' => 'nullable|integer|in:1,2,3,4',
