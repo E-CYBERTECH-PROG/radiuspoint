@@ -15,7 +15,7 @@
             <p class="sub">Enter your M-Pesa PIN to complete the payment. This closes automatically once it's done.</p>
         </div>
         <div id="rp-buy-step-success" style="display:none">
-            <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon confirm" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h2>You're connected!</h2>
             <p class="sub">Save these in case you need to log in manually.</p>
             <div class="creds">
@@ -47,7 +47,7 @@
             <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-reconnect')">Cancel</button>
         </div>
         <div id="rp-reconnect-step-success" style="display:none">
-            <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon confirm" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h2>Plan found!</h2>
             <p class="sub">Save these in case you need to log in manually.</p>
             <div class="creds">
@@ -73,7 +73,7 @@
             <button type="button" class="close-link" onclick="rpPortal.close('rp-modal-receipt')">Cancel</button>
         </div>
         <div id="rp-receipt-step-success" style="display:none">
-            <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon confirm" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h2>Plan found!</h2>
             <p class="sub">Save these in case you need to log in manually.</p>
             <div class="creds">
@@ -105,7 +105,7 @@
 <div class="modal-overlay" id="rp-modal-freemode">
     <div class="modal">
         <div id="rp-freemode-step-confirm">
-            <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M12 7v5l3 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon confirm" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M12 7v5l3 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h2>Free Mode</h2>
             <p class="sub">Free access to WhatsApp &amp; Facebook messaging for 30 minutes. Text and photos work — video calls and streaming won't, since the connection is intentionally slow. When your 30 minutes are up you'll land back here to buy a full-speed plan.</p>
             <button type="button" class="btn btn-brand btn-block" onclick="rpPortal.submitFreeMode()">Start Free Mode</button>

@@ -56,6 +56,13 @@ class Router extends Model {
 
         $lines = [];
 
+        // Fixes the actual root cause of a factory-fresh router's clock being unset — the
+        // check-certificate=no on the bootstrap fetch (RouterController::provision()) is a
+        // workaround for the same problem, kept as defense-in-depth since NTP needs a moment
+        // to sync. Kenya-only system, so the timezone is hardcoded rather than configurable.
+        $lines[] = "/system clock set time-zone-name=Africa/Nairobi time-zone-autodetect=no;";
+        $lines[] = "/system ntp client set enabled=yes primary-ntp=216.239.35.8;";
+
         // :import expects one command per line, unlike the interactive CLI
         if ($this->routeros_version === 'v6') {
             $tunnelInterface = 'l2tp-isp';

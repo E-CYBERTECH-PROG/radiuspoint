@@ -80,10 +80,13 @@
     .footer .item svg { flex-shrink: 0; }
     .footer a { color: inherit; text-decoration: none; }
 
-    .modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.55); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: var(--modal-bg); border: 1px solid var(--card-border); border-radius: 16px; width: 100%; max-width: 380px; padding: 24px; text-align: center; color: var(--text); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility .2s ease; }
+    .modal-overlay.open { opacity: 1; visibility: visible; pointer-events: auto; }
+    .modal { background: var(--modal-bg); border: 1px solid var(--card-border); border-radius: 16px; width: 100%; max-width: 380px; padding: 24px; text-align: center; color: var(--text); transform: scale(.94) translateY(6px); transition: transform .2s ease; }
+    .modal-overlay.open .modal { transform: scale(1) translateY(0); }
     .modal .icon { width: 44px; height: 44px; margin: 0 auto 12px; }
+    .modal .icon.confirm { animation: rp-confirm-pop .4s cubic-bezier(.34,1.56,.64,1) both; }
+    @keyframes rp-confirm-pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal h2 { font-size: 17px; margin: 0 0 6px; color: var(--text); }
     .modal p.sub { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; }
     .modal input[type="tel"], .modal input[type="text"], .modal textarea { width: 100%; background: var(--input-bg); color: var(--text); border: 1px solid var(--input-border); border-radius: 10px; padding: 12px 14px; font-size: 15px; outline: none; text-align: center; margin-bottom: 14px; }
