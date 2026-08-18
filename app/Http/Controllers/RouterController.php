@@ -6,6 +6,7 @@ use App\Models\Router;
 use App\Models\RouterTerminalLog;
 use App\Notifications\RouterDecommissionCode;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -126,6 +127,19 @@ class RouterController extends Controller
             'web_proxy_port' => 20000 + $router->id,
             'winbox_proxy_port' => 21000 + $router->id,
         ]);
+
+        // Applying the WireGuard peer is normally left to the scheduled
+        // router:reconcile-networking run (every minute) — but a fast admin can reach the
+        // Provision page, paste the script, and click "Execute Uplink Handshake" well inside
+        // that window, before the peer exists server-side at all. Nothing on the router is
+        // wrong at that point; the server just hasn't caught up yet, and it reads as "hardware
+        // unreachable" with no indication that waiting would fix it. Applying it synchronously
+        // here removes that race entirely rather than making the admin guess whether to wait.
+        try {
+            Artisan::call('router:reconcile-networking');
+        } catch (Exception $e) {
+            Log::warning("Immediate WireGuard peer reconciliation failed for new router #{$router->id}: " . $e->getMessage());
+        }
 
         return redirect()->route('routers.provision', $router->id);
     }
