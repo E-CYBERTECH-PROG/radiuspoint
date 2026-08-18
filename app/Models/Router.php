@@ -61,7 +61,14 @@ class Router extends Model {
         // workaround for the same problem, kept as defense-in-depth since NTP needs a moment
         // to sync. Kenya-only system, so the timezone is hardcoded rather than configurable.
         $lines[] = "/system clock set time-zone-name=Africa/Nairobi time-zone-autodetect=no;";
-        $lines[] = "/system ntp client set enabled=yes primary-ntp=216.239.35.8;";
+        // v7 moved NTP servers to their own submenu — primary-ntp/secondary-ntp on
+        // `ntp client set` only exists in v6 and errors as a bad parameter on v7.
+        if ($this->routeros_version === 'v6') {
+            $lines[] = "/system ntp client set enabled=yes primary-ntp=216.239.35.8;";
+        } else {
+            $lines[] = "/system ntp client set enabled=yes;";
+            $lines[] = ":if ([:len [/system ntp client servers find address=216.239.35.8]] = 0) do={ /system ntp client servers add address=216.239.35.8 };";
+        }
 
         // :import expects one command per line, unlike the interactive CLI
         if ($this->routeros_version === 'v6') {
