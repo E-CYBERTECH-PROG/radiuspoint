@@ -84,7 +84,12 @@ class Router extends Model {
         $lines[] = ":if ([:len [/ip address find interface={$tunnelInterface}]] > 0) do={ /ip address remove [find interface={$tunnelInterface}] };";
         $lines[] = ":if ([:len [/user find name={$this->api_username}]] > 0) do={ /user remove [find name={$this->api_username}] };";
         // `/radius add` has no "update if exists" form — a stale entry would be tried first.
-        $lines[] = "/radius remove [find service=hotspot,ppp];";
+        // Filtered by address, not service=hotspot,ppp: RouterOS silently re-stores that field
+        // as "ppp,hotspot" the moment it's added, so an exact-match find on the order this
+        // script writes it in never matches anything it just created — confirmed live, this
+        // let 5 identical entries pile up silently across repeated runs before being caught.
+        // address is a single scalar value, immune to that reordering.
+        $lines[] = ":if ([:len [/radius find address={$serverVpnIp}]] > 0) do={ /radius remove [find address={$serverVpnIp}] };";
 
         // --- Set up fresh.
         if ($this->routeros_version === 'v6') {
