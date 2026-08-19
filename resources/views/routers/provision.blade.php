@@ -13,7 +13,7 @@
         </div>
         <div class="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-900/50">
             <div id="statusPulse" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></div>
-            <span id="statusText" class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Awaiting Handshake</span>
+            <span id="statusText" class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Waiting for Router</span>
         </div>
     </div>
 
@@ -33,6 +33,16 @@
                 </p>
                 <div class="bg-gray-900 rounded-lg p-4 overflow-y-auto max-h-80 custom-scrollbar">
                     <pre id="payloadText" class="text-green-400 text-[12px] leading-loose whitespace-pre-wrap font-fira">{{ trim($script) }}</pre>
+                </div>
+
+                <div class="mt-4" x-data="{ open: false }">
+                    <button type="button" @click="open = !open" class="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                        <i class='bx bx-help-circle text-base'></i> Can't find Terminal to paste this?
+                        <i class='bx bx-chevron-down transition-transform' :class="open && 'rotate-180'"></i>
+                    </button>
+                    <div x-show="open" x-cloak class="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-gray-900/60 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+                        A factory-fresh router often boots into Winbox's <strong>Quick Set</strong> screen instead of the full menu, which doesn't show Terminal by default. Look for the mode toggle in the top-right corner of the Winbox login window and switch it from <strong>Quick Set</strong> to <strong>Winbox</strong> &mdash; Terminal will then be in the left-hand menu.
+                    </div>
                 </div>
             </div>
         </div>
@@ -62,13 +72,13 @@
             <div class="flex-1 p-5 flex flex-col justify-end">
                 <div id="liveLogs" class="space-y-2 mb-5 flex flex-col justify-end min-h-[120px] bg-gray-900 rounded-lg p-4 font-fira text-[11px] leading-relaxed">
                     <div class="text-gray-500">&gt; System in standby state...</div>
-                    <div class="text-gray-500">&gt; Awaiting manual trigger to verify hardware connection.</div>
-                    <div class="text-blue-400 animate-pulse">&gt; _</div>
+                    <div class="text-gray-500">&gt; Watching for the script to complete on your router — no action needed here.</div>
+                    <div id="lastCheckLog" class="text-blue-400 animate-pulse">&gt; _</div>
                 </div>
 
-                <button id="initiateBtn" onclick="executeHandshake()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wide py-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-3">
-                    <i class='bx bx-broadcast text-xl'></i>
-                    <span>Execute Uplink Handshake</span>
+                <button id="initiateBtn" onclick="executeHandshake(true)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wide py-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-3">
+                    <i class='bx bx-refresh text-xl'></i>
+                    <span>Check Now</span>
                 </button>
 
                 <a href="{{ route('routers.ports', $router->id) }}" id="proceedBtn" class="hidden w-full bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wide py-4 rounded-lg shadow-sm transition-all items-center justify-center gap-3">
@@ -97,9 +107,19 @@
                 }, 3000);
             }
 
-            async function executeHandshake() {
+            let pollTimer = null;
+            let verified = false;
+
+            function startPolling() {
+                pollTimer = setInterval(() => executeHandshake(false), 4000);
+            }
+
+            async function executeHandshake(manual) {
+                if (verified) return;
+
                 const btn = document.getElementById('initiateBtn');
                 const logsBox = document.getElementById('liveLogs');
+                const lastCheckLog = document.getElementById('lastCheckLog');
                 const progressBar = document.getElementById('progressBar');
                 const progressText = document.getElementById('progressText');
                 const statusText = document.getElementById('statusText');
@@ -107,26 +127,19 @@
                 const radarSweep = document.getElementById('radarSweep');
                 const radarNode = document.getElementById('radarNode');
 
-                // Lock the button & Trigger UI
-                btn.classList.add('pointer-events-none', 'opacity-50');
-                btn.querySelector('span').innerText = "Establishing Connection...";
-                btn.querySelector('i').className = 'bx bx-loader-alt bx-spin text-xl';
+                if (manual) {
+                    btn.classList.add('pointer-events-none', 'opacity-50');
+                    btn.querySelector('span').innerText = "Checking...";
+                    btn.querySelector('i').className = 'bx bx-loader-alt bx-spin text-xl';
 
-                statusText.innerText = "SCANNING NETWORK";
-                statusText.classList.replace('text-amber-600', 'text-blue-600');
-                statusPulse.classList.replace('bg-amber-500', 'bg-blue-500');
+                    statusText.innerText = "SCANNING NETWORK";
+                    statusText.classList.replace('text-amber-600', 'text-blue-600');
+                    statusPulse.classList.replace('bg-amber-500', 'bg-blue-500');
 
-                radarSweep.classList.remove('hidden');
-                radarNode.classList.replace('bg-amber-500', 'bg-blue-500');
-
-                logsBox.innerHTML = "";
-                let waitingLog = document.createElement('div');
-                waitingLog.className = "text-gray-300 animate-fade-in";
-                waitingLog.innerHTML = "&gt; Contacting {{ $router->ip_address }}...";
-                logsBox.appendChild(waitingLog);
-                progressBar.style.width = "50%";
-
-                let finalLog = document.createElement('div');
+                    radarSweep.classList.remove('hidden');
+                    radarNode.classList.replace('bg-amber-500', 'bg-blue-500');
+                    progressBar.style.width = "50%";
+                }
 
                 try {
                     const response = await fetch("{{ route('routers.check-status', $router->id) }}", {
@@ -139,21 +152,28 @@
                     const data = await response.json();
 
                     if (data.status === 'success') {
-                        // SUCCESS STATE
+                        // SUCCESS STATE — reached the same way whether this was the manual
+                        // button or a background poll tick that happened to land first.
+                        verified = true;
+                        if (pollTimer) clearInterval(pollTimer);
+
                         progressBar.style.width = "100%";
                         progressText.innerText = "100%";
                         progressBar.classList.replace('bg-blue-500', 'bg-green-500');
 
                         radarSweep.classList.add('hidden');
                         radarNode.classList.replace('bg-blue-500', 'bg-green-500');
+                        radarNode.classList.replace('bg-amber-500', 'bg-green-500');
 
+                        let finalLog = document.createElement('div');
                         finalLog.innerHTML = "&gt; <span class='text-green-400 font-bold'>[UPLINK VERIFIED] Hardware is online.</span>";
                         logsBox.appendChild(finalLog);
 
                         statusText.innerText = "HARDWARE ONLINE";
-                        statusText.classList.replace('text-blue-600', 'text-green-600');
-                        statusPulse.classList.replace('bg-blue-500', 'bg-green-500');
-                        statusPulse.classList.remove('animate-ping');
+                        statusText.classList.remove('text-blue-600', 'text-amber-600');
+                        statusText.classList.add('text-green-600');
+                        statusPulse.classList.remove('bg-blue-500', 'bg-amber-500', 'animate-ping');
+                        statusPulse.classList.add('bg-green-500');
 
                         btn.classList.add('hidden');
                         document.getElementById('proceedBtn').classList.replace('hidden', 'flex');
@@ -162,24 +182,32 @@
                         throw new Error(data.message);
                     }
                 } catch (error) {
-                    // FAILED STATE
-                    progressBar.classList.replace('bg-blue-500', 'bg-red-500');
+                    if (manual) {
+                        // FAILED STATE — only shown for a manual check. A background poll tick
+                        // that hasn't succeeded yet just means the router isn't there yet, not
+                        // that anything has actually failed, so it stays quiet.
+                        progressBar.classList.replace('bg-blue-500', 'bg-red-500');
+                        radarSweep.classList.add('hidden');
+                        radarNode.classList.replace('bg-blue-500', 'bg-red-500');
 
-                    radarSweep.classList.add('hidden');
-                    radarNode.classList.replace('bg-blue-500', 'bg-red-500');
+                        let finalLog = document.createElement('div');
+                        finalLog.innerHTML = "&gt; <span class='text-red-400 font-bold'>[NOT YET] " + (error.message || "Hardware not reachable yet.") + "</span>";
+                        logsBox.appendChild(finalLog);
 
-                    finalLog.innerHTML = "&gt; <span class='text-red-400 font-bold'>[FAILED] " + (error.message || "Connection timed out. Ensure script is pasted correctly.") + "</span>";
-                    logsBox.appendChild(finalLog);
+                        statusText.innerText = "WAITING FOR ROUTER";
+                        statusText.classList.replace('text-blue-600', 'text-amber-600');
+                        statusPulse.classList.replace('bg-blue-500', 'bg-amber-500');
 
-                    statusText.innerText = "UPLINK FAILED";
-                    statusText.classList.replace('text-blue-600', 'text-red-600');
-                    statusPulse.classList.replace('bg-blue-500', 'bg-red-500');
-
-                    btn.classList.remove('pointer-events-none', 'opacity-50');
-                    btn.querySelector('span').innerText = "Retry Handshake";
-                    btn.querySelector('i').className = 'bx bx-refresh text-xl';
+                        btn.classList.remove('pointer-events-none', 'opacity-50');
+                        btn.querySelector('span').innerText = "Check Now";
+                        btn.querySelector('i').className = 'bx bx-refresh text-xl';
+                    } else {
+                        lastCheckLog.innerHTML = "&gt; Still waiting... last checked " + new Date().toLocaleTimeString();
+                    }
                 }
             }
+
+            startPolling();
         </script>
 
         <style>

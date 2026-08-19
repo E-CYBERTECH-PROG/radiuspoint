@@ -70,7 +70,6 @@ class RouterController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'routeros_version' => 'required|in:v6,v7',
-            'board_model' => 'required|in:' . implode(',', array_keys(config('mikrotik_models'))),
         ]);
 
         // VPN subnet (10.0.0.0/24) is shared across all tenants — scan every router
@@ -104,7 +103,7 @@ class RouterController extends Controller
             'status' => 'pending',
             'public_token' => Str::random(24),
             'routeros_version' => $request->routeros_version,
-            'board_model' => $request->board_model,
+            'board_model' => 'other',
             'secret_key' => $secretKey,
             'wg_public_key' => $wireguard['public'],
             'wg_private_key' => $wireguard['private'],
@@ -184,11 +183,24 @@ class RouterController extends Controller
             if ($api->connect($router->ip_address, $router->api_username, $router->api_password, timeout: 8)) {
                 $update = ['status' => 'provisioning', 'last_seen' => now()];
 
-                // Auto-detect the board model now that we can reach the hardware, if not set at add-time.
+                // First successful reach of this hardware — auto-fill what was left as a
+                // placeholder at add-time, now that the router itself can answer for it.
                 if (! $router->board_model || $router->board_model === 'other') {
                     $resource = $api->query('/system/resource/print');
                     if ($detected = $this->detectBoardModel($resource[0]['board-name'] ?? null)) {
                         $update['board_model'] = $detected;
+                    }
+
+                    // "MikroTik" is RouterOS's classic factory default. Some newer builds
+                    // instead default the identity to the board's own internal board-name
+                    // (confirmed live: an untouched router reported identity "L009UiGS",
+                    // identical to its board-name) — equally not a real identity, so that's
+                    // excluded too rather than overwriting the admin's placeholder with it.
+                    $identity = $api->query('/system/identity/print');
+                    $realName = $identity[0]['name'] ?? null;
+                    $boardName = $resource[0]['board-name'] ?? null;
+                    if ($realName && $realName !== 'MikroTik' && strcasecmp($realName, (string) $boardName) !== 0) {
+                        $update['name'] = $realName;
                     }
                 }
 

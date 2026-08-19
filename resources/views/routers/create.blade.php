@@ -37,12 +37,12 @@
                     </ul>
                 </div>
 
-                <div class="p-8 lg:w-2/3 flex flex-col justify-center" x-data="{ selectedModel: '{{ old('board_model', array_key_first(config('mikrotik_models'))) }}' }">
+                <div class="p-8 lg:w-2/3 flex flex-col justify-center">
                     <form action="{{ route('routers.store') }}" method="POST" class="space-y-6">
                         @csrf
 
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Router Identity / Location</label>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Working Label</label>
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <i class='bx bx-map text-gray-400 text-lg'></i>
@@ -50,25 +50,7 @@
                                 <input type="text" name="name" required placeholder="e.g., Kileleshwa Base Station"
                                        class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl pl-11 pr-4 py-4 text-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm outline-none">
                             </div>
-                            <p class="mt-3 text-xs text-gray-500">Give this router a recognizable name. All other configurations will be handled automatically.</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Router Model</label>
-                            <select name="board_model" x-model="selectedModel" required class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm outline-none cursor-pointer">
-                                @foreach(config('mikrotik_models') as $key => $model)
-                                    <option value="{{ $key }}">{{ $model['label'] }}</option>
-                                @endforeach
-                            </select>
-                            <p class="mt-3 text-xs text-gray-500">Drives the port diagram shown on this router's detail page.</p>
-
-                            <div class="mt-4 bg-gray-50 dark:bg-gray-900/60 rounded-xl p-4 flex justify-center">
-                                @foreach(config('mikrotik_models') as $key => $model)
-                                    <div x-show="selectedModel === '{{ $key }}'" x-cloak>
-                                        <x-router-board :port-count="$model['ports']" :sfp-count="$model['sfp'] ?? 0" :image="$model['image'] ?? null" status="pending" />
-                                    </div>
-                                @endforeach
-                            </div>
+                            <p class="mt-3 text-xs text-gray-500">Just something to spot this router by in your list until it connects. Once it's online, RadiusPoint reads its real model and identity straight off the hardware — no need to enter either by hand.</p>
                         </div>
 
                         <div>
