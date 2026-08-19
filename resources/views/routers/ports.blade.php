@@ -32,7 +32,10 @@
                         {{-- Tracks every shown interface so savePorts() can explicitly set unchecked ones to "none". --}}
                         <input type="hidden" name="all_interfaces[]" value="{{ $interface['name'] }}">
 
-                        <div class="grid grid-cols-12 gap-4 items-center px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors rounded-lg group">
+                        @php
+                            $existingRole = $router->port_configuration[$interface['name']]['role'] ?? 'none';
+                        @endphp
+                        <div x-data="{ hs: {{ in_array($existingRole, ['hotspot', 'both']) ? 'true' : 'false' }}, ppp: {{ in_array($existingRole, ['pppoe', 'both']) ? 'true' : 'false' }} }" class="grid grid-cols-12 gap-4 items-center px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors rounded-lg group">
 
                             <div class="col-span-1 flex justify-center">
                                 @if(isset($interface['running']) && $interface['running'] == 'true')
@@ -46,6 +49,10 @@
                                 <div class="flex items-center gap-3">
                                     <i class='bx {{ $interface['type'] == 'wlan' ? 'bx-wifi' : 'bx-plug' }} text-xl text-blue-500'></i>
                                     <span class="text-gray-900 dark:text-white font-bold text-sm">{{ $interface['name'] }}</span>
+                                    {{-- A port with neither box checked is left exactly as-is — not disabled, not
+                                         reassigned, free for its normal DHCP/manual use. This just makes that
+                                         explicit rather than leaving it to look unfinished. --}}
+                                    <span x-show="!hs && !ppp" x-cloak class="text-[9px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-wide font-bold">Dynamic</span>
                                 </div>
                                 @if(isset($interface['mac-address']))
                                     <span class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide ml-8 pl-0.5">MAC: {{ $interface['mac-address'] }}</span>
@@ -54,14 +61,14 @@
 
                             <div class="col-span-3 flex justify-center">
                                 <label class="inline-flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="hotspot_ports[]" value="{{ $interface['name'] }}" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                    <input type="checkbox" name="hotspot_ports[]" value="{{ $interface['name'] }}" x-model="hs" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
                                     <span class="text-xs text-gray-600 dark:text-gray-400 sm:hidden">Hotspot</span>
                                 </label>
                             </div>
 
                             <div class="col-span-3 flex justify-center">
                                 <label class="inline-flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="pppoe_ports[]" value="{{ $interface['name'] }}" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                    <input type="checkbox" name="pppoe_ports[]" value="{{ $interface['name'] }}" x-model="ppp" class="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
                                     <span class="text-xs text-gray-600 dark:text-gray-400 sm:hidden">PPPoE</span>
                                 </label>
                             </div>
