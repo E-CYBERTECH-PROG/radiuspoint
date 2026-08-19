@@ -3,8 +3,8 @@
         <a href="{{ route('plans.index') }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2 mb-2">
             <i class="bx bx-left-arrow-alt text-lg"></i> Back to Packages &amp; Plans
         </a>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Configure Bandwidth Profile</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Define internet packages. Profiles will automatically sync to all active hardware.</p>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Add New Plan</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Syncs automatically to every active router.</p>
     </div>
 
     <form action="{{ route('plans.store') }}" method="POST" class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 space-y-8 max-w-4xl">
@@ -48,13 +48,13 @@
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Bandwidth Cap (RX/TX)</label>
                 <input type="text" name="speed_limit" required pattern="\d+[kKmM]/\d+[kKmM]" title="Number + K or M, a slash, then number + K or M — e.g. 5M/5M. No other separator is valid." placeholder="5M/5M" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
-                <p class="text-xs text-gray-400 mt-2">Format: Upload/Download (e.g., 5M/5M or 10M/20M) — must use a slash, not a period or dash, or the router silently ignores it and the customer gets no cap at all.</p>
+                <p class="text-xs text-gray-400 mt-2">Format: Upload/Download, e.g. 5M/5M — must be a slash, or the router silently ignores it.</p>
             </div>
 
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Portal Caption <span class="text-gray-400 normal-case">(optional)</span></label>
                 <input type="text" name="caption" maxlength="255" placeholder="e.g. Best for streaming Netflix" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
-                <p class="text-xs text-gray-400 mt-2">Shown on the captive portal instead of the auto-generated "Good for browsing…" line. Leave blank to keep the automatic one.</p>
+                <p class="text-xs text-gray-400 mt-2">Replaces the auto-generated portal description. Leave blank to keep it.</p>
             </div>
 
             <div>

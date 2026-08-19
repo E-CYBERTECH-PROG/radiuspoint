@@ -4,7 +4,7 @@
             <i class="bx bx-left-arrow-alt text-lg"></i> Back to OLT Devices
         </a>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Add OLT</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Connects over SSH — a raw remote terminal, not a structured API, since neither vendor exposes one.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Connects over SSH.</p>
     </div>
 
     <form action="{{ route('olts.store') }}" method="POST" class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 space-y-8 max-w-2xl">

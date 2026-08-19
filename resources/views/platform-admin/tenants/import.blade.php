@@ -4,7 +4,7 @@
             <i class="bx bx-left-arrow-alt text-lg"></i> Back to Tenants
         </a>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Import Tenants</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Bulk-create ISP tenant accounts from a CSV file. Each new owner receives a temporary password by email.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">From a CSV file — each new owner gets a temporary password by email.</p>
     </div>
 
     <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 max-w-2xl space-y-6">

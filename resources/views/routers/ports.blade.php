@@ -2,12 +2,12 @@
     <div class="mb-8">
         <div class="flex items-center gap-3 mb-2">
             <span class="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 text-[10px] uppercase tracking-wide rounded font-bold">
-                Uplink Secured
+                Connected
             </span>
-            <span class="text-[10px] text-gray-400 tracking-wide uppercase">Target: {{ $router->ip_address }}</span>
+            <span class="text-[10px] text-gray-400 tracking-wide uppercase">{{ $router->ip_address }}</span>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Network Topology Mapping</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Live hardware interfaces detected. Assign service protocols to physical ports.</p>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Map Ports</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Assign a service to each port on the hardware.</p>
     </div>
 
     <form action="{{ route('routers.save-ports', $router->id) }}" method="POST" class="space-y-6 max-w-5xl">
@@ -83,7 +83,7 @@
         <div class="flex items-center justify-between p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/40 rounded-xl">
             <div>
                 <p class="text-[10px] text-blue-700 dark:text-blue-400 uppercase tracking-wide font-bold mb-1">Before you continue</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">This creates a real Hotspot and/or PPPoE server on each interface you assign — its own address pool and a RADIUS-authenticated profile — then finalizes the hardware deployment.</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">This configures the live hardware and finalizes the deployment.</p>
             </div>
 
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 shrink-0">

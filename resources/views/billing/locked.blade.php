@@ -11,7 +11,7 @@
         </div>
 
         <div class="mb-4 text-sm text-gray-600">
-            {{ __("Your account's grace period has ended with an unpaid commission invoice. Access to the dashboard is paused until it's settled — your customers' hotspot/PPPoE service is unaffected.") }}
+            {{ __("Your grace period ended with an unpaid commission invoice. Dashboard access is paused until it's settled — your customers' service keeps running.") }}
         </div>
 
         <template x-if="paid">

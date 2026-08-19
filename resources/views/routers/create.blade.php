@@ -8,7 +8,7 @@
                         <i class="bx bx-left-arrow-alt text-lg"></i> Back to Hardware &amp; Routers
                     </a>
                     <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Deploy Hardware</h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">Use Zero-Touch Provisioning (ZTP) to automatically configure and connect a new MikroTik router.</p>
+                    <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">Connect a new MikroTik router automatically.</p>
                 </div>
             </div>
 
@@ -24,15 +24,15 @@
                     <ul class="space-y-5 text-sm text-gray-600 dark:text-gray-400">
                         <li class="flex items-start gap-3">
                             <i class='bx bxs-magic-wand text-indigo-500 mt-0.5 text-lg'></i>
-                            <span><strong>No Manual IP Needed:</strong> The system will automatically allocate the next available VPN IP for this router.</span>
+                            <span><strong>IP:</strong> Allocated automatically.</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <i class='bx bx-shield-quarter text-green-500 mt-0.5 text-lg'></i>
-                            <span><strong>Secure Credentials:</strong> A unique, highly secure API Username and Password will be generated instantly.</span>
+                            <span><strong>Credentials:</strong> Generated automatically.</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <i class='bx bx-terminal text-gray-700 dark:text-gray-300 mt-0.5 text-lg'></i>
-                            <span><strong>One-Click Setup:</strong> In the next step, you will receive a single script to paste into your MikroTik's terminal to complete the connection.</span>
+                            <span><strong>Setup:</strong> One script to paste into the terminal.</span>
                         </li>
                     </ul>
                 </div>
@@ -50,7 +50,7 @@
                                 <input type="text" name="name" required placeholder="e.g., Kileleshwa Base Station"
                                        class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl pl-11 pr-4 py-4 text-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm outline-none">
                             </div>
-                            <p class="mt-3 text-xs text-gray-500">Just something to spot this router by in your list until it connects. Once it's online, RadiusPoint reads its real model and identity straight off the hardware — no need to enter either by hand.</p>
+                            <p class="mt-3 text-xs text-gray-500">A temporary name — replaced automatically once the router connects.</p>
                         </div>
 
                         <div>

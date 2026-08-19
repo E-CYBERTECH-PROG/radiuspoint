@@ -134,7 +134,7 @@
         </div>
 
         <div x-show="tab === 'settings'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 max-w-2xl">
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Gateway configuration for when a real SMS provider is connected. Messages are currently log-only and are not sent to any provider.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Messages are currently log-only — no provider is connected yet.</p>
             <form action="{{ route('sms-settings.update') }}" method="POST" class="space-y-5">
                 @csrf @method('PUT')
                 <div>
@@ -168,7 +168,7 @@
         </div>
 
         <div x-show="tab === 'automation'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Fire an SMS automatically on a customer lifecycle event, using one of your templates below. Placeholders available: <code class="font-fira text-xs">{name} {plan} {expires_at} {code} {password}</code>. Leave a trigger off to change nothing.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Send a template automatically on a customer event. Placeholders: <code class="font-fira text-xs">{name} {plan} {expires_at} {code} {password}</code></p>
             <form action="{{ route('sms-triggers.update') }}" method="POST" class="space-y-4">
                 @csrf @method('PUT')
                 @php

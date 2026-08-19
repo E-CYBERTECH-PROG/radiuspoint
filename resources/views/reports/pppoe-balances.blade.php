@@ -2,7 +2,7 @@
     <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">PPPoE Account Status &amp; Expiry</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Current package and expiry for every PPPoE account. RadiusPoint doesn't track a prepaid wallet balance, so this reflects account status rather than a monetary balance.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">No prepaid wallet balance is tracked — this is account status, not a monetary figure.</p>
         </div>
     </div>
 

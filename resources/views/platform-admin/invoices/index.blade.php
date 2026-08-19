@@ -1,7 +1,7 @@
 <x-sidebar-layout title="Commission Invoices">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Commission Invoices</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">3% of each tenant's monthly hotspot/PPPoE revenue, billed on the 1st with a 2-day grace period.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">3% commission, billed monthly on the 1st with a 2-day grace period.</p>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

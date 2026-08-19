@@ -1,7 +1,7 @@
 <x-sidebar-layout title="Company Settings">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Company Settings</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Shown to customers on every captive portal — how they can reach you and where you're located.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Shown to customers on every captive portal.</p>
     </div>
 
     @if(session('success'))

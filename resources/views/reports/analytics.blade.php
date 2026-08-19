@@ -3,7 +3,7 @@
 
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Revenue and usage broken down by router, customer, and package — computed live, nothing fabricated.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Revenue and usage broken down by router, customer, and package.</p>
     </div>
 
     <div class="mb-6">
@@ -31,7 +31,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
             <h3 class="text-md font-bold text-gray-900 dark:text-white mb-1">Hotspot Revenue by Router</h3>
-            <p class="text-xs text-gray-400 mb-4">Successful M-Pesa hotspot sales only — PPPoE customers aren't sold self-service, so they carry no router-linked transaction yet.</p>
+            <p class="text-xs text-gray-400 mb-4">Successful M-Pesa hotspot sales only — PPPoE isn't sold self-service.</p>
             @if($revenueByRouter->isEmpty())
                 <p class="text-center text-gray-400 text-xs tracking-widest uppercase py-12">No hotspot sales yet.</p>
             @else
@@ -41,7 +41,7 @@
 
         <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
             <h3 class="text-md font-bold text-gray-900 dark:text-white mb-1">Accumulated Data Usage by Router</h3>
-            <p class="text-xs text-gray-400 mb-4">Total data carried per router across all recorded sessions (GB), plus how many distinct customers have ever connected through it.</p>
+            <p class="text-xs text-gray-400 mb-4">Total data (GB) and distinct customers per router, all-time.</p>
             @if($usageByRouter->isEmpty())
                 <p class="text-center text-gray-400 text-xs tracking-widest uppercase py-12">No accounting data yet.</p>
             @else

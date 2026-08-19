@@ -1,7 +1,7 @@
 <x-sidebar-layout title="Expired Users">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Expired Users</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Every Hotspot and PPPoE account whose expiry has passed, across both services in one list.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Hotspot and PPPoE accounts past their expiry.</p>
     </div>
 
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">

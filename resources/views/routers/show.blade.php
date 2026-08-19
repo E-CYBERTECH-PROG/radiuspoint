@@ -185,7 +185,7 @@
                 <div class="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <p class="text-sm font-bold text-gray-900 dark:text-white">Sync Portal to Router</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pushes the walled-garden rule and hotspot login redirect to this router's hardware. Run this once per router (or after a factory reset) so customers see this portal instead of the router's default login box.</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pushes this portal to the router's hardware — run once, or again after a factory reset.</p>
                     </div>
                     <button type="button" @click="
                         pushing = true; pushResult = null;

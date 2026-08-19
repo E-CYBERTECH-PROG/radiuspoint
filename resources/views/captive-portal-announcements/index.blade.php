@@ -1,7 +1,7 @@
 <x-sidebar-layout title="Portal Announcements">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Portal Announcements</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Short banners shown at the top of the WiFi login page — maintenance notices, promos, outage updates. Post to one router or all of them, with an optional auto-expiry.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Banners at the top of the WiFi login page — one router or all of them.</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

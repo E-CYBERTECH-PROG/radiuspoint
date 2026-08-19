@@ -6,9 +6,9 @@
 
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Zero-Touch Uplink Protocol</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Connect Router</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Target Hardware: <span class="font-bold text-gray-700 dark:text-gray-300">{{ $router->name }}</span> &middot; IP: <span class="font-bold text-gray-700 dark:text-gray-300">{{ $router->ip_address }}</span>
+                <span class="font-bold text-gray-700 dark:text-gray-300">{{ $router->name }}</span> &middot; <span class="font-bold text-gray-700 dark:text-gray-300">{{ $router->ip_address }}</span>
             </p>
         </div>
         <div class="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-900/50">
@@ -61,7 +61,7 @@
 
             <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
                 <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wide mb-2">
-                    <span>Uplink Progress</span>
+                    <span>Progress</span>
                     <span id="progressText">0%</span>
                 </div>
                 <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1.5">

@@ -1,7 +1,7 @@
 <x-sidebar-layout title="Receipts">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Receipts</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Look up a successful payment by its M-Pesa receipt code, or browse by date, and print a copy.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Look up a payment by receipt code or date, and print it.</p>
     </div>
 
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
