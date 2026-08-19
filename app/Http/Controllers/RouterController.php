@@ -893,18 +893,6 @@ class RouterController extends Controller
 
             $api->query('/ip/address/add', ['address' => "{$subnet['gateway']}/24", 'interface' => $interface]);
             $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
-            // A DHCP server (added below) only assigns addresses from this pool — it doesn't by
-            // itself supply a gateway/DNS for the subnet those addresses are in. Without a
-            // matching /ip/dhcp-server/network entry, RouterOS has nothing to offer for those
-            // fields, and a client leases an address it can't actually route anywhere with —
-            // it never gets far enough to hit the hotspot's redirect at all, let alone the
-            // portal itself. RouterOS's own factory-default network (192.168.88.0/24) is a
-            // separate entry and is left alone.
-            $api->query('/ip/dhcp-server/network/add', [
-                'address' => $subnet['cidr'],
-                'gateway' => $subnet['gateway'],
-                'dns-server' => $subnet['gateway'],
-            ]);
             // login-by must include http-pap — RouterOS's default (cookie,http-chap) silently
             // rejects the plain username+password POST our captive portal submits. "cookie" is
             // deliberately left out: it lets RouterOS silently re-authenticate a returning
@@ -949,6 +937,27 @@ class RouterController extends Controller
                 'lease-time' => '1h',
                 'disabled' => 'no',
             ]);
+        }
+
+        // Runs every time too, not just on first creation — a router whose hotspot server
+        // already existed before this fix was added would otherwise never get this back-filled
+        // just by an admin re-saving the port mapping. A DHCP server only assigns addresses
+        // from the pool; it doesn't itself supply a gateway/DNS for the subnet those addresses
+        // are in. Without a matching /ip/dhcp-server/network entry, a client leases an address
+        // it can't route anywhere with — it never gets far enough to hit the hotspot's redirect
+        // at all, let alone the portal. Derived from the pool's own range rather than requiring
+        // a fresh allocateSubnet() call, so this works whether or not the server was just built.
+        $poolRange = $api->queryWhere('/ip/pool/print', 'name', $poolName)[0]['ranges'] ?? null;
+        if ($poolRange && preg_match('/^(\d+\.\d+\.\d+)\.\d+-/', $poolRange, $m)) {
+            $networkGateway = "{$m[1]}.1";
+            $networkCidr = "{$m[1]}.0/24";
+            if (! $api->findId('/ip/dhcp-server/network/print', 'address', $networkCidr)) {
+                $api->query('/ip/dhcp-server/network/add', [
+                    'address' => $networkCidr,
+                    'gateway' => $networkGateway,
+                    'dns-server' => $networkGateway,
+                ]);
+            }
         }
 
         return ['server' => $serverName, 'pool' => $poolName, 'profile' => $profileName];
