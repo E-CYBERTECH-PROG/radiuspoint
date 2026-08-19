@@ -38,7 +38,12 @@
     ];
 @endphp
 <x-sidebar-layout title="Live Monitor — {{ $router->name }}">
-    <div x-data="routerMonitor()" x-init="init()">
+    {{-- No x-init here: routerMonitor() returns an object with its own init() method, which
+         Alpine calls automatically once the component mounts. Adding x-init="init()" on top of
+         that ran it a second time — confirmed live, this raced two independent Chart.js
+         instances onto the same canvas and could permanently wedge the Traffic Monitor tab's
+         error state even once the underlying poll had recovered. --}}
+    <div x-data="routerMonitor()">
         <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
                 <a href="{{ route('routers.show', $router) }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2">
@@ -142,10 +147,14 @@
                     </div>
                 </div>
             </div>
-            <template x-if="trafficError">
-                <p class="text-center text-red-400 text-xs tracking-widest uppercase py-8" x-text="trafficError"></p>
-            </template>
-            <div x-show="!trafficError" style="height: 320px">
+            {{-- The canvas stays mounted and visible at a stable size at all times, error or
+                 not — swapping it out via x-show on every failed poll (the previous approach)
+                 collapsed it to 0×0, and Chart.js's own layout code doesn't tolerate laying out
+                 against a 0-size canvas: confirmed live, that threw inside Chart.js's internal
+                 update path, which landed back in this same catch block and re-hid the canvas —
+                 a self-sustaining crash loop that never let the graph recover on its own. --}}
+            <p x-show="trafficError" x-cloak class="text-center text-red-400 text-xs tracking-widest uppercase py-2" x-text="trafficError"></p>
+            <div style="height: 320px">
                 <canvas id="trafficChart"></canvas>
             </div>
         </div>
@@ -163,10 +172,9 @@
                     <p class="font-bold text-green-600 dark:text-green-400 text-lg font-fira" x-text="memNow !== null ? Math.round(memNow / 1048576) + ' MB' : '—'"></p>
                 </div>
             </div>
-            <template x-if="resourceError">
-                <p class="text-center text-red-400 text-xs tracking-widest uppercase py-8" x-text="resourceError"></p>
-            </template>
-            <div x-show="!resourceError" style="height: 320px">
+            {{-- Same fixed-visibility fix as the Traffic Monitor canvas above — see its comment. --}}
+            <p x-show="resourceError" x-cloak class="text-center text-red-400 text-xs tracking-widest uppercase py-2" x-text="resourceError"></p>
+            <div style="height: 320px">
                 <canvas id="resourceChart"></canvas>
             </div>
         </div>
@@ -361,9 +369,25 @@
     </div>
 
     <x-slot name="scripts">
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        {{-- Pinned, not "latest" — an unpinned Chart.js URL silently picks up new releases in
+             production with no code change on our side to review. --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
         <script>
             function routerMonitor() {
+                // Kept as plain closure variables, not properties on the returned object —
+                // Alpine deep-wraps every property of x-data in a reactive Proxy (it uses Vue's
+                // @vue/reactivity under the hood), and Chart.js instances carry large, partly
+                // circular internal state (scales, layout boxes, canvas context) that doesn't
+                // tolerate being proxied. Confirmed live: with the chart stored as `this.
+                // trafficChart`, Chart.js's own layout code threw "Maximum call stack size
+                // exceeded" a couple of update() calls in, then failed identically forever
+                // after — a stack overflow from the reactivity system recursing through that
+                // internal graph, not a bug in the chart config itself. Nothing in this file's
+                // HTML reads trafficChart/resourceChart directly, so nothing needs Alpine to
+                // track them.
+                let trafficChart = null;
+                let resourceChart = null;
+
                 return {
                     activeTab: 'traffic',
                     loaded: false,
@@ -389,14 +413,12 @@
                     // tab shows a live-updating chart rather than a static table.
                     trafficInterfaces: [],
                     trafficSelected: null,
-                    trafficChart: null,
                     trafficPolling: null,
                     trafficError: null,
                     rxNow: 0,
                     txNow: 0,
 
                     // CPU/Memory History state — same rolling-chart shape as Traffic Monitor.
-                    resourceChart: null,
                     resourcePolling: null,
                     resourceError: null,
                     cpuNow: null,
@@ -528,7 +550,7 @@
                     },
 
                     async initTraffic() {
-                        if (!this.trafficChart) {
+                        if (!trafficChart) {
                             await this.loadTrafficInterfaces();
                             // Alpine's x-show toggle (from the activeTab assignment in
                             // selectTab()) applies via its own reactivity queue, not
@@ -573,7 +595,7 @@
                         // patching one specific re-entry path.
                         const existing = Chart.getChart(canvas);
                         if (existing) existing.destroy();
-                        this.trafficChart = new Chart(canvas.getContext('2d'), {
+                        trafficChart = new Chart(canvas.getContext('2d'), {
                             type: 'line',
                             data: {
                                 labels: [],
@@ -611,7 +633,7 @@
                     },
 
                     async pollTraffic() {
-                        if (!this.trafficSelected || !this.trafficChart) return;
+                        if (!this.trafficSelected || !trafficChart) return;
                         try {
                             const res = await fetch(`${this.endpoints.traffic}?interface=${encodeURIComponent(this.trafficSelected)}`, { headers: { 'Accept': 'application/json' } });
                             const json = await res.json();
@@ -624,7 +646,7 @@
                             this.rxNow = parseInt(row['rx-bits-per-second'] || 0);
                             this.txNow = parseInt(row['tx-bits-per-second'] || 0);
 
-                            const chart = this.trafficChart;
+                            const chart = trafficChart;
                             chart.data.labels.push(new Date().toLocaleTimeString());
                             chart.data.datasets[0].data.push(this.rxNow);
                             chart.data.datasets[1].data.push(this.txNow);
@@ -642,7 +664,7 @@
                     },
 
                     async initResource() {
-                        if (!this.resourceChart) {
+                        if (!resourceChart) {
                             // Same Alpine x-show/Chart.js timing issue as initTraffic() — this
                             // tab is only ever entered via a later click (never the default
                             // tab), so it's the one most likely to hit a still-hidden canvas.
@@ -660,7 +682,7 @@
                         if (!canvas) return;
                         const existing = Chart.getChart(canvas);
                         if (existing) existing.destroy();
-                        this.resourceChart = new Chart(canvas.getContext('2d'), {
+                        resourceChart = new Chart(canvas.getContext('2d'), {
                             type: 'line',
                             data: {
                                 labels: [],
@@ -698,7 +720,7 @@
                     },
 
                     async pollResource() {
-                        if (!this.resourceChart) return;
+                        if (!resourceChart) return;
                         try {
                             const res = await fetch(this.endpoints.resource, { headers: { 'Accept': 'application/json' } });
                             const json = await res.json();
@@ -711,7 +733,7 @@
                             this.cpuNow = parseInt(row['cpu-load'] || 0);
                             this.memNow = parseInt(row['free-memory'] || 0);
 
-                            const chart = this.resourceChart;
+                            const chart = resourceChart;
                             chart.data.labels.push(new Date().toLocaleTimeString());
                             chart.data.datasets[0].data.push(this.cpuNow);
                             chart.data.datasets[1].data.push(Math.round(this.memNow / 1048576));
@@ -756,11 +778,11 @@
                     changeTrafficInterface() {
                         // Clear history on interface switch so the graph doesn't show a
                         // discontinuous jump between two unrelated interfaces' traffic levels.
-                        if (this.trafficChart) {
-                            this.trafficChart.data.labels = [];
-                            this.trafficChart.data.datasets[0].data = [];
-                            this.trafficChart.data.datasets[1].data = [];
-                            this.trafficChart.update('none');
+                        if (trafficChart) {
+                            trafficChart.data.labels = [];
+                            trafficChart.data.datasets[0].data = [];
+                            trafficChart.data.datasets[1].data = [];
+                            trafficChart.update('none');
                         }
                         this.trafficError = null;
                     },
