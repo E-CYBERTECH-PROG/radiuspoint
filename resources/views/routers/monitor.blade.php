@@ -131,8 +131,12 @@
                 <div class="flex items-center gap-3">
                     <label class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Interface</label>
                     <select x-model="trafficSelected" @change="changeTrafficInterface()" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold py-2 px-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        {{-- Options need their own bg/text classes, not just the <select>'s —
+                             browsers render a native select's option list using the OS theme by
+                             default and don't reliably inherit the parent's dark: classes,
+                             leaving light text on a light popup (or the reverse) in dark mode. --}}
                         <template x-for="iface in trafficInterfaces" :key="iface.name">
-                            <option :value="iface.name" x-text="iface.name + (iface.running === 'true' ? ' (up)' : ' (down)')"></option>
+                            <option :value="iface.name" x-text="iface.name + (iface.running === 'true' ? ' (up)' : ' (down)')" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"></option>
                         </template>
                     </select>
                 </div>
@@ -187,7 +191,7 @@
                     <label class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Interface</label>
                     <select x-model="torchSelected" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-bold py-2 px-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <template x-for="iface in trafficInterfaces" :key="iface.name">
-                            <option :value="iface.name" x-text="iface.name"></option>
+                            <option :value="iface.name" x-text="iface.name" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"></option>
                         </template>
                     </select>
                 </div>
