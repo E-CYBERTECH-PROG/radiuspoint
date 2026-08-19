@@ -25,7 +25,6 @@ class RouterController extends Controller
      */
     public function index(Request $request)
     {
-        // The BelongsToTenant trait ensures they only see their own hardware
         $search = $this->searchTerm($request);
 
         $routers = Router::where('tenant_id', Auth::user()->tenant_id)
@@ -970,9 +969,6 @@ class RouterController extends Controller
         return ['pool' => $poolName, 'profile' => $profileName, 'cidr' => $subnet['cidr']];
     }
 
-    /**
-     * Update Router Details (e.g., Renaming).
-     */
     public function update(Request $request, Router $router)
     {
         $request->validate([

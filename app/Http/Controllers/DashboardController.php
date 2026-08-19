@@ -19,7 +19,6 @@ class DashboardController extends Controller
     {
         $now = Carbon::now();
 
-        // 1. Core Financial & Network Metrics
         $stats['income_today'] = Transaction::whereDate('created_at', $now->copy()->startOfDay())
                                             ->where('status', 'success')->sum('amount');
 
@@ -43,10 +42,8 @@ class DashboardController extends Controller
 
         $stats['mpesa_status'] = $this->mpesaStatusSnapshot();
 
-        // 2. Recent Transactions (Latest 5 for the data table)
         $recentTransactions = $this->recentTransactionsSnapshot();
 
-        // 3. Expiring Soon Watchlist (Hotspot + PPPoE users expiring in the next 24 hours)
         $expiringHotspot = HotspotUser::where('status', 'active')
             ->whereBetween('expires_at', [$now, $now->copy()->addHours(24)])
             ->get()
@@ -62,7 +59,6 @@ class DashboardController extends Controller
             ->take(4)
             ->values();
 
-        // 4. Revenue by month for the chart (last 6 months)
         $chartLabels = [];
         $chartData = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -74,11 +70,9 @@ class DashboardController extends Controller
                 ->sum('amount');
         }
 
-        // 5. Router status list
         $routers = $this->routerStatusSnapshot();
 
-        // 6. New customers per month, last 6 months (hotspot + PPPoE combined), same window
-        // as the revenue chart.
+        // Same 6-month window as the revenue chart above, so the two charts line up.
         $growthLabels = [];
         $growthData = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -88,7 +82,7 @@ class DashboardController extends Controller
                 + PppoeUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count();
         }
 
-        // 7. Most-purchased packages, top 5 (Reports > Analytics uses the same query for top 10).
+        // Reports > Analytics runs the same query for its top-10 view.
         $topPackages = Transaction::where('status', 'success')
             ->selectRaw('package_name, COUNT(*) as purchase_count')
             ->groupBy('package_name')
@@ -96,7 +90,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // 8. View-layer values needed by all 3 layout templates, computed once here.
+        // Computed once here rather than in each of the 3 layout templates.
         $currency = Auth::user()->tenant?->currency_symbol ?? 'KES';
         $currentTimezone = Auth::user()->tenant?->timezone ?? config('app.timezone');
 

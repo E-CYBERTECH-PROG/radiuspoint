@@ -15,9 +15,6 @@ use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
-    /**
-     * Handle the STK Push Callback from Safaricom.
-     */
     public function handleCallback(Request $request)
     {
         Log::info('M-Pesa Callback Received:', $request->all());

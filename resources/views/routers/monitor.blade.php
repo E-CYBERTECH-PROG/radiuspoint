@@ -379,16 +379,11 @@
         <script>
             function routerMonitor() {
                 // Kept as plain closure variables, not properties on the returned object —
-                // Alpine deep-wraps every property of x-data in a reactive Proxy (it uses Vue's
-                // @vue/reactivity under the hood), and Chart.js instances carry large, partly
-                // circular internal state (scales, layout boxes, canvas context) that doesn't
-                // tolerate being proxied. Confirmed live: with the chart stored as `this.
-                // trafficChart`, Chart.js's own layout code threw "Maximum call stack size
-                // exceeded" a couple of update() calls in, then failed identically forever
-                // after — a stack overflow from the reactivity system recursing through that
-                // internal graph, not a bug in the chart config itself. Nothing in this file's
-                // HTML reads trafficChart/resourceChart directly, so nothing needs Alpine to
-                // track them.
+                // Alpine deep-wraps every x-data property in a reactive Proxy (it uses Vue's
+                // @vue/reactivity under the hood), and a Chart.js instance's internal state
+                // (scales, layout boxes, canvas context) is large and partly circular, which the
+                // proxy can't traverse without overflowing the stack. Nothing in this file's HTML
+                // reads trafficChart/resourceChart directly, so nothing needs Alpine to track them.
                 let trafficChart = null;
                 let resourceChart = null;
 
@@ -404,11 +399,7 @@
                     totalMemory: null,
 
                     // Generated from the same server-side $tabs array the tab buttons/panes loop
-                    // over, instead of a hand-duplicated key list — the previous hardcoded list
-                    // only covered 6 of the 11 real tabs (dhcp/wireless/health/queues/firewall
-                    // were missing entirely), so opening any of those threw "Cannot read
-                    // properties of undefined (reading 'length')" the instant Alpine evaluated
-                    // that tab's x-if, confirmed via a real headless-browser render.
+                    // over, so every tab key here always matches one that actually renders.
                     tabData: @json(array_fill_keys(array_keys($tabs), null)),
                     tabError: @json(array_fill_keys(array_keys($tabs), null)),
                     tabLoading: @json(array_fill_keys(array_keys($tabs), false)),
@@ -591,12 +582,9 @@
                     buildTrafficChart() {
                         const canvas = document.getElementById('trafficChart');
                         if (!canvas) return;
-                        // Defensive: destroy any chart already bound to this canvas first.
-                        // Confirmed via a real headless-browser render that this constructor can
-                        // run twice for the same canvas (Chart.js then throws "Canvas is already
-                        // in use" and refuses to render at all) — this guard makes rebuilding
-                        // safe regardless of what triggers the second call, rather than only
-                        // patching one specific re-entry path.
+                        // Destroy any chart already bound to this canvas first — Chart.js throws
+                        // "Canvas is already in use" rather than replacing it, and this
+                        // constructor can run more than once for the same canvas.
                         const existing = Chart.getChart(canvas);
                         if (existing) existing.destroy();
                         trafficChart = new Chart(canvas.getContext('2d'), {

@@ -24,10 +24,8 @@
         };
     }
 
-    // One component, one poller: the online counter used to poll every 5s on its own
-    // timer while transactions/routers/M-Pesa polled every 10s on a second timer — two
-    // concurrent intervals hitting the server independently. Merged into a single 10s
-    // poll against one snapshot endpoint, halving the request rate this page generates.
+    // A single 10s poll against one snapshot endpoint drives the online counter,
+    // transactions, routers, and M-Pesa status together, rather than each running its own timer.
     function dashboard(initial) {
         return {
             onlineCount: initial.online_now,
