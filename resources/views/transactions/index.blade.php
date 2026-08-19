@@ -2,8 +2,11 @@
     <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Full history of customer payments.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Every payment your customers have made, success or fail.</p>
         </div>
+        <a href="{{ route('transactions.export', request()->query()) }}" class="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg border border-gray-200 dark:border-gray-800 transition-colors">
+            <i class='bx bx-download text-lg'></i> Export CSV
+        </a>
     </div>
 
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3 flex-wrap">

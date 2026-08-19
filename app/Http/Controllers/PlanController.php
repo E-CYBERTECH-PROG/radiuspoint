@@ -138,6 +138,45 @@ class PlanController extends Controller
     }
 
     /**
+     * Same in-use guard as destroy(), applied per plan — skips (rather than fails outright on)
+     * any plan still assigned to a customer, and reports how many of each in one message.
+     */
+    public function destroyBulk(Request $request)
+    {
+        $request->validate([
+            'plan_ids' => 'required|array',
+            'plan_ids.*' => 'exists:plans,id',
+        ]);
+
+        $plans = Plan::where('tenant_id', Auth::user()->tenant_id)
+            ->whereIn('id', $request->plan_ids)
+            ->get();
+
+        $deleted = 0;
+        $skipped = 0;
+
+        foreach ($plans as $plan) {
+            $inUse = PppoeUser::where('current_plan_id', $plan->id)->exists()
+                || HotspotUser::where('current_plan_id', $plan->id)->exists();
+
+            if ($inUse) {
+                $skipped++;
+                continue;
+            }
+
+            $plan->delete();
+            $deleted++;
+        }
+
+        $message = "Removed {$deleted} plan(s).";
+        if ($skipped > 0) {
+            $message .= " Skipped {$skipped} still assigned to customers.";
+        }
+
+        return redirect()->route('plans.index')->with($skipped > 0 ? 'error' : 'success', $message);
+    }
+
+    /**
      * Per-router sync status, read from what plan:reconcile last recorded (not a live query).
      */
     public function syncStatus(Plan $plan)

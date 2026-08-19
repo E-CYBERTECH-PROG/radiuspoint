@@ -177,6 +177,9 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     });
 
     // === PLAN MANAGEMENT ===
+    // Registered before the resource route below — plans/{plan} would otherwise swallow this
+    // as a route-model-binding lookup for a plan literally named "bulk-destroy".
+    Route::delete('/plans/bulk-destroy', [PlanController::class, 'destroyBulk'])->name('plans.destroy-bulk');
     Route::resource('plans', PlanController::class)->except('show');
     Route::get('/plans/{plan}/sync-status', [PlanController::class, 'syncStatus'])->name('plans.sync-status');
 
@@ -241,6 +244,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
     // === TRANSACTIONS REPORT ===
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
     Route::get('/transactions/live-status', [TransactionController::class, 'liveStatus'])->name('transactions.live-status');
 
     // === REPORTS ===
