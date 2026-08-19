@@ -893,6 +893,18 @@ class RouterController extends Controller
 
             $api->query('/ip/address/add', ['address' => "{$subnet['gateway']}/24", 'interface' => $interface]);
             $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
+            // A DHCP server (added below) only assigns addresses from this pool — it doesn't by
+            // itself supply a gateway/DNS for the subnet those addresses are in. Without a
+            // matching /ip/dhcp-server/network entry, RouterOS has nothing to offer for those
+            // fields, and a client leases an address it can't actually route anywhere with —
+            // it never gets far enough to hit the hotspot's redirect at all, let alone the
+            // portal itself. RouterOS's own factory-default network (192.168.88.0/24) is a
+            // separate entry and is left alone.
+            $api->query('/ip/dhcp-server/network/add', [
+                'address' => $subnet['cidr'],
+                'gateway' => $subnet['gateway'],
+                'dns-server' => $subnet['gateway'],
+            ]);
             // login-by must include http-pap — RouterOS's default (cookie,http-chap) silently
             // rejects the plain username+password POST our captive portal submits. "cookie" is
             // deliberately left out: it lets RouterOS silently re-authenticate a returning
@@ -950,10 +962,29 @@ class RouterController extends Controller
      */
     protected function provisionPppoe(MikrotikApiService $api, string $interface, Router $router): array
     {
+        // Same reason as provisionHotspot(): RouterOS marks a PPPoE server bound directly to a
+        // bridge-port interface invalid ("Service is on a slave interface") — it never actually
+        // serves anything. Confirmed live: six bridge-slave ports mapped to "both" each got
+        // their own invalid PPPoE server instead of converging on the bridge like hotspot does.
+        $bridgePort = $api->queryWhere('/interface/bridge/port/print', 'interface', $interface);
+        if ($bridgePort) {
+            $interface = $bridgePort[0]['bridge'];
+        }
+
         $slug = $router->namingSlug();
-        $subnet = $api->allocateSubnet();
         $poolName = "{$slug}_pppoe_pool_{$interface}";
         $profileName = "{$slug}_pppoe_prof_{$interface}";
+
+        // Idempotent, matching provisionHotspot() — re-submitting the port mapping form (a
+        // second pass to adjust another interface, or just clicking Save again) otherwise hit
+        // "failure: pool with such name exists" every time, since none of this checked for an
+        // existing server first.
+        $existing = $api->queryWhere('/interface/pppoe-server/server/print', 'interface', $interface);
+        if ($existing) {
+            return ['pool' => $poolName, 'profile' => $profileName];
+        }
+
+        $subnet = $api->allocateSubnet();
 
         $api->query('/ip/pool/add', ['name' => $poolName, 'ranges' => $subnet['range']]);
         $api->query('/ppp/profile/add', [
