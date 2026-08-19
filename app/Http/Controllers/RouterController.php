@@ -152,9 +152,13 @@ class RouterController extends Controller
         $startupUrl = route('nas.startup', $router->public_token);
         $fetchMode = str_starts_with($startupUrl, 'https://') ? 'https' : 'http';
 
+        // Pings a raw IP, not a hostname — RouterOS's :ping throws a hard "resolve failed"
+        // script error (aborting everything below it, tunnel setup included) rather than just
+        // evaluating false when a hostname won't resolve. DNS is still configured on the next
+        // line for the /tool fetch further down, which does need to resolve our own domain.
         $script = "/ip dns set servers=8.8.8.8,8.8.4.4;\n" .
                   ":global rpDiag \"RadiusPoint: router has no internet - check the WAN port is plugged in, has a valid IP, and the router has a valid default route.\";\n" .
-                  "if ([:ping google.com count=3]) do={\n" .
+                  "if ([:ping 8.8.8.8 count=3]) do={\n" .
                   // Remove any existing startup.rsc first — /tool fetch won't overwrite it, and
                   // a stale copy would keep getting re-imported on every retry.
                   "  :if ([:len [/file find name=startup.rsc]] > 0) do={ /file remove startup.rsc };\n" .
