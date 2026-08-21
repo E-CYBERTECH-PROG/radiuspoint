@@ -21,7 +21,8 @@ class PlanController extends Controller
         $tab = $request->get('tab') === 'hotspot' ? 'hotspot' : 'pppoe';
         $search = $this->searchTerm($request);
 
-        $plans = Plan::where('tenant_id', $tenantId)
+        $plans = Plan::with('routers:id')
+            ->where('tenant_id', $tenantId)
             ->where('type', $tab)
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->latest()
@@ -41,7 +42,12 @@ class PlanController extends Controller
         $pppoeCount = Plan::where('tenant_id', $tenantId)->where('type', 'pppoe')->count();
         $hotspotCount = Plan::where('tenant_id', $tenantId)->where('type', 'hotspot')->count();
 
-        return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts', 'tab', 'pppoeCount', 'hotspotCount'));
+        // For the per-row "Edit Package" modal — each plan's own current router restriction,
+        // keyed for O(1) lookup in the view instead of an N+1 query per row.
+        $routers = Router::where('tenant_id', $tenantId)->orderBy('name')->get();
+        $planRouterIds = $plans->mapWithKeys(fn ($plan) => [$plan->id => $plan->routers->pluck('id')->all()]);
+
+        return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts', 'tab', 'pppoeCount', 'hotspotCount', 'routers', 'planRouterIds'));
     }
 
     /**
@@ -118,12 +124,14 @@ class PlanController extends Controller
         return redirect()->route('plans.index', ['tab' => $plan->type])->with('success', 'Plan created — syncing to hardware within a minute.');
     }
 
+    /**
+     * The standalone edit page was replaced by the Plans index's "Edit Package" modal
+     * (plans/index.blade.php) — this just sends anyone who still hits the old URL there with
+     * that plan's modal pre-opened, same redirect pattern as create() above.
+     */
     public function edit(Plan $plan)
     {
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->orderBy('name')->get();
-        $selectedRouterIds = $plan->routers()->pluck('routers.id')->all();
-
-        return view('plans.edit', compact('plan', 'routers', 'selectedRouterIds'));
+        return redirect()->route('plans.index', ['tab' => $plan->type, 'edit' => $plan->id]);
     }
 
     public function update(Request $request, Plan $plan)
@@ -135,7 +143,10 @@ class PlanController extends Controller
             'duration_value' => 'required|integer|min:1',
             'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
-            'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            // Same two-input Upload/Download split the "Add Package" modal uses, joined into
+            // the single speed_limit column — matches store()'s validation/format exactly.
+            'upload_speed' => ['required', 'string', 'regex:/^\d+[kKmM]$/'],
+            'download_speed' => ['required', 'string', 'regex:/^\d+[kKmM]$/'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
@@ -151,7 +162,7 @@ class PlanController extends Controller
             'duration_value' => $request->duration_value,
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
-            'speed_limit' => $request->speed_limit,
+            'speed_limit' => "{$request->upload_speed}/{$request->download_speed}",
             'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);

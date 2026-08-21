@@ -134,14 +134,23 @@
         })();
     </script>
 
-    <div x-data="{ sidebarOpen: true, mobileMenu: false, darkMode: document.documentElement.classList.contains('dark') }"
+    <div x-data="{ sidebarOpen: (localStorage.getItem('rp_sidebar_open') ?? '1') === '1', mobileMenu: false, darkMode: document.documentElement.classList.contains('dark') }"
          class="flex h-screen bg-gray-100 dark:bg-gray-950 transition-colors duration-300 font-sans text-gray-800 dark:text-gray-200 overflow-hidden">
 
         <div x-show="mobileMenu" @click="mobileMenu = false" class="fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-sm lg:hidden"></div>
 
-        <aside :class="sidebarOpen ? 'w-72' : 'w-20'"
-               class="w-72 shrink-0 fixed lg:relative z-50 h-screen bg-white dark:bg-gray-900 shadow-xl lg:shadow-none border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col"
-               x-bind:class="mobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+        <aside class="shrink-0 fixed lg:relative z-50 h-screen bg-white dark:bg-gray-900 shadow-xl lg:shadow-none border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col"
+               x-bind:class="(sidebarOpen ? 'w-72' : 'w-20') + ' ' + (mobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')">
+            <script>
+                // Applies the persisted width before Alpine mounts (Alpine's script is deferred),
+                // so a returning user doesn't see a flash of the wrong width first — same
+                // reasoning as the dark-mode init script above. The reactive :class binding above
+                // is the only thing that controls width once Alpine takes over; this just covers
+                // the gap before that happens.
+                document.currentScript.parentElement.classList.add(
+                    localStorage.getItem('rp_sidebar_open') === '0' ? 'w-20' : 'w-72'
+                );
+            </script>
 
             <div class="flex items-center justify-between h-16 px-4">
                 <a href="{{ Auth::user()->is_platform_admin ? route('platform-admin.dashboard') : route('dashboard') }}" class="flex items-center gap-2.5 overflow-hidden min-w-0">
@@ -309,7 +318,7 @@
                     <button @click="mobileMenu = true" class="lg:hidden text-gray-500 hover:text-indigo-600">
                         <i class="bx bx-menu text-2xl"></i>
                     </button>
-                    <button @click="sidebarOpen = !sidebarOpen" class="hidden lg:block text-gray-500 hover:text-indigo-600 transition-colors">
+                    <button @click="sidebarOpen = !sidebarOpen; localStorage.setItem('rp_sidebar_open', sidebarOpen ? '1' : '0')" class="hidden lg:block text-gray-500 hover:text-indigo-600 transition-colors">
                         <i class="bx text-2xl" :class="sidebarOpen ? 'bx-menu-alt-left' : 'bx-menu'"></i>
                     </button>
                 </div>
