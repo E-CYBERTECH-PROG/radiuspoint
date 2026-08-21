@@ -32,7 +32,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <form action="{{ route('captive-announcements.destroy', $announcement) }}" method="POST" onsubmit="return confirm('Remove this announcement?')">
+                                    <form action="{{ route('captive-announcements.destroy', $announcement) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this announcement?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i class="bx bx-trash text-lg"></i></button>
                                     </form>

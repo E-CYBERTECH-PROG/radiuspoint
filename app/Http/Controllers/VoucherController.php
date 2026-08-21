@@ -12,11 +12,43 @@ use Illuminate\Support\Str;
 
 class VoucherController extends Controller
 {
-    public function index()
-    {
-        $plans = Plan::where('tenant_id', Auth::user()->tenant_id)->where('type', 'hotspot')->get();
+    /**
+     * Filter tab => stored HotspotUser status. "Online" here means "redeemed and currently
+     * within its validity window" (status 'active'), not a live radacct session — a filter
+     * tab isn't worth the extra round-trip a real connectivity check would need. Public so
+     * the index view can label its tab counts without duplicating this mapping.
+     */
+    public const STATUS_MAP = [
+        'available' => 'unused',
+        'online' => 'active',
+        'expired' => 'expired',
+    ];
 
-        return view('vouchers.index', compact('plans'));
+    public function index(Request $request)
+    {
+        $tenantId = Auth::user()->tenant_id;
+        $tab = in_array($request->get('tab'), array_keys(self::STATUS_MAP), true) ? $request->get('tab') : 'available';
+        $search = $this->searchTerm($request);
+
+        $plans = Plan::where('tenant_id', $tenantId)->where('type', 'hotspot')->get();
+
+        $vouchers = HotspotUser::where('tenant_id', $tenantId)
+            ->where('is_voucher', true)
+            ->where('status', self::STATUS_MAP[$tab])
+            ->when($search, fn ($q) => $q->where('phone_number', 'like', "%{$search}%"))
+            ->latest()
+            ->paginate($this->perPage($request, 10))
+            ->withQueryString();
+
+        $counts = HotspotUser::where('tenant_id', $tenantId)
+            ->where('is_voucher', true)
+            ->selectRaw('status, count(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        $plansById = Plan::where('tenant_id', $tenantId)->get()->keyBy('id');
+
+        return view('vouchers.index', compact('plans', 'vouchers', 'tab', 'counts', 'plansById'));
     }
 
     public function generate(Request $request)
@@ -46,6 +78,7 @@ class VoucherController extends Controller
                 'phone_number' => $code,
                 'current_plan_id' => $plan->id,
                 'status' => 'unused',
+                'is_voucher' => true,
                 'expires_at' => null,
             ]);
 
@@ -81,5 +114,13 @@ class VoucherController extends Controller
         }
 
         return view('vouchers.print', compact('vouchers'));
+    }
+
+    public function destroy(HotspotUser $hotspot_user)
+    {
+        RadiusSyncService::remove($hotspot_user->phone_number);
+        $hotspot_user->delete();
+
+        return redirect()->route('vouchers.index')->with('success', 'Voucher removed.');
     }
 }

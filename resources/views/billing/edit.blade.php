@@ -1,22 +1,19 @@
+{{-- Expects $tenant, $invoices (paginated TenantInvoice list) in scope. --}}
 <x-sidebar-layout title="Billing">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Your RadiusPoint account — customer payments are under Transactions.</p>
-    </div>
 
     @php
         $statusStyle = [
-            'active' => 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50',
-            'trial' => 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50',
-            'expired' => 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50',
+            'active' => 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50',
+            'trial' => 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50',
+            'expired' => 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50',
             'cancelled' => 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800',
         ][$tenant->subscription_status] ?? 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 border-gray-200';
     @endphp
 
-    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 max-w-2xl">
+    <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-6 mb-3">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Current Plan</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Plan</p>
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ ucfirst($tenant->subscription_tier) }}</h2>
             </div>
             <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full border {{ $statusStyle }}">
@@ -26,38 +23,56 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-t border-b border-gray-100 dark:border-gray-800">
             <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Renews / Expires</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Renews / Expires</p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">
                     {{ $tenant->subscription_expires_at?->format('d M Y') ?? 'No expiry set' }}
                 </p>
                 @if($tenant->subscription_expires_at)
-                    <p class="text-xs {{ $tenant->isSubscriptionExpired() ? 'text-red-500' : 'text-gray-500' }} mt-0.5">
+                    <p class="text-xs {{ $tenant->isSubscriptionExpired() ? 'text-rose-500' : 'text-gray-500' }} mt-0.5">
                         {{ $tenant->isSubscriptionExpired() ? 'Expired ' : 'Expires ' }}{{ $tenant->subscription_expires_at->diffForHumans() }}
                     </p>
                 @endif
             </div>
             <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Account Status</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Status</p>
                 <p class="text-sm font-bold text-gray-900 dark:text-white">{{ ucfirst($tenant->status) }}</p>
             </div>
         </div>
 
         <div class="mt-6 flex items-center justify-between gap-4 flex-wrap">
             <p class="text-sm text-gray-500 dark:text-gray-400">To upgrade, renew, or change your plan, reach out to the RadiusPoint team.</p>
-            <a href="mailto:support@radiuspoint.co.ke" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors">Contact Support</a>
+            <a href="mailto:support@radiuspoint.co.ke" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors">Contact Support</a>
         </div>
     </div>
 
-    <div class="mt-6 max-w-2xl">
-        <div class="mb-3">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Commission Invoices</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">RadiusPoint bills 3% of your monthly hotspot/PPPoE revenue, issued on the 1st of the following month with a 2-day grace period to pay.</p>
+    {{-- === COMMISSION INVOICES TABLE === --}}
+    <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white">Commission Invoices</h3>
+            <p class="text-xs text-gray-400 mt-0.5">RadiusPoint bills 3% of your monthly hotspot/PPPoE revenue, issued on the 1st of the following month with a 2-day grace period to pay.</p>
         </div>
 
-        <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <form method="GET" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>Show</span>
+                <select name="per_page" onchange="this.form.submit()" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-2 py-1.5 text-gray-700 dark:text-gray-300 outline-none">
+                    @foreach([10, 25, 50, 100] as $n)
+                        <option value="{{ $n }}" @selected((int) request('per_page', 10) === $n)>{{ $n }}</option>
+                    @endforeach
+                </select>
+                <span>Entries</span>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <label for="invoice-search">Search:</label>
+                <input id="invoice-search" type="text" name="search" value="{{ request('search') }}" onchange="this.form.submit()" placeholder="e.g. March 2026" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-1.5 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+        </form>
+
+        <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <tr class="bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 text-[11px] text-gray-400 uppercase tracking-wider font-bold">
                         <th class="px-6 py-3">Period</th>
                         <th class="px-6 py-3 text-right">Revenue</th>
                         <th class="px-6 py-3 text-right">Amount Due</th>
@@ -67,11 +82,11 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
                     @forelse($invoices as $invoice)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-                            <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">{{ $invoice->period_start->format('F Y') }}</td>
-                            <td class="px-6 py-4 text-right text-gray-500 dark:text-gray-400 font-fira">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->revenue_total, 2) }}</td>
-                            <td class="px-6 py-4 text-right font-fira font-bold text-gray-900 dark:text-white">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->amount_due, 2) }}</td>
-                            <td class="px-6 py-4 text-center">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-950/60 transition-colors">
+                            <td class="px-6 py-3 font-bold text-gray-900 dark:text-white">{{ $invoice->period_start->format('F Y') }}</td>
+                            <td class="px-6 py-3 text-right text-gray-500 dark:text-gray-400 font-fira">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->revenue_total, 2) }}</td>
+                            <td class="px-6 py-3 text-right font-fira font-bold text-gray-900 dark:text-white">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->amount_due, 2) }}</td>
+                            <td class="px-6 py-3 text-center">
                                 @if($invoice->status === 'paid')
                                     <x-status-badge color="green" dot>Paid</x-status-badge>
                                 @elseif($invoice->isOverdue())
@@ -80,8 +95,8 @@
                                     <x-status-badge color="amber" icon="bx-time">Due {{ $invoice->due_at->format('d M') }}</x-status-badge>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <a href="{{ route('billing.print', $invoice) }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition-colors inline-flex items-center gap-1.5 text-xs font-bold" title="Print Invoice">
+                            <td class="px-6 py-3 text-right">
+                                <a href="{{ route('billing.print', $invoice) }}" target="_blank" class="text-gray-400 hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5 text-xs font-bold" title="Print Invoice">
                                     <i class="bx bx-printer text-base"></i> Print
                                 </a>
                             </td>
@@ -89,7 +104,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="px-6 py-12 text-center text-gray-400">
-                                <i class="bx bx-receipt text-4xl mb-3 text-gray-200"></i>
+                                <i class="bx bx-receipt text-4xl mb-3 text-gray-200 dark:text-gray-800"></i>
                                 <p class="text-xs tracking-widest uppercase">No invoices yet.</p>
                             </td>
                         </tr>
@@ -97,5 +112,7 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="px-5 py-4">{{ $invoices->links() }}</div>
     </div>
 </x-sidebar-layout>

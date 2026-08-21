@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\TenantInvoice;
 use App\Services\MpesaService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -17,10 +18,31 @@ use Illuminate\Support\Facades\Log;
  */
 class TenantBillingController extends Controller
 {
-    public function edit()
+    public function edit(Request $request)
     {
         $tenant = Tenant::findOrFail(Auth::user()->tenant_id);
-        $invoices = $tenant->invoices()->withoutGlobalScope('tenant')->latest('period_start')->get();
+        $search = $this->searchTerm($request);
+
+        // One row per month — small and unbounded-growth-free enough to filter/paginate in
+        // PHP, which sidesteps both a SQLite-only date function (strftime) and a Carbon::parse
+        // crash on non-date search input like "unpaid" that a tenant might reasonably type.
+        $all = $tenant->invoices()->withoutGlobalScope('tenant')
+            ->latest('period_start')
+            ->get()
+            ->when($search, fn ($rows) => $rows->filter(
+                fn ($invoice) => str_contains(strtolower($invoice->period_start->format('F Y')), strtolower($search))
+            ));
+
+        $perPage = $this->perPage($request, 10);
+        $page = (int) $request->input('page', 1);
+
+        $invoices = new LengthAwarePaginator(
+            $all->forPage($page, $perPage)->values(),
+            $all->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('billing.edit', compact('tenant', 'invoices'));
     }

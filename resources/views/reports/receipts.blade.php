@@ -7,7 +7,7 @@
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
         <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
             <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="receipt" value="{{ request('receipt') }}" placeholder="Receipt code, e.g. SKX1234ABC..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500 font-fira">
+            <input type="text" name="receipt" value="{{ request('receipt') }}" placeholder="Receipt code, e.g. SKX1234ABC..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500 font-fira">
         </div>
         <input type="date" name="from" value="{{ request('from') }}" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
         <input type="date" name="to" value="{{ request('to') }}" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">

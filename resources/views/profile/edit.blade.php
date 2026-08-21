@@ -29,9 +29,6 @@
                 ])
             </div>
 
-            <div class="border-t border-gray-100 dark:border-gray-800 pt-6">
-                @include('profile.partials.dashboard-layout-picker')
-            </div>
         </div>
 
         <div class="p-4 sm:p-8 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 shadow-sm sm:rounded-xl">

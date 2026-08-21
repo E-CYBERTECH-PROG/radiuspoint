@@ -9,7 +9,7 @@
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
         <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
             <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
         </div>
         <x-per-page-select />
         <button type="submit" class="bg-gray-900 dark:bg-gray-700 text-white text-sm font-bold px-5 py-2 rounded-lg">Filter</button>

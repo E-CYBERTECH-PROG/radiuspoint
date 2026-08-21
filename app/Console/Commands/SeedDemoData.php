@@ -18,7 +18,9 @@ use Illuminate\Console\Command;
  */
 class SeedDemoData extends Command
 {
-    protected $signature = 'demo:seed {--force : Required to run against APP_ENV=production}';
+    protected $signature = 'demo:seed
+        {--force : Required to run against APP_ENV=production}
+        {--tenant= : Seed into this existing tenant ID instead of creating a new demo tenant}';
 
     protected $description = 'Seed a demo tenant with routers, plans, hotspot/PPPoE customers, and transactions';
 
@@ -45,9 +47,19 @@ class SeedDemoData extends Command
             }
         }
 
-        $tenant = Tenant::factory()->create([
-            'company_name' => 'Demo ISP ('.now()->format('Y-m-d H:i').')',
-        ]);
+        if ($tenantId = $this->option('tenant')) {
+            $tenant = Tenant::find($tenantId);
+
+            if (! $tenant) {
+                $this->error("Tenant #{$tenantId} not found.");
+
+                return self::FAILURE;
+            }
+        } else {
+            $tenant = Tenant::factory()->create([
+                'company_name' => 'Demo ISP ('.now()->format('Y-m-d H:i').')',
+            ]);
+        }
 
         $routers = Router::factory()->count($counts['routers'])->create(['tenant_id' => $tenant->id]);
 
@@ -57,16 +69,19 @@ class SeedDemoData extends Command
         $hotspotPlans = $plans->where('type', 'hotspot');
         $pppoePlans = $plans->where('type', 'pppoe');
 
-        HotspotUser::factory()->count($counts['hotspot_users'])->create(fn () => [
+        // Split across active/expired/offline (roughly 60/15/25%) rather than leaving every
+        // record on the factory's 'offline' default — an all-offline demo tenant makes the
+        // dashboard's Active/Expired tiles look broken even though they're working correctly.
+        $this->seedCustomersWithStatusMix(HotspotUser::factory(), $counts['hotspot_users'], [
             'tenant_id' => $tenant->id,
-            'current_plan_id' => $hotspotPlans->random()->id,
-            'current_router_id' => $routers->random()->id,
+            'current_plan_id' => fn () => $hotspotPlans->random()->id,
+            'current_router_id' => fn () => $routers->random()->id,
         ]);
 
-        PppoeUser::factory()->count($counts['pppoe_users'])->create(fn () => [
+        $this->seedCustomersWithStatusMix(PppoeUser::factory(), $counts['pppoe_users'], [
             'tenant_id' => $tenant->id,
-            'current_plan_id' => $pppoePlans->random()->id,
-            'current_router_id' => $routers->random()->id,
+            'current_plan_id' => fn () => $pppoePlans->random()->id,
+            'current_router_id' => fn () => $routers->random()->id,
         ]);
 
         Transaction::factory()->count($counts['transactions'])->create(['tenant_id' => $tenant->id]);
@@ -76,5 +91,29 @@ class SeedDemoData extends Command
             "{$counts['hotspot_users']} hotspot users, {$counts['pppoe_users']} pppoe users, {$counts['transactions']} transactions.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Creates $count records split ~60/15/25 across active/expired/offline, so demo tenants
+     * populate every status tile instead of leaving them all on the factory's 'offline' default.
+     * $overrides values may be closures (evaluated per record, e.g. Collection::random() picks).
+     */
+    private function seedCustomersWithStatusMix($factory, int $count, array $overrides): void
+    {
+        $active = (int) round($count * 0.6);
+        $expired = (int) round($count * 0.15);
+        $offline = max(0, $count - $active - $expired);
+
+        $resolve = fn () => collect($overrides)->map(fn ($v) => $v instanceof \Closure ? $v() : $v)->all();
+
+        if ($active > 0) {
+            $factory->count($active)->active()->create($resolve);
+        }
+        if ($expired > 0) {
+            $factory->count($expired)->expired()->create($resolve);
+        }
+        if ($offline > 0) {
+            $factory->count($offline)->create($resolve);
+        }
     }
 }

@@ -15,16 +15,20 @@ class PlanController extends Controller
 {
     public function index(Request $request)
     {
+        $tenantId = Auth::user()->tenant_id;
+        // "Fixed" is this app's existing term for PPPoE elsewhere (reports.fixed-sales,
+        // reports.pppoe-balances) — reused here for the tab label to stay consistent.
+        $tab = $request->get('tab') === 'hotspot' ? 'hotspot' : 'pppoe';
         $search = $this->searchTerm($request);
 
-        $plans = Plan::where('tenant_id', Auth::user()->tenant_id)
+        $plans = Plan::where('tenant_id', $tenantId)
+            ->where('type', $tab)
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
-            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
             ->latest()
-            ->paginate($this->perPage($request))
+            ->paginate($this->perPage($request, 10))
             ->withQueryString();
 
-        $activeRouterCount = Router::where('tenant_id', Auth::user()->tenant_id)->where('status', 'active')->count();
+        $activeRouterCount = Router::where('tenant_id', $tenantId)->where('status', 'active')->count();
 
         // One aggregate query for sync status counts across all plans on the page.
         $syncCounts = PlanRouterSync::whereIn('plan_id', $plans->pluck('id'))
@@ -34,14 +38,44 @@ class PlanController extends Controller
             ->groupBy('plan_id')
             ->map(fn ($rows) => $rows->pluck('c', 'status'));
 
-        return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts'));
+        $pppoeCount = Plan::where('tenant_id', $tenantId)->where('type', 'pppoe')->count();
+        $hotspotCount = Plan::where('tenant_id', $tenantId)->where('type', 'hotspot')->count();
+
+        return view('plans.index', compact('plans', 'activeRouterCount', 'syncCounts', 'tab', 'pppoeCount', 'hotspotCount'));
     }
 
+    /**
+     * The standalone create page was replaced by the Plans index's "Add Package" modal
+     * (plans/index.blade.php) — this just sends anyone who still hits the old URL there with
+     * the modal pre-opened, rather than maintaining two divergent add-plan forms.
+     */
     public function create()
     {
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->orderBy('name')->get();
+        return redirect()->route('plans.index', ['add' => 1]);
+    }
 
-        return view('plans.create', compact('routers'));
+    /**
+     * Clones a plan's core fields (not its router assignments — a duplicate defaults to
+     * every active router, same as a brand-new plan, since carrying over the original's
+     * restriction is more likely to surprise someone than help them).
+     */
+    public function duplicate(Plan $plan)
+    {
+        Plan::create([
+            'tenant_id' => Auth::user()->tenant_id,
+            'name' => "{$plan->name} (Copy)",
+            'type' => $plan->type,
+            'status' => 'active',
+            'price' => $plan->price,
+            'duration_value' => $plan->duration_value,
+            'duration_unit' => $plan->duration_unit,
+            'data_cap_mb' => $plan->data_cap_mb,
+            'speed_limit' => $plan->speed_limit,
+            'caption' => $plan->caption,
+            'fup_speed_limit' => $plan->fup_speed_limit,
+        ]);
+
+        return redirect()->route('plans.index', ['tab' => $plan->type])->with('success', 'Plan duplicated.');
     }
 
     // Router sync happens separately via the plan:reconcile scheduled command.
@@ -54,9 +88,11 @@ class PlanController extends Controller
             'duration_value' => 'required|integer|min:1',
             'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
-            // Mikrotik-Rate-Limit format is rx-rate/tx-rate (e.g. "5M/5M"); RouterOS silently
-            // ignores a value it can't parse, so an invalid separator leaves the plan uncapped.
-            'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            // Each side validated separately (Mikrotik-Rate-Limit format is rx-rate/tx-rate,
+            // e.g. "5M/5M"; RouterOS silently ignores a value it can't parse) then joined into
+            // the single speed_limit column the "Add Package" modal presents as two inputs for.
+            'upload_speed' => ['required', 'string', 'regex:/^\d+[kKmM]$/'],
+            'download_speed' => ['required', 'string', 'regex:/^\d+[kKmM]$/'],
             'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
@@ -71,7 +107,7 @@ class PlanController extends Controller
             'duration_value' => $request->duration_value,
             'duration_unit' => $request->duration_unit,
             'data_cap_mb' => $request->data_cap_mb,
-            'speed_limit' => $request->speed_limit,
+            'speed_limit' => "{$request->upload_speed}/{$request->download_speed}",
             'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
         ]);
@@ -79,7 +115,7 @@ class PlanController extends Controller
         // Empty selection means the plan applies to every active router.
         $plan->routers()->sync($request->input('router_ids', []));
 
-        return redirect()->route('plans.index')->with('success', 'Plan created — syncing to hardware within a minute.');
+        return redirect()->route('plans.index', ['tab' => $plan->type])->with('success', 'Plan created — syncing to hardware within a minute.');
     }
 
     public function edit(Plan $plan)
@@ -100,6 +136,7 @@ class PlanController extends Controller
             'duration_unit' => ['required', Rule::in(Plan::DURATION_UNITS)],
             'data_cap_mb' => 'nullable|integer|min:1',
             'speed_limit' => ['required', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
             'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
             'router_ids' => 'nullable|array',
@@ -109,6 +146,7 @@ class PlanController extends Controller
         $plan->update([
             'name' => $request->name,
             'type' => $request->type,
+            'status' => $request->status,
             'price' => $request->price,
             'duration_value' => $request->duration_value,
             'duration_unit' => $request->duration_unit,
@@ -120,7 +158,7 @@ class PlanController extends Controller
 
         $plan->routers()->sync($request->input('router_ids', []));
 
-        return redirect()->route('plans.index')->with('success', 'Plan updated — re-syncing to hardware within a minute.');
+        return redirect()->route('plans.index', ['tab' => $plan->type])->with('success', 'Plan updated — re-syncing to hardware within a minute.');
     }
 
     public function destroy(Plan $plan)

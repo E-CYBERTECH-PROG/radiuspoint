@@ -26,6 +26,14 @@
             </div>
 
             <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Status</label>
+                <select name="status" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors cursor-pointer">
+                    <option value="active" @selected(old('status', $plan->status) === 'active')>Active</option>
+                    <option value="inactive" @selected(old('status', $plan->status) === 'inactive')>Inactive</option>
+                </select>
+            </div>
+
+            <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Retail Price (KES)</label>
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 text-sm">KES</span>

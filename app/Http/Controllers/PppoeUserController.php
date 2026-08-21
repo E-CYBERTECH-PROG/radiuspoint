@@ -39,12 +39,14 @@ class PppoeUserController extends Controller
         return view('pppoe-users.index', compact('users', 'plans', 'routers'));
     }
 
+    /**
+     * The standalone create page was replaced by the Customers hub's "New Customer" modal
+     * (customers/index.blade.php) — this just sends anyone who still hits the old URL there
+     * with the modal pre-opened, rather than maintaining two divergent add-customer forms.
+     */
     public function create()
     {
-        $plans = Plan::where('tenant_id', Auth::user()->tenant_id)->where('type', 'pppoe')->get();
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->get();
-
-        return view('pppoe-users.create', compact('plans', 'routers'));
+        return redirect()->route('customers.index', ['tab' => 'pppoe', 'add' => 1]);
     }
 
     public function store(Request $request)
@@ -54,28 +56,51 @@ class PppoeUserController extends Controller
                 'required', 'string', 'max:255',
                 Rule::unique('pppoe_users')->where('tenant_id', Auth::user()->tenant_id),
             ],
+            'password' => 'nullable|string|min:4',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:20',
             'current_plan_id' => 'nullable|exists:plans,id',
             'current_router_id' => 'nullable|exists:routers,id',
-            'status' => 'required|in:active,expired,offline',
+            'status' => 'nullable|in:active,expired,offline',
             'expires_at' => 'nullable|date',
         ]);
+
+        // The new "Add Customer" modal only collects first_name/last_name (no combined 'name'
+        // field); the older standalone form (still POSTing here if bookmarked) sends 'name'
+        // directly — accept either.
+        $name = $request->input('name') ?: trim(($request->first_name ?? '').' '.($request->last_name ?? ''));
+        $name = $name !== '' ? $name : null;
+
+        // Status/expiry aren't in the new modal at all — a freshly added customer defaults to
+        // active, expiring per their plan's duration from now (Plan::expiresAt()), same as
+        // BillingController's immediate-activation path.
+        $status = $request->input('status', 'active');
+        $plan = $request->current_plan_id ? Plan::find($request->current_plan_id) : null;
+        $expiresAt = $request->input('expires_at') ?: ($status === 'active' && $plan ? $plan->expiresAt() : null);
 
         $user = PppoeUser::create([
             'tenant_id' => Auth::user()->tenant_id,
             'username' => $request->username,
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'name' => $name,
             'phone_number' => $request->phone_number,
+            'email' => $request->email,
+            'address' => $request->address,
             'current_plan_id' => $request->current_plan_id,
             'current_router_id' => $request->current_router_id,
-            'status' => $request->status,
-            'expires_at' => $request->expires_at,
+            'status' => $status,
+            'expires_at' => $expiresAt,
         ]);
 
         if ($user->status === 'active') {
-            $plan = Plan::find($user->current_plan_id);
-            RadiusSyncService::sync($user->username, Str::password(10), $plan?->speed_limit);
+            // Admin-supplied password from the modal when present, otherwise the same
+            // random-password fallback the standalone form always used.
+            RadiusSyncService::sync($user->username, $request->input('password') ?: Str::password(10), $plan?->speed_limit);
 
             SmsTriggerService::fire($user->tenant_id, 'pppoe_welcome', $user->phone_number, [
                 'name' => $user->name ?: $user->username,
@@ -84,7 +109,13 @@ class PppoeUserController extends Controller
             ]);
         }
 
-        return redirect()->route('pppoe-users.index')->with('success', 'PPPoE customer added successfully.');
+        // Lets the Customers hub's "New Customer" modal (customers/index.blade.php) send the
+        // user back there instead of this page's own index — only a same-app relative path is
+        // ever honored, so this can't be turned into an open redirect.
+        $redirectTo = $request->input('redirect_to');
+        $target = ($redirectTo && str_starts_with($redirectTo, '/')) ? $redirectTo : route('pppoe-users.index');
+
+        return redirect()->to($target)->with('success', 'PPPoE customer added successfully.');
     }
 
     public function edit(PppoeUser $pppoe_user)
@@ -160,22 +191,39 @@ class PppoeUserController extends Controller
                 'required', 'string', 'max:255',
                 Rule::unique('pppoe_users')->where('tenant_id', Auth::user()->tenant_id)->ignore($pppoe_user->id),
             ],
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:20',
             'current_plan_id' => 'nullable|exists:plans,id',
             'current_router_id' => 'nullable|exists:routers,id',
-            'status' => 'required|in:active,expired,offline',
+            'status' => 'nullable|in:active,expired,offline',
             'expires_at' => 'nullable|date',
         ]);
 
+        // The edit modal (customers/show.blade.php) only exposes identity/contact/package
+        // fields, not status/expiry/router — those are changed via their own dedicated
+        // actions (Disable/Enable, Change Expiry). Falling back to the current value keeps
+        // this endpoint safe for that modal without touching the older full edit form, which
+        // still sends all of them explicitly.
+        $name = $request->has('first_name') || $request->has('last_name')
+            ? trim(($request->first_name ?? '').' '.($request->last_name ?? '')) ?: null
+            : ($request->input('name') ?: $pppoe_user->name);
+
         $pppoe_user->update([
             'username' => $request->username,
-            'name' => $request->name,
-            'phone_number' => $request->phone_number,
-            'current_plan_id' => $request->current_plan_id,
-            'current_router_id' => $request->current_router_id,
-            'status' => $request->status,
-            'expires_at' => $request->expires_at,
+            'first_name' => $request->input('first_name', $pppoe_user->first_name),
+            'last_name' => $request->input('last_name', $pppoe_user->last_name),
+            'name' => $name,
+            'email' => $request->input('email', $pppoe_user->email),
+            'address' => $request->input('address', $pppoe_user->address),
+            'phone_number' => $request->input('phone_number', $pppoe_user->phone_number),
+            'current_plan_id' => $request->input('current_plan_id', $pppoe_user->current_plan_id),
+            'current_router_id' => $request->input('current_router_id', $pppoe_user->current_router_id),
+            'status' => $request->input('status', $pppoe_user->status),
+            'expires_at' => $request->input('expires_at', $pppoe_user->expires_at),
         ]);
 
         if ($pppoe_user->status === 'active') {
@@ -189,7 +237,12 @@ class PppoeUserController extends Controller
             RadiusSyncService::remove($pppoe_user->username);
         }
 
-        return redirect()->route('pppoe-users.index')->with('success', 'PPPoE customer updated successfully.');
+        // Same same-app-only redirect guard as store() — lets the customer detail page's edit
+        // modal send the admin back there instead of this page's own index.
+        $redirectTo = $request->input('redirect_to');
+        $target = ($redirectTo && str_starts_with($redirectTo, '/')) ? $redirectTo : route('pppoe-users.index');
+
+        return redirect()->to($target)->with('success', 'PPPoE customer updated successfully.');
     }
 
     public function destroy(PppoeUser $pppoe_user)
@@ -270,6 +323,60 @@ class PppoeUserController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => $message], $disconnected ? 200 : 422)
             : back()->with($disconnected ? 'success' : 'error', $message);
+    }
+
+    /**
+     * Quick "Disable" action from the customer detail page — sets offline without deleting
+     * the RADIUS credential (unlike purgeExpired), so re-enabling later is just a status flip.
+     */
+    public function disable(Request $request, PppoeUser $pppoe_user)
+    {
+        $pppoe_user->update(['status' => 'offline']);
+
+        $message = 'Customer disabled.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Reverses disable() — restores 'active' and makes sure a RADIUS credential actually
+     * exists (disable() never removed one, but a customer created straight into 'offline'
+     * would never have had one synced at all).
+     */
+    public function enable(Request $request, PppoeUser $pppoe_user)
+    {
+        $pppoe_user->update(['status' => 'active']);
+
+        if (RadiusSyncService::hasCredential($pppoe_user->username)) {
+            RadiusSyncService::updateRateLimit($pppoe_user->username, $pppoe_user->plan?->speed_limit);
+        } else {
+            RadiusSyncService::sync($pppoe_user->username, Str::password(10), $pppoe_user->plan?->speed_limit);
+        }
+
+        $message = 'Customer enabled.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Re-syncs the RADIUS password only — everything else about the credential (rate limit,
+     * expiration) is left as RadiusSyncService already has it.
+     */
+    public function changePassword(Request $request, PppoeUser $pppoe_user)
+    {
+        $request->validate(['password' => 'required|string|min:4']);
+
+        RadiusSyncService::sync($pppoe_user->username, $request->password, $pppoe_user->plan?->speed_limit);
+
+        $message = 'Password updated.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
     }
 
     /**

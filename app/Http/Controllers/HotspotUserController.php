@@ -37,12 +37,14 @@ class HotspotUserController extends Controller
         return view('hotspot-users.index', compact('users', 'plans', 'routers'));
     }
 
+    /**
+     * The standalone create page was replaced by the Customers hub's "New Customer" modal
+     * (customers/index.blade.php) — this just sends anyone who still hits the old URL there
+     * with the modal pre-opened, rather than maintaining two divergent add-customer forms.
+     */
     public function create()
     {
-        $plans = Plan::where('tenant_id', Auth::user()->tenant_id)->where('type', 'hotspot')->get();
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)->get();
-
-        return view('hotspot-users.create', compact('plans', 'routers'));
+        return redirect()->route('customers.index', ['tab' => 'hotspot', 'add' => 1]);
     }
 
     public function store(Request $request)
@@ -50,28 +52,56 @@ class HotspotUserController extends Controller
         $request->validate([
             'phone_number' => 'required|string|max:20',
             'mac_address' => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
             'current_plan_id' => 'nullable|exists:plans,id',
             'current_router_id' => 'nullable|exists:routers,id',
-            'status' => ['required', Rule::in(HotspotUser::STATUSES)],
+            'status' => ['nullable', Rule::in(HotspotUser::STATUSES)],
             'expires_at' => 'nullable|date',
         ]);
+
+        // The new "Add Customer" modal only collects first_name/last_name (no combined 'name'
+        // field); the older standalone form (still POSTing here if bookmarked) sends 'name'
+        // directly — accept either.
+        $name = $request->input('name') ?: trim(($request->first_name ?? '').' '.($request->last_name ?? ''));
+        $name = $name !== '' ? $name : null;
+
+        // Status/expiry aren't in the new modal at all — a freshly added customer defaults to
+        // active, expiring per their plan's duration from now (Plan::expiresAt()), same as
+        // BillingController's immediate-activation path.
+        $status = $request->input('status', 'active');
+        $plan = $request->current_plan_id ? Plan::find($request->current_plan_id) : null;
+        $expiresAt = $request->input('expires_at') ?: ($status === 'active' && $plan ? $plan->expiresAt() : null);
 
         $user = HotspotUser::create([
             'tenant_id' => Auth::user()->tenant_id,
             'phone_number' => $request->phone_number,
             'mac_address' => $request->mac_address,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'name' => $name,
+            'email' => $request->email,
+            'address' => $request->address,
             'current_plan_id' => $request->current_plan_id,
             'current_router_id' => $request->current_router_id,
-            'status' => $request->status,
-            'expires_at' => $request->expires_at,
+            'status' => $status,
+            'expires_at' => $expiresAt,
         ]);
 
         if ($user->status === 'active') {
-            $plan = Plan::find($user->current_plan_id);
             RadiusSyncService::sync($user->phone_number, Str::password(10), $plan?->speed_limit);
         }
 
-        return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer added successfully.');
+        // Lets the Customers hub's "New Customer" modal (customers/index.blade.php) send the
+        // user back there instead of this page's own index — only a same-app relative path is
+        // ever honored, so this can't be turned into an open redirect.
+        $redirectTo = $request->input('redirect_to');
+        $target = ($redirectTo && str_starts_with($redirectTo, '/')) ? $redirectTo : route('hotspot-users.index');
+
+        return redirect()->to($target)->with('success', 'Hotspot customer added successfully.');
     }
 
     public function edit(HotspotUser $hotspot_user)
@@ -148,19 +178,38 @@ class HotspotUserController extends Controller
         $request->validate([
             'phone_number' => 'required|string|max:20',
             'mac_address' => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
             'current_plan_id' => 'nullable|exists:plans,id',
             'current_router_id' => 'nullable|exists:routers,id',
-            'status' => ['required', Rule::in(HotspotUser::STATUSES)],
+            'status' => ['nullable', Rule::in(HotspotUser::STATUSES)],
             'expires_at' => 'nullable|date',
         ]);
 
+        // The edit modal (customers/show.blade.php) only exposes identity/contact/package
+        // fields, not status/expiry/router — those are changed via their own dedicated
+        // actions (Disable/Enable, Change Expiry). Falling back to the current value keeps
+        // this endpoint safe for that modal without touching the older full edit form, which
+        // still sends all of them explicitly.
+        $name = $request->has('first_name') || $request->has('last_name')
+            ? trim(($request->first_name ?? '').' '.($request->last_name ?? '')) ?: null
+            : ($request->input('name') ?: $hotspot_user->name);
+
         $hotspot_user->update([
             'phone_number' => $request->phone_number,
-            'mac_address' => $request->mac_address,
-            'current_plan_id' => $request->current_plan_id,
-            'current_router_id' => $request->current_router_id,
-            'status' => $request->status,
-            'expires_at' => $request->expires_at,
+            'mac_address' => $request->input('mac_address', $hotspot_user->mac_address),
+            'first_name' => $request->input('first_name', $hotspot_user->first_name),
+            'last_name' => $request->input('last_name', $hotspot_user->last_name),
+            'name' => $name,
+            'email' => $request->input('email', $hotspot_user->email),
+            'address' => $request->input('address', $hotspot_user->address),
+            'current_plan_id' => $request->input('current_plan_id', $hotspot_user->current_plan_id),
+            'current_router_id' => $request->input('current_router_id', $hotspot_user->current_router_id),
+            'status' => $request->input('status', $hotspot_user->status),
+            'expires_at' => $request->input('expires_at', $hotspot_user->expires_at),
         ]);
 
         if ($hotspot_user->status === 'active') {
@@ -175,7 +224,10 @@ class HotspotUserController extends Controller
             RadiusSyncService::remove($hotspot_user->phone_number);
         }
 
-        return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer updated successfully.');
+        $redirectTo = $request->input('redirect_to');
+        $target = ($redirectTo && str_starts_with($redirectTo, '/')) ? $redirectTo : route('hotspot-users.index');
+
+        return redirect()->to($target)->with('success', 'Hotspot customer updated successfully.');
     }
 
     public function destroy(HotspotUser $hotspot_user)
@@ -260,6 +312,43 @@ class HotspotUserController extends Controller
         return $request->wantsJson()
             ? response()->json(['message' => $message], $disconnected ? 200 : 422)
             : back()->with($disconnected ? 'success' : 'error', $message);
+    }
+
+    /**
+     * Quick "Disable" action from the customer detail page — sets offline without deleting
+     * the RADIUS credential, so re-enabling later is just a status flip.
+     */
+    public function disable(Request $request, HotspotUser $hotspot_user)
+    {
+        $hotspot_user->update(['status' => 'offline']);
+
+        $message = 'Customer disabled.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Reverses disable() — restores 'active' and makes sure a RADIUS credential actually
+     * exists (disable() never removed one, but a customer created straight into 'offline'
+     * would never have had one synced at all).
+     */
+    public function enable(Request $request, HotspotUser $hotspot_user)
+    {
+        $hotspot_user->update(['status' => 'active']);
+
+        if (RadiusSyncService::hasCredential($hotspot_user->phone_number)) {
+            RadiusSyncService::updateRateLimit($hotspot_user->phone_number, $hotspot_user->plan?->speed_limit);
+        } else {
+            RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $hotspot_user->plan?->speed_limit);
+        }
+
+        $message = 'Customer enabled.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
     }
 
     /**

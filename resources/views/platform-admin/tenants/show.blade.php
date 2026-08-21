@@ -125,7 +125,7 @@
                                     <x-status-badge color="amber" icon="bx-time">Pending</x-status-badge>
                                 @endif
                                 @if($invoice->status === 'pending')
-                                    <form action="{{ route('platform-admin.invoices.mark-paid', $invoice) }}" method="POST" onsubmit="return confirm('Mark this invoice as paid?')">
+                                    <form action="{{ route('platform-admin.invoices.mark-paid', $invoice) }}" method="POST" onsubmit="return rpConfirm(event, 'Mark this invoice as paid?')">
                                         @csrf
                                         <button type="submit" class="text-gray-400 hover:text-green-600 transition-colors" title="Mark Paid"><i class="bx bx-check-circle text-lg"></i></button>
                                     </form>

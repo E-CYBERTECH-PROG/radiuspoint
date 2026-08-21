@@ -17,7 +17,7 @@
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
         <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
             <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search company name..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search company name..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
         </div>
         <select name="status" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
             <option value="">All Statuses</option>
@@ -89,7 +89,7 @@
                                             <button type="submit" class="text-xs text-red-600 hover:text-red-700 font-bold uppercase tracking-wide">Reject</button>
                                         </form>
                                     @elseif($tenant->status === 'active')
-                                        <form action="{{ route('platform-admin.tenants.suspend', $tenant) }}" method="POST" onsubmit="return confirm('Suspend this tenant?')">
+                                        <form action="{{ route('platform-admin.tenants.suspend', $tenant) }}" method="POST" onsubmit="return rpConfirm(event, 'Suspend this tenant?')">
                                             @csrf
                                             <button type="submit" class="text-xs text-red-600 hover:text-red-700 font-bold uppercase tracking-wide">Suspend</button>
                                         </form>

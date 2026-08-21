@@ -14,10 +14,8 @@ class MpesaSettingController extends Controller
 {
     public function edit()
     {
-        $primary = MpesaSetting::firstOrNew(['tenant_id' => Auth::user()->tenant_id, 'slot' => 1]);
-        $backup = MpesaSetting::firstOrNew(['tenant_id' => Auth::user()->tenant_id, 'slot' => 2]);
-
-        return view('mpesa.settings', compact('primary', 'backup'));
+        // Now embedded in the unified Account page instead of its own screen.
+        return redirect()->route('account.index', ['tab' => 'payment-gateway']);
     }
 
     public function update(Request $request)
@@ -43,7 +41,7 @@ class MpesaSettingController extends Controller
         $this->saveSlot(1, 'primary', $request);
         $this->saveSlot(2, 'backup', $request);
 
-        return redirect()->route('mpesa-settings.edit')->with('success', 'M-Pesa settings saved.');
+        return redirect()->route('account.index', ['tab' => 'payment-gateway'])->with('success', 'M-Pesa settings saved.');
     }
 
     private function saveSlot(int $slot, string $prefix, Request $request): void

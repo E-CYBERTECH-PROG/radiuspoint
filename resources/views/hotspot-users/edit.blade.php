@@ -70,7 +70,7 @@
                         @csrf
                         <button type="submit" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors inline-flex items-center gap-1.5"><i class="bx bx-power-off"></i> Force Disconnect</button>
                     </form>
-                    <form action="{{ route('hotspot-users.reset-mac', $hotspot_user) }}" method="POST" onsubmit="return confirm('Clear this customer\'s bound MAC address? The next device to connect with these credentials will bind automatically.')">
+                    <form action="{{ route('hotspot-users.reset-mac', $hotspot_user) }}" method="POST" onsubmit="return rpConfirm(event, 'Clear this customer\'s bound MAC address? The next device to connect with these credentials will bind automatically.')">
                         @csrf
                         <button type="submit" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors inline-flex items-center gap-1.5"><i class="bx bx-reset"></i> Reset MAC</button>
                     </form>

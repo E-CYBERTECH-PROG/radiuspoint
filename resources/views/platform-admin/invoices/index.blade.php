@@ -65,7 +65,7 @@
                             </td>
                             <td class="px-6 py-4 text-right">
                                 @if($invoice->status === 'pending')
-                                    <form action="{{ route('platform-admin.invoices.mark-paid', $invoice) }}" method="POST" onsubmit="return confirm('Mark {{ $invoice->tenant->company_name }}\'s {{ $invoice->period_start->format('F Y') }} invoice (KES {{ number_format($invoice->amount_due, 2) }}) as paid?')">
+                                    <form action="{{ route('platform-admin.invoices.mark-paid', $invoice) }}" method="POST" onsubmit="return rpConfirm(event, 'Mark {{ $invoice->tenant->company_name }}\'s {{ $invoice->period_start->format('F Y') }} invoice (KES {{ number_format($invoice->amount_due, 2) }}) as paid?')">
                                         @csrf
                                         <button type="submit" class="text-xs text-green-600 hover:text-green-700 font-bold uppercase tracking-wide">Mark Paid</button>
                                     </form>

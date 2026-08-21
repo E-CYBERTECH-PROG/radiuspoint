@@ -30,15 +30,22 @@ class HotspotUser extends Model
     protected $fillable = [
         'tenant_id',
         'phone_number',
+        'first_name',
+        'last_name',
+        'name',
+        'email',
+        'address',
         'mac_address',
         'current_plan_id',
         'current_router_id',
         'status',
+        'is_voucher',
         'expires_at',
         'fup_throttled_at',
     ];
 
     protected $casts = [
+        'is_voucher' => 'boolean',
         'expires_at' => 'datetime',
         'fup_throttled_at' => 'datetime',
     ];

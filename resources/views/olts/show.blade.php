@@ -12,7 +12,7 @@
                 <button type="button" @click="testConnection()" :disabled="testing" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50">
                     <i class="bx" :class="testing ? 'bx-loader-alt bx-spin' : 'bx-wifi-2'"></i> Test Connection
                 </button>
-                <form action="{{ route('olts.destroy', $olt) }}" method="POST" onsubmit="return confirm('Remove this OLT?')">
+                <form action="{{ route('olts.destroy', $olt) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this OLT?')">
                     @csrf @method('DELETE')
                     <button type="submit" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors">
                         <i class="bx bx-trash text-lg"></i> Remove

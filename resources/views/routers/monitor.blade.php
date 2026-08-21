@@ -802,7 +802,7 @@
                     async runTerminalCommand() {
                         const command = this.terminalInput.trim();
                         if (!command) return;
-                        if (/\b(remove|reset|reboot)\b/i.test(command) && !confirm(`Run this against live hardware?\n\n${command}`)) {
+                        if (/\b(remove|reset|reboot)\b/i.test(command) && ! await rpConfirmAsync(`Run this against live hardware?\n\n${command}`)) {
                             return;
                         }
 
@@ -870,7 +870,7 @@
                     },
 
                     async rebootRouter() {
-                        if (!confirm('Reboot ' + '{{ $router->name }}' + '? It will be unreachable for about a minute.')) return;
+                        if (! await rpConfirmAsync('Reboot ' + '{{ $router->name }}' + '? It will be unreachable for about a minute.')) return;
                         this.rebooting = true;
                         await this.postAction(this.endpoints.reboot);
                         this.rebooting = false;
@@ -878,25 +878,25 @@
 
                     async toggleInterface(row) {
                         const disable = row['disabled'] !== 'true';
-                        if (disable && !confirm(`Disable interface ${row['name']}? Anything connected through it will drop.`)) return;
+                        if (disable && ! await rpConfirmAsync(`Disable interface ${row['name']}? Anything connected through it will drop.`)) return;
                         const ok = await this.postAction(this.endpoints.toggleInterface, { interface: row['name'], disabled: disable });
                         if (ok) this.loadTab('ethernet');
                     },
 
                     async disconnectHotspotUser(row) {
-                        if (!confirm(`Disconnect ${row['user'] || row['address']}?`)) return;
+                        if (! await rpConfirmAsync(`Disconnect ${row['user'] || row['address']}?`)) return;
                         const ok = await this.postAction(this.endpoints.disconnectHotspot, { id: row['.id'] });
                         if (ok) this.loadTab('hotspot');
                     },
 
                     async disconnectPppoeUser(row) {
-                        if (!confirm(`Disconnect ${row['name'] || row['address']}?`)) return;
+                        if (! await rpConfirmAsync(`Disconnect ${row['name'] || row['address']}?`)) return;
                         const ok = await this.postAction(this.endpoints.disconnectPppoe, { id: row['.id'] });
                         if (ok) this.loadTab('pppoe');
                     },
 
                     async blockHotspotUser(row) {
-                        if (!confirm(`Block ${row['address']} (${row['user'] || 'unknown user'})? They will be denied access until unblocked in Winbox.`)) return;
+                        if (! await rpConfirmAsync(`Block ${row['address']} (${row['user'] || 'unknown user'})? They will be denied access until unblocked in Winbox.`)) return;
                         const ok = await this.postAction(this.endpoints.blockHotspot, { address: row['address'] });
                         if (ok) this.loadTab('hotspot');
                     },

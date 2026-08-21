@@ -12,6 +12,7 @@ class Tenant extends Model
 
     protected $fillable = [
         'company_name',
+        'isp_prefix',
         'support_phone',
         'location',
         'timezone',

@@ -30,13 +30,8 @@ class CompanySettingController extends Controller
 
     public function edit()
     {
-        $tenant = Tenant::findOrFail(Auth::user()->tenant_id);
-
-        return view('company.settings', [
-            'tenant' => $tenant,
-            'timezones' => self::TIMEZONES,
-            'currencies' => self::CURRENCIES,
-        ]);
+        // Now embedded in the unified Account page instead of its own screen.
+        return redirect()->route('account.index', ['tab' => 'general']);
     }
 
     public function update(Request $request)
@@ -56,6 +51,6 @@ class CompanySettingController extends Controller
             'currency_symbol' => $request->currency_symbol,
         ]);
 
-        return redirect()->route('company-settings.edit')->with('success', 'Company settings saved.');
+        return redirect()->route('account.index', ['tab' => 'general'])->with('success', 'Company settings saved.');
     }
 }

@@ -12,14 +12,17 @@ use App\Http\Controllers\CaptivePortalAnnouncementController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PppoeUserController;
 use App\Http\Controllers\HotspotUserController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SmsTemplateController;
 use App\Http\Controllers\SmsSettingController;
 use App\Http\Controllers\SmsTriggerController;
 use App\Http\Controllers\MpesaSettingController;
 use App\Http\Controllers\CompanySettingController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TenantBillingController;
 use App\Http\Controllers\VoucherController;
@@ -98,7 +101,6 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
     // The Command Center Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/live-snapshot', [DashboardController::class, 'liveSnapshot'])->name('dashboard.live-snapshot');
     Route::get('/search', [SearchController::class, 'index'])->name('search');
 
     // === NOTIFICATIONS ===
@@ -181,7 +183,12 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     // as a route-model-binding lookup for a plan literally named "bulk-destroy".
     Route::delete('/plans/bulk-destroy', [PlanController::class, 'destroyBulk'])->name('plans.destroy-bulk');
     Route::resource('plans', PlanController::class)->except('show');
+    Route::post('/plans/{plan}/duplicate', [PlanController::class, 'duplicate'])->name('plans.duplicate');
     Route::get('/plans/{plan}/sync-status', [PlanController::class, 'syncStatus'])->name('plans.sync-status');
+
+    // === CUSTOMERS (unified PPPoE/Hotspot hub behind the sidebar's single Customers link) ===
+    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+    Route::get('/customers/view/{token}', [CustomerController::class, 'show'])->name('customers.show');
 
     // === PPPoE / HOTSPOT CUSTOMER MANAGEMENT ===
     // Must be registered before the resource routes below, or /{pppoe_user} would swallow them.
@@ -194,9 +201,14 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::resource('hotspot-users', HotspotUserController::class);
     Route::post('/pppoe-users/{pppoe_user}/extend', [PppoeUserController::class, 'extendExpiry'])->name('pppoe-users.extend');
     Route::post('/pppoe-users/{pppoe_user}/disconnect', [PppoeUserController::class, 'forceDisconnect'])->name('pppoe-users.disconnect');
+    Route::post('/pppoe-users/{pppoe_user}/disable', [PppoeUserController::class, 'disable'])->name('pppoe-users.disable');
+    Route::post('/pppoe-users/{pppoe_user}/enable', [PppoeUserController::class, 'enable'])->name('pppoe-users.enable');
+    Route::post('/pppoe-users/{pppoe_user}/change-password', [PppoeUserController::class, 'changePassword'])->name('pppoe-users.change-password');
     Route::get('/pppoe-users/{pppoe_user}/panel', [PppoeUserController::class, 'panel'])->name('pppoe-users.panel');
     Route::post('/hotspot-users/{hotspot_user}/extend', [HotspotUserController::class, 'extendExpiry'])->name('hotspot-users.extend');
     Route::post('/hotspot-users/{hotspot_user}/disconnect', [HotspotUserController::class, 'forceDisconnect'])->name('hotspot-users.disconnect');
+    Route::post('/hotspot-users/{hotspot_user}/disable', [HotspotUserController::class, 'disable'])->name('hotspot-users.disable');
+    Route::post('/hotspot-users/{hotspot_user}/enable', [HotspotUserController::class, 'enable'])->name('hotspot-users.enable');
     Route::post('/hotspot-users/{hotspot_user}/reset-mac', [HotspotUserController::class, 'resetMac'])->name('hotspot-users.reset-mac');
     Route::get('/hotspot-users/{hotspot_user}/panel', [HotspotUserController::class, 'panel'])->name('hotspot-users.panel');
 
@@ -208,6 +220,9 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     // === SUPPORT TICKETS ===
     Route::resource('tickets', TicketController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.update-status');
+
+    // === EXPENSES ===
+    Route::resource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // === SMS OUTBOX & TEMPLATES ===
     Route::resource('sms', SmsMessageController::class)->only(['index', 'store', 'destroy']);
@@ -228,10 +243,15 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/company/settings', [CompanySettingController::class, 'edit'])->name('company-settings.edit');
     Route::put('/company/settings', [CompanySettingController::class, 'update'])->name('company-settings.update');
 
+    // === ACCOUNT (unified Profile / Payment Gateway / Company settings page) ===
+    Route::get('/account', [SettingsController::class, 'index'])->name('account.index');
+    Route::put('/account/general', [SettingsController::class, 'updateGeneral'])->name('account.update-general');
+
     // === VOUCHERS ===
     Route::get('/vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
     Route::post('/vouchers/generate', [VoucherController::class, 'generate'])->name('vouchers.generate');
     Route::get('/vouchers/print', [VoucherController::class, 'print'])->name('vouchers.print');
+    Route::delete('/vouchers/{hotspot_user}', [VoucherController::class, 'destroy'])->name('vouchers.destroy');
 
     // === CAPTIVE PORTAL ANNOUNCEMENTS ===
     Route::middleware('restrict.sales-agent')->group(function () {
@@ -262,7 +282,6 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::patch('/profile/dashboard-layout', [ProfileController::class, 'updateDashboardLayout'])->name('profile.dashboard-layout');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

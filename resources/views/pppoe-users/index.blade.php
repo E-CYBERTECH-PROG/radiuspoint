@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Fixed / fiber customers authenticating by username.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-            <form action="{{ route('pppoe-users.purge-expired') }}" method="POST" onsubmit="return confirm('Delete every expired PPPoE customer? This also removes their RADIUS credentials and cannot be undone.')">
+            <form action="{{ route('pppoe-users.purge-expired') }}" method="POST" onsubmit="return rpConfirm(event, 'Delete every expired PPPoE customer? This also removes their RADIUS credentials and cannot be undone.')">
                 @csrf
                 <button type="submit" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors">
                     <i class="bx bx-trash text-lg"></i> Purge Expired
@@ -20,7 +20,7 @@
     <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
         <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
             <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username or phone..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username or phone..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
         </div>
         <select name="status" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
             <option value="">All Statuses</option>
@@ -105,7 +105,7 @@
                                         </button>
                                     @endif
                                     <a href="{{ route('pppoe-users.edit', $user) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><i class="bx bx-edit-alt text-lg"></i></a>
-                                    <form action="{{ route('pppoe-users.destroy', $user) }}" method="POST" onsubmit="return confirm('Remove this customer?')">
+                                    <form action="{{ route('pppoe-users.destroy', $user) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this customer?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i class="bx bx-trash text-lg"></i></button>
                                     </form>
@@ -157,7 +157,7 @@
                     async disconnect(username, routerId) {
                         const session = this.live[username];
                         if (!session || !session.id) return;
-                        if (!confirm(`Disconnect ${username}?`)) return;
+                        if (! await rpConfirmAsync(`Disconnect ${username}?`)) return;
                         try {
                             await fetch(this.disconnectUrlTemplate.replace('__ROUTER__', routerId), {
                                 method: 'POST',

@@ -22,6 +22,7 @@ class Plan extends Model
     'tenant_id',
     'name',
     'type',
+    'status',
     'price',
     'duration_value',
     'duration_unit',

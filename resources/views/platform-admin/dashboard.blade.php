@@ -99,7 +99,7 @@
                                             @csrf
                                             <button type="submit" class="text-xs text-green-600 hover:text-green-700 font-bold uppercase tracking-wide">Approve</button>
                                         </form>
-                                        <form action="{{ route('platform-admin.tenants.reject', $tenant) }}" method="POST" onsubmit="return confirm('Reject {{ $tenant->company_name }}?')">
+                                        <form action="{{ route('platform-admin.tenants.reject', $tenant) }}" method="POST" onsubmit="return rpConfirm(event, 'Reject {{ $tenant->company_name }}?')">
                                             @csrf
                                             <button type="submit" class="text-xs text-red-600 hover:text-red-700 font-bold uppercase tracking-wide">Reject</button>
                                         </form>

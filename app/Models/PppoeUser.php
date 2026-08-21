@@ -24,8 +24,12 @@ class PppoeUser extends Model
     protected $fillable = [
         'tenant_id',
         'username',
+        'first_name',
+        'last_name',
         'name',
         'phone_number',
+        'email',
+        'address',
         'current_plan_id',
         'current_router_id',
         'status',

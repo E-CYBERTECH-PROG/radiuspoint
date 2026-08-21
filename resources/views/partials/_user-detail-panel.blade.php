@@ -207,13 +207,13 @@
                 this.runAction(this.data?.extend_url, { days });
             },
 
-            disconnect() {
-                if (! confirm('Disconnect this customer\'s active session now?')) return;
+            async disconnect() {
+                if (! await rpConfirmAsync('Disconnect this customer\'s active session now?')) return;
                 this.runAction(this.data?.disconnect_url);
             },
 
-            resetMac() {
-                if (! confirm('Clear this customer\'s bound MAC address? The next device to connect will bind automatically.')) return;
+            async resetMac() {
+                if (! await rpConfirmAsync('Clear this customer\'s bound MAC address? The next device to connect will bind automatically.')) return;
                 this.runAction(this.data?.reset_mac_url);
             },
         };

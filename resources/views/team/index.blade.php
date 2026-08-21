@@ -13,7 +13,7 @@
         <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
             <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
                 <i class="bx bx-search text-gray-400 text-lg"></i>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
             </div>
             <select name="role" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
                 <option value="">All Roles</option>
@@ -53,12 +53,12 @@
                                     @if($member->role !== 'SuperAdmin')
                                         <div class="flex items-center justify-end gap-3">
                                             <button @click="editOpen = {{ $member->id }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><i class="bx bx-edit-alt text-lg"></i></button>
-                                            <form action="{{ route('team.reset-password', $member) }}" method="POST" onsubmit="return confirm('Reset password for {{ $member->name }}? A new temporary password will be generated.')">
+                                            <form action="{{ route('team.reset-password', $member) }}" method="POST" onsubmit="return rpConfirm(event, 'Reset password for {{ $member->name }}? A new temporary password will be generated.')">
                                                 @csrf
                                                 <button type="submit" class="text-gray-400 hover:text-amber-600 transition-colors" title="Reset Password"><i class="bx bx-key text-lg"></i></button>
                                             </form>
                                             @if($member->id !== Auth::id())
-                                                <form action="{{ route('team.destroy', $member) }}" method="POST" onsubmit="return confirm('Remove this team member?')">
+                                                <form action="{{ route('team.destroy', $member) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this team member?')">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i class="bx bx-trash text-lg"></i></button>
                                                 </form>

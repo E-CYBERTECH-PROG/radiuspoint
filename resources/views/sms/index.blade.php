@@ -2,9 +2,7 @@
     <div x-data="{ open: false, tab: '{{ in_array(request('tab'), ['settings', 'templates', 'automation']) ? request('tab') : 'outbox' }}', message: '' }" x-init="open = @json($errors->any())">
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">SMS</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Outbound messages and reusable templates.</p>
-                <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                     <i class="bx bx-info-circle"></i> Log Mode — No Gateway Connected
                 </span>
             </div>
@@ -25,7 +23,7 @@
                 <input type="hidden" name="tab" value="outbox">
                 <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
                     <i class="bx bx-search text-gray-400 text-lg"></i>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search phone number..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search phone number..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
                 </div>
                 <select name="status" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
                     <option value="">All Statuses</option>
@@ -66,7 +64,7 @@
                                     </x-status-badge>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <form action="{{ route('sms.destroy', $msg) }}" method="POST" onsubmit="return confirm('Remove this message from the log?')">
+                                    <form action="{{ route('sms.destroy', $msg) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this message from the log?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i class="bx bx-trash text-lg"></i></button>
                                     </form>
@@ -99,7 +97,7 @@
                                 </div>
                                 <div class="flex items-start gap-2 shrink-0">
                                     <button type="button" @click="editing = {{ $template->id }}" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="bx bx-edit-alt text-lg"></i></button>
-                                    <form action="{{ route('sms-templates.destroy', $template) }}" method="POST" onsubmit="return confirm('Delete this template?')">
+                                    <form action="{{ route('sms-templates.destroy', $template) }}" method="POST" onsubmit="return rpConfirm(event, 'Delete this template?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors"><i class="bx bx-trash text-lg"></i></button>
                                     </form>
