@@ -191,7 +191,7 @@
                         pushing = true; pushResult = null;
                         fetch('{{ route('routers.captive-portal.push', $router) }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
                             .then(r => r.json().then(data => ({ ok: r.ok, data })))
-                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Login page: ' + data.login_html + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).') : data.message; })
+                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Hotspot files pushed: ' + data.hotspot_files_pushed + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).') : data.message; })
                             .catch(() => { pushOk = false; pushResult = 'Network error — could not reach the router.'; })
                             .finally(() => pushing = false);
                     " :disabled="pushing" class="shrink-0 inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs py-2 px-4 rounded-lg disabled:opacity-50 transition-colors">
@@ -201,6 +201,20 @@
                 </div>
                 <p x-show="pushResult" x-cloak class="text-xs font-bold mt-2" :class="pushOk ? 'text-green-600 dark:text-green-400' : 'text-red-500'" x-text="pushResult"></p>
             </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm mb-6">
+            <h3 class="text-md font-bold text-gray-900 dark:text-white mb-1">Reprovision</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">For a factory reset, a swapped-in replacement unit, or just re-syncing everything from scratch. Both are safe to run on an already-configured router — nothing here is destructive.</p>
+            <div class="flex flex-wrap gap-3">
+                <a href="{{ route('routers.provision', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                    <i class="bx bx-terminal text-lg"></i> Re-run Bootstrap Script
+                </a>
+                <a href="{{ route('routers.ports', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
+                    <i class="bx bx-network-chart text-lg"></i> Reconfigure Ports
+                </a>
+            </div>
+            <p class="text-xs text-gray-400 mt-3">Bootstrap script re-establishes the tunnel/RADIUS wiring (needs the router reachable to paste it into). Reconfigure Ports needs the router already online, and re-pushes hotspot/PPPoE/captive-portal/free-mode for whatever roles you assign.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
