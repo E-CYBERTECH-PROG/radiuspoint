@@ -7,17 +7,23 @@
     <meta http-equiv="pragma" content="no-cache">
     <meta http-equiv="expires" content="-1">
     <title>Internet Hotspot - Status</title>
- <style>
-    iframe{
-        width: 100%;
-        height: 100%;
-    }
- </style>
-
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <style>
+        .status-wrap { max-width: 420px; margin: 40px auto; padding: 20px; text-align: center; }
+        .status-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    </style>
 </head>
 
 <body>
-    <iframe src="https://[destination_instance]/endpoints/status?username=$(username)" frameborder="0" width="100%"></iframe>
+    <div class="status-wrap">
+        <h2>You're connected</h2>
+        <div class="status-row"><span>Username</span><b>$(username)</b></div>
+        <div class="status-row"><span>IP Address</span><b>$(ip)</b></div>
+        <div class="status-row"><span>Session time left</span><b>$(session-time-left)</b></div>
+        <div class="status-row"><span>Uptime</span><b>$(uptime)</b></div>
+        <div class="status-row"><span>Data used</span><b>$(bytes-in-nice) &darr; / $(bytes-out-nice) &uarr;</b></div>
+        <p><a class="link" href="$(link-logout)">Log Out</a></p>
+    </div>
 </body>
 
 </html>

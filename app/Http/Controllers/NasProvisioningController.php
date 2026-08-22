@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Router;
+use App\Models\Tenant;
 use App\Services\MikrotikApiService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,35 @@ use Throwable;
 
 class NasProvisioningController extends Controller
 {
+    /**
+     * Router-specific hotspot skin pages — everything else in public/hotspot/* (assets,
+     * error.html, xml/*, etc.) has no per-tenant content and is fetched straight from its
+     * plain public URL instead of coming through here.
+     */
+    public function hotspotPage(Router $router, string $page): Response
+    {
+        $path = public_path('hotspot/'.$page);
+        if (! is_file($path)) {
+            abort(404);
+        }
+
+        $tenant = Tenant::find($router->tenant_id);
+        $appUrl = rtrim(config('app.url'), '/');
+
+        $html = str_replace(
+            ['[network_name]', '[supportnumber]', '[rp_captive_base]', '[rp_portal_base]'],
+            [
+                $tenant?->company_name ?: 'WiFi Hotspot',
+                $tenant?->support_phone ?: '',
+                "{$appUrl}/captive/{$router->public_token}",
+                "{$appUrl}/portal/{$router->public_token}",
+            ],
+            file_get_contents($path)
+        );
+
+        return response($html, 200)->header('Content-Type', 'text/html');
+    }
+
     /**
      * Public, public_token-scoped endpoint that a router's bootstrap script fetches and imports
      * (see RouterController::provision()). Generated fresh on every request so it always

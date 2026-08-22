@@ -23,19 +23,13 @@
       "server-name": "$(server-name)",
       "ssl-login": "$(ssl-login)",
     };
-    const api_credentials = {
-      patner: "[this_patner_username]",
-      apikey: "[this_patner_apikey]",
-      nas: "[nasname]"
-    };
-
     let hostname = "$(hostname)";
     let device_mac_address = "$(mac)";
     let device_ip_address = "$(ip)";
-    let patner = "[this_patner_username]";
-    let apikey = patner_apikey = "[this_patner_apikey]";
-    let nasname = "[nasname]";
-    const destination_instance = "[destination_instance]";
+    // Baked in per-router when this page is pushed to the MikroTik — see
+    // NasProvisioningController::hotspotPage().
+    const rpCaptiveBase = "[rp_captive_base]";
+    const rpPortalBase = "[rp_portal_base]";
 
     //host
     let host_server_name = "$(server-name)";
@@ -81,7 +75,7 @@
         <div class="packages-wrapper" id="packages-go-here-1">
 
 
-          [this_users_plans]
+          <div class="offer"><div class="deal-text">Loading packages&hellip;</div></div>
 
 
         </div>
@@ -91,31 +85,29 @@
 
           <h3 class="notice hide">SIGN IN METHOD 2</h3>
 
-          <form action="https://[destination_instance]/checkout/hotspot.php" method="post">
-            <input type="hidden" name="synchronous" value="yes">
-            <input type="hidden" name="patner" value="[this_patner_username]">
-            <input type="hidden" name="account" value="$(mac)">
-            <input type="hidden" name="ip" value="$(ip)">
-            <input type="hidden" name="nas" value="[nasname]">
-            <input type="hidden" name="hostname" value="$(hostname)">
-            <input type="hidden" name="servername" value="$(server-name)">
+          <!-- JS-disabled fallback — RadiusPoint's /pay endpoint replies with raw JSON rather
+               than a redirect, so this works but lands on an ugly JSON page rather than the
+               polished success screen the JS path shows. Acceptable for a rare edge case. -->
+
+          <form action="[rp_portal_base]/pay" method="post">
+            <input type="hidden" name="mac" value="$(mac)">
             <div id="packages-go-here-2">
               <label for="analog-productid">Select Package To Buy: </label>
 
 
-              <select required name="productid" id="analog-productid">
+              <select required name="plan_id" id="analog-productid">
 
 
                 <option value="">-- select package --</option>
-               
+
 
           <!--select_options_here-->
-          
+
               </select>
             </div>
             <div>
               <label for="analog-phonenumber">Phonenumber: </label>
-              <input required type="text" name="phonenumber" id="analog-phonenumber" placeholder="enter phone number">
+              <input required type="text" name="phone" id="analog-phonenumber" placeholder="enter phone number">
             </div>
 
             <div>
@@ -270,9 +262,7 @@
         </div>
       </div>
       <div class="footer-item">
-        <a href="https://billnasi.com" target="_blank" style="color: orange;">
-          BILLNASI <span class="year" id="show-year"></span>
-        </a>
+        <span style="color: orange;">Powered by RadiusPoint <span class="year" id="show-year"></span></span>
       </div>
 
     </div>
@@ -303,94 +293,59 @@
     return false;
   }
 
-  let username = false;
-  let password = false;
-  let has_unused_voucher = false;
+  // Auto-recovering an unused voucher purely by MAC address isn't wired up yet — that needs
+  // its own backend lookup, not built as of this skin's rewrite.
 
+  async function get_signin_page_startup_data() {
+    let curl = await fetch(`${rpCaptiveBase}/startup.json`);
+    if (curl.status == 200) {
+      let data = await curl.json();
 
-  async function recover_unused_voucher() {
-    let recover_unused_voucher_query = await fetch(`https://${destination_instance}/endpoints/v2/recover_vouchers.php?patner=${patner}&mac=${device_mac_address}&ip=${device_ip_address}&nasname=${nasname}`);
+      let support_number = data.support_phone;
+      let currency = data.currency || 'KES';
 
-    if (recover_unused_voucher_query.status == 200) {
-      let json_response = await recover_unused_voucher_query.json();
-      console.log("VOUCHER RECOVERY SUCCESS: ", json_response);
+      if (support_number) {
+        document.querySelectorAll(".org-support").forEach(element => {
+          element.innerText = support_number;
+        });
+      }
 
-      username = await json_response.username;
-      password = await json_response.password;
-      has_unused_voucher = true;
+      let plans = data.plans || [];
+      let packages_wrapper_div = document.getElementById("packages-go-here-1");
+      let select_container = document.getElementById("analog-productid");
+      packages_wrapper_div.innerHTML = "";
 
-      Swal.fire({
-        title: `1 UNUSED VOUCHER ${username}`,
-        text: 'Click Sign In to continue',
-        icon: 'info',
-        showCancelButton: true,
-        cancelButtonText: 'Cancel',
-        confirmButtonText: 'Sign In',          // plain text (keeps default styling)
-        allowOutsideClick: false,
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Redirect when the styled button is clicked
-          window.location.href = `http://${hostname}/login?username=${username}&password=${password}&dst=https://youtube.com&popup=true`;
-          // or window.open('https://your-signin-page.com', '_blank');
+      if (plans.length === 0) {
+        packages_wrapper_div.innerHTML = "NO PACKAGES FOUND";
+        return;
+      }
+
+      plans.forEach(plan => {
+        const package_container = document.createElement("div");
+        package_container.className = "offer";
+
+        const deal_text_content = document.createElement("div");
+        deal_text_content.className = "deal-text";
+        deal_text_content.textContent = `${plan.name} — ${currency} ${plan.price}`;
+
+        const buy_button = document.createElement("button");
+        buy_button.className = "get-deal";
+        buy_button.textContent = "BUY";
+        buy_button.onclick = function () {
+          show_checkout_modal(plan.price, currency, plan.name, plan.id);
+        };
+
+        package_container.appendChild(deal_text_content);
+        package_container.appendChild(buy_button);
+        packages_wrapper_div.appendChild(package_container);
+
+        if (select_container) {
+          select_container.appendChild(new Option(`${plan.name} — ${currency} ${plan.price}`, plan.id));
         }
       });
 
     } else {
-      let json_response = await recover_unused_voucher_query.json();
-      console.log("VOUCHER RECOVERY FAIL: ", json_response);
-    }
-
-  }
-  recover_unused_voucher();
-
-
-  async function get_signin_page_startup_data() {
-    let curl = await fetch(`https://${destination_instance}/endpoints/v2/hs_startup.php?patner=${patner}&api-key=${patner_apikey}&nasname=${nasname}`);
-    //http status code 200 is success
-    //any other is error
-    if (curl.status == 200) {
-      let hs_startup_data = await curl.json();
-      console.log("startup data success");
-
-
-      //  console.log("HEY HEY HEY");
-
-      // console.log(hs_startup_data);
-
-
-      let ResponseCode = hs_startup_data.ResponseCode;//0  for success
-      let networkname = hs_startup_data.networkname;
-      let support_number = hs_startup_data.phone;
-
-      document.querySelectorAll(".org-support").forEach(element => {
-        element.innerText = support_number;
-      });
-
-
-      let number_of_packages = hs_startup_data.count;
-
-      if (number_of_packages > 0) {
-        let div_html = await hs_startup_data.div_html;
-        let select_html = await hs_startup_data.select_html;
-
-        //console.log(div_html, select_html);
-
-        document.getElementById("packages-go-here-1").innerHTML = div_html;
-        document.getElementById("packages-go-here-2").innerHTML = select_html;
-
-      } else {
-        document.getElementById("packages-go-here-1").innerHTML = "NO PACKAGES FOUND";
-        //document.getElementById("packages-go-here-2").remove();
-      }
-
-
-    } else {
-      //if curl error
-      let hs_startup_data = await curl.json();
-      //console.log(hs_startup_data);
-
       console.log("GETTING STARTUP DATA ERROR");
-
     }
   }
 

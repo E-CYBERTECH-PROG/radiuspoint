@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Services\MikrotikApiService;
 use App\Services\WireguardService;
+use Illuminate\Support\Facades\File;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use RouterOS\Exceptions\StreamException;
@@ -501,9 +502,10 @@ class RouterController extends Controller
     }
 
     /**
-     * Adds a walled-garden rule so unauthenticated clients can reach the portal, and rewrites
-     * the router's local login.html to redirect there with RouterOS's template variables as
-     * query params. Idempotent — also used by pushCaptivePortalFiles().
+     * Adds a walled-garden rule so unauthenticated clients can reach the portal, and pushes the
+     * real router-hosted hotspot skin (public/hotspot/*) onto the router's own filesystem so it
+     * serves that directly rather than redirecting to captive.show. Idempotent — also used by
+     * pushCaptivePortalFiles().
      */
     protected function provisionCaptivePortal(MikrotikApiService $api, Router $router): array
     {
@@ -519,15 +521,7 @@ class RouterController extends Controller
             ]);
         }
 
-        $portalUrl = route('captive.show', $router);
-        $stub = '<html><head><meta http-equiv="refresh" content="0;url='.$portalUrl
-            .'?link-login-only=$(link-login-only)&link-orig=$(link-orig)&mac=$(mac)&ip=$(ip)"></head>'
-            .'<body>Redirecting...</body></html>';
-
-        $fileId = $api->findId('/file/print', 'name', 'hotspot/login.html');
-        if ($fileId) {
-            $api->setById('/file/set', $fileId, ['contents' => $stub]);
-        }
+        $filesPushed = $this->pushHotspotSkin($api, $router);
 
         // Retroactive fix for routers provisioned before login-by/radius-interim-update were
         // added. Only touches profiles we created (current or an older naming generation) —
@@ -690,7 +684,7 @@ class RouterController extends Controller
 
         return [
             'walled_garden' => $existingRule ? 'already present' : 'added',
-            'login_html' => $fileId ? 'updated' : 'not found — hotspot skin missing hotspot/login.html',
+            'hotspot_files_pushed' => $filesPushed,
             'login_by_fixed' => $loginByFixed,
             'interim_update_fixed' => $interimUpdateFixed,
             'idle_timeout_fixed' => $idleTimeoutFixed,
@@ -698,6 +692,43 @@ class RouterController extends Controller
             'profiles_renamed' => $renamed,
             'one_session_per_host_fixed' => $oneSessionFixed,
         ];
+    }
+
+    /**
+     * Pushes every file under public/hotspot/ onto the router's own hotspot/ file directory via
+     * live /tool fetch calls, preserving the assets/css/js/img and xml/ subfolders. login.html,
+     * login2.html, and status.html are fetched from NasProvisioningController::hotspotPage()
+     * instead of their plain public URL, since those three need this tenant's business
+     * name/support number/API base baked in — everything else has no per-tenant content and is
+     * fetched as-is. /tool fetch overwrites an existing destination file, so this is safe to
+     * call on every push; it's fire-and-forget (RouterOS downloads happen in the background),
+     * so this returns a file count, not a per-file success/failure report.
+     */
+    protected function pushHotspotSkin(MikrotikApiService $api, Router $router): int
+    {
+        $templated = ['login.html', 'login2.html', 'status.html'];
+        $appUrl = rtrim(config('app.url'), '/');
+        $count = 0;
+
+        $files = File::allFiles(public_path('hotspot'));
+        foreach ($files as $file) {
+            $relativePath = str_replace('\\', '/', $file->getRelativePathname());
+
+            $url = in_array($relativePath, $templated, true)
+                ? route('nas.hotspot-page', [$router, $relativePath])
+                : "{$appUrl}/hotspot/{$relativePath}";
+
+            $api->query('/tool/fetch', [
+                'url' => $url,
+                'mode' => 'https',
+                'check-certificate' => 'no',
+                'dst-path' => "hotspot/{$relativePath}",
+                'http-method' => 'get',
+            ]);
+            $count++;
+        }
+
+        return $count;
     }
 
     /**
@@ -828,7 +859,7 @@ class RouterController extends Controller
             return response()->json([
                 'message' => 'Captive portal files pushed to router.',
                 'walled_garden' => $result['walled_garden'],
-                'login_html' => $result['login_html'],
+                'hotspot_files_pushed' => $result['hotspot_files_pushed'],
                 'login_by_fixed' => $result['login_by_fixed'],
                 'interim_update_fixed' => $result['interim_update_fixed'],
                 'idle_timeout_fixed' => $result['idle_timeout_fixed'],

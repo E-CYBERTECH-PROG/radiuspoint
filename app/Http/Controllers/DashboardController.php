@@ -2,62 +2,97 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HotspotUser;
+use App\Models\PppoeUser;
+use App\Models\Plan;
+use App\Models\Router;
+use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
-/**
- * TEMPORARY: every figure below is hardcoded mock data, not a database query — the
- * dashboard UI was built ahead of the real backend wiring for it. When that's ready, swap
- * this method's body for real queries against Transaction/HotspotUser/PppoeUser/Plan/radacct
- * (git history has the previous DB-backed version, or see App\Console\Commands\SeedDemoData
- * for the shape realistic seeded data takes) — the view/partials themselves don't need to
- * change, they just read whatever variables this action passes them.
- */
 class DashboardController extends Controller
 {
     public function index()
     {
         $now = Carbon::now();
 
+        // radacct doesn't distinguish PPPoE from Hotspot sessions itself — matched by whether
+        // the open session's username belongs to a PppoeUser or a HotspotUser (phone_number is
+        // the RADIUS username for hotspot customers). Scoped to this tenant's own routers since
+        // radacct has no tenant_id column.
+        $routerIps = Router::where('tenant_id', Auth::user()->tenant_id)->pluck('ip_address');
+        $openSessionUsernames = $routerIps->isEmpty()
+            ? collect()
+            : DB::table('radacct')->whereIn('nasipaddress', $routerIps)->whereNull('acctstoptime')->pluck('username');
+
+        $onlinePpp = $openSessionUsernames->isEmpty() ? 0 : PppoeUser::whereIn('username', $openSessionUsernames)->count();
+        $onlineHotspot = $openSessionUsernames->isEmpty() ? 0 : HotspotUser::whereIn('phone_number', $openSessionUsernames)->count();
+
         $stats = [
-            'income_today' => 4198.0,
-            'income_month' => 569883,
-            'income_last_month' => 574480,
-            'hotspot_active' => 200,
-            'pppoe_active' => 450,
-            'online_now' => 557,
-            'customers_total' => 1324,
-            'customers_expired' => 674,
-            'online_ppp' => 557,
-            'online_hotspot' => 0,
+            'income_today' => (float) Transaction::whereDate('created_at', $now->copy()->startOfDay())->where('status', 'success')->sum('amount'),
+            'income_month' => (float) Transaction::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->where('status', 'success')->sum('amount'),
+            'income_last_month' => (float) Transaction::whereMonth('created_at', $now->copy()->subMonth()->month)->whereYear('created_at', $now->copy()->subMonth()->year)->where('status', 'success')->sum('amount'),
+            'hotspot_active' => HotspotUser::where('status', 'active')->count(),
+            'pppoe_active' => PppoeUser::where('status', 'active')->count(),
+            'online_now' => $onlinePpp + $onlineHotspot,
+            'customers_total' => HotspotUser::count() + PppoeUser::count(),
+            'customers_expired' => HotspotUser::where('status', 'expired')->count() + PppoeUser::where('status', 'expired')->count(),
+            'online_ppp' => $onlinePpp,
+            'online_hotspot' => $onlineHotspot,
         ];
 
         $chartLabels = [];
-        $chartValues = [850000, 920000, 780000, 860000, 574480, 569883];
+        $chartData = [];
         for ($i = 5; $i >= 0; $i--) {
-            $chartLabels[] = $now->copy()->subMonths($i)->format('M');
+            $month = $now->copy()->subMonths($i);
+            $chartLabels[] = $month->format('M');
+            $chartData[] = (float) Transaction::whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->where('status', 'success')
+                ->sum('amount');
         }
-        $chartData = $chartValues;
 
-        // Same 6-month window as the revenue chart above, so the two charts line up.
+        // Same 6-month window as the revenue chart above, so the two charts line up. "Growth"
+        // here is new hotspot+PPPoE customers created that month, combined.
         $growthLabels = $chartLabels;
-        $growthData = [48, 52, 45, 50, 47, 53];
+        $growthData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = $now->copy()->subMonths($i);
+            $growthData[] = HotspotUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count()
+                + PppoeUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count();
+        }
 
-        $subscriptionsThisMonth = 374;
-        $subscriptionsSparkline = [62, 58, 65, 60, 40, 34];
+        $subscriptionsThisMonth = HotspotUser::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count()
+            + PppoeUser::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
 
-        $packageBreakdown = collect([
-            ['package_name' => '20 Mbps - F', 'sales_count' => 136, 'revenue' => 190264],
-            ['package_name' => '35 Mbps - F', 'sales_count' => 64, 'revenue' => 108736],
-            ['package_name' => 'Faiba 4 Mbps', 'sales_count' => 67, 'revenue' => 80400],
-            ['package_name' => 'Faiba 10 Mbps', 'sales_count' => 36, 'revenue' => 54000],
-            ['package_name' => '18 MbpsS-S', 'sales_count' => 13, 'revenue' => 26000],
-            ['package_name' => '60 Mbps - F', 'sales_count' => 11, 'revenue' => 25289],
-            ['package_name' => '5 MBPS_N', 'sales_count' => 12, 'revenue' => 18000],
-        ])->map(fn ($row) => (object) $row);
+        // Last 6 days — a short, glanceable sparkline next to "this month"'s headline number,
+        // deliberately finer-grained than the 6-month growth chart above.
+        $subscriptionsSparkline = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $day = $now->copy()->subDays($i);
+            $subscriptionsSparkline[] = HotspotUser::whereDate('created_at', $day)->count()
+                + PppoeUser::whereDate('created_at', $day)->count();
+        }
 
-        $packagePlanTypes = collect($packageBreakdown)->mapWithKeys(fn ($row) => [$row->package_name => 'ppp']);
+        // Top packages by revenue this month, matched via Transaction.plan_id (set at checkout —
+        // see PaymentPortalController::pay()) rather than the package_name string snapshot,
+        // which can drift from the plan's current name.
+        $packageBreakdown = Transaction::where('status', 'success')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->whereNotNull('plan_id')
+            ->selectRaw('plan_id, package_name, COUNT(*) as sales_count, SUM(amount) as revenue')
+            ->groupBy('plan_id', 'package_name')
+            ->orderByDesc('revenue')
+            ->limit(7)
+            ->get();
 
-        $currency = 'KES';
+        $packagePlanTypes = Plan::whereIn('id', $packageBreakdown->pluck('plan_id'))
+            ->get()
+            ->mapWithKeys(fn ($plan) => [$plan->name => $plan->type]);
+
+        $currency = Auth::user()->tenant?->currency_symbol ?? 'KES';
 
         $incomeMonthDelta = $stats['income_last_month'] > 0
             ? (($stats['income_month'] - $stats['income_last_month']) / $stats['income_last_month']) * 100

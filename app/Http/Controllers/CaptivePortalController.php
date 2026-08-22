@@ -92,6 +92,33 @@ class CaptivePortalController extends Controller
     }
 
     /**
+     * JSON feed for the router-hosted static hotspot skin (public/hotspot/*) — the same
+     * business name/phone/plans this controller already hands to the server-rendered
+     * captive.show template, just as JSON for a page with no Blade/session behind it.
+     */
+    public function startup(Router $router)
+    {
+        $tenant = Tenant::find($router->tenant_id);
+
+        $plans = Plan::withoutGlobalScope('tenant')
+            ->where('tenant_id', $router->tenant_id)
+            ->where('type', 'hotspot')
+            ->where(function ($query) use ($router) {
+                $query->whereDoesntHave('routers')
+                    ->orWhereHas('routers', fn ($q) => $q->where('routers.id', $router->id));
+            })
+            ->orderBy('price')
+            ->get(['id', 'name', 'price']);
+
+        return response()->json([
+            'business_name' => $tenant?->company_name,
+            'support_phone' => $tenant?->support_phone,
+            'currency' => $tenant?->currency_symbol ?? 'KES',
+            'plans' => $plans,
+        ]);
+    }
+
+    /**
      * Phone-number self-service lookup for returning customers. Throttled at the route level
      * (6/min) since it's unauthenticated and could otherwise be used to enumerate numbers.
      */

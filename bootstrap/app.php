@@ -34,6 +34,17 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_HOST
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO);
+
+        // The router-hosted static hotspot skin (public/hotspot/*) calls these directly — it's
+        // plain static HTML with no Laravel session/Blade-rendered CSRF token behind it. Each
+        // is already unauthenticated-by-design and throttled at the route level; CSRF adds
+        // nothing here since there's no session to forge on behalf of.
+        $middleware->validateCsrfTokens(except: [
+            'portal/*/pay',
+            'captive/*/lookup',
+            'captive/*/lookup-receipt',
+            'captive/*/free-mode',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

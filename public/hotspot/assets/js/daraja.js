@@ -24,18 +24,6 @@ document.querySelectorAll("input").forEach(input => {
 
 });
 
-const form_template = new FormData();
-form_template.append("patner", patner);
-form_template.append("apikey", apikey);
-form_template.append("nas", nasname);
-form_template.append("ip", device_ip_address);
-form_template.append("mac", device_mac_address); //mac of this device
-form_template.append("account", device_mac_address); //mac of this device
-form_template.append("hostname", hostname);
-form_template.append("servername", host_server_name); //servername of this hotspot
-
-
-
 const resolve_container = document.querySelector(".resolve-payment");
 
 
@@ -81,75 +69,45 @@ async function resolve_transaction() {
         return;
     }
     resolve_container.innerHTML = "<i>Please wait...</i>";
-    let resolve_form = new FormData();
-    resolve_form.append("patner", patner);
-    resolve_form.append("apikey", apikey);
-    resolve_form.append("nas", nasname);
-    resolve_form.append("ip", server_variables["ip-address"]);
-    resolve_form.append("mac", server_variables["mac-address"]);
-    resolve_form.append("servicetype", "hotspot");
-    resolve_form.append("TrxCode", mpesa_code);
 
-    let resolution_query = await fetch(`https://${destination_instance}/endpoints/hs_resolve.php`,
-        {
-            method: "POST",
-            body: resolve_form
-        }
-    )
-    if (resolution_query.status == 200) {
+    let resolution_query = await fetch(`${rpCaptiveBase}/lookup-receipt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ message: mpesa_code })
+    });
 
+    let response = await resolution_query.json();
+    console.log(response);
+
+    if (resolution_query.status == 200 && response.found) {
         resolve_container.remove();
-        /*
-      {"response_type":"error","message":"Transaction does not exist"}
-      */
 
-        let response = await resolution_query.json();
-        console.log(response);
+        let username = response.username;
+        let password = response.password;
+        let login_via_http = `http://${hostname}/login?username=${username}&password=${password}&dst=https://youtube.com&popup=true`;
 
-        let ResponseCode = await response.ResponseCode;
-         let ResponseDesc = await response.ResponseDesc;
-        let Remarks = await response.Remarks ?? "No remarks";
-        console.log(Remarks);
-
-
-        if (ResponseCode == 0) {
-            let username = await response.username;
-            let password = await response.password;
-            let login_via_http = `http://${hostname}/login?username=${username}&password=${password}&dst=https://youtube.com&popup=true`;
-
-            Swal.fire({
-                title: 'Success',
-                text: ResponseDesc,
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonText: `<a href="${login_via_http}" style="color: inherit; text-decoration: none;">Sign In</a>`,
-                cancelButtonText: 'Cancel',
-                customClass: {
-                    confirmButton: 'custom-confirm-button'
-                },
-                didOpen: () => {
-                    // Make the anchor tag clickable
-                    const confirmButton = Swal.getConfirmButton();
-                    confirmButton.innerHTML = `<a href="${login_via_http}" style="color: inherit; text-decoration: none;">Sign In</a>`,
-                        confirmButton.onclick = function () {
-                            window.location.href = login_via_http;
-                        }
-                }
-            });
-
-
-        } else {
-            let ResponseDesc = await response.ResponseDesc;
-            Swal.fire("Failed!", "Error " + ResponseDesc, "error");
-        }
-
-
+        Swal.fire({
+            title: 'Success',
+            text: 'Payment found — you are ready to connect.',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: `<a href="${login_via_http}" style="color: inherit; text-decoration: none;">Sign In</a>`,
+            cancelButtonText: 'Cancel',
+            customClass: {
+                confirmButton: 'custom-confirm-button'
+            },
+            didOpen: () => {
+                const confirmButton = Swal.getConfirmButton();
+                confirmButton.innerHTML = `<a href="${login_via_http}" style="color: inherit; text-decoration: none;">Sign In</a>`,
+                    confirmButton.onclick = function () {
+                        window.location.href = login_via_http;
+                    }
+            }
+        });
 
     } else {
-        //curl error
         resolve_container.remove();
-
-        Swal.fire("Failed!", "Curl error, request not found", "error");
+        Swal.fire("Failed!", response.message || "No matching payment found.", "error");
     }
 }
 
@@ -229,236 +187,110 @@ async function show_checkout_modal(package_amount, currency, package_name, produ
             }
         });
 
-        form_template.append("phonenumber", phone);
-        //checkout_request_body.append("amount", amount);
-        //checkout_request_body.append("email", email); 
-        form_template.append("productid", productid);
-
-
-        let submit_checkout = await fetch(`https://${destination_instance}/checkout/hotspot.php`, {
+        let submit_checkout = await fetch(`${rpPortalBase}/pay`, {
             method: "POST",
-            body: form_template
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({ plan_id: productid, phone: phone, mac: device_mac_address })
         });
 
-        if (submit_checkout.status == 200) {//if we have gotten a reply
+        let response_body = await submit_checkout.json();
+        console.log(response_body);
 
-            let response_body = await submit_checkout.json();
+        if (submit_checkout.status == 200 && response_body.transaction_id) {
+            let transaction_id = response_body.transaction_id;
 
-            console.log(response_body);
-            let ResponseCode = response_body.ResponseCode ?? 500;// 0 for checkout, 10 for recover
-            let ResponseDescription = response_body.ResponseDescription;
-            let ResponseType = response_body.ResponseType;
-            let CheckoutRequestID = response_body.CheckoutRequestID;
-            let Remarks = response_body.Remarks ?? "Please wait ....";
+            Swal.update({
+                icon: 'info',
+                title: 'Processing...',
+                text: `Payment request sent to ${phone}, confirm and accept.`,
+                showConfirmButton: false,
+                allowOutsideClick: true,
+            });
+            Swal.showLoading();
 
-            let RedirectUrl = response_body.RedirectUrl;
-
-            if (ResponseCode == 0) {
-                //Swal.showLoading(); // This adds the official SweetAlert2 spinner
-                Swal.update({
-                    icon: 'info',
-                    title: 'Processing...',
-                    text: `${Remarks}`,
-                    showConfirmButton: false,
-                    allowOutsideClick: true,
+            let checkout_query_interval = setInterval(async () => {
+                let order_status_query = await fetch(`${rpPortalBase}/status/${transaction_id}`, {
+                    headers: { "Accept": "application/json" }
                 });
 
-                Swal.showLoading();
+                if (order_status_query.status == 200) {
+                    let result_body = await order_status_query.json();
+                    console.log(result_body);
 
-
-                if (RedirectUrl != null) {
-
-                    window.open(RedirectUrl, "_self");
-
-                }
-
-                let checkout_query_interval = setInterval(async () => {//enquire the server on the status of this order every  seconds
-                    let order_status_query = await fetch(`https://${destination_instance}/checkout/status.php?CheckoutRequestID=${CheckoutRequestID}`);
-
-                    if (order_status_query.status == 200) {
-                        /*
-                        {
-            "RequestBody": {
-                "CheckoutRequestID": "ws_CO_17112024003710569704343***"
-            },
-            "ResultCode": "0",
-            "Remarks": "Request processed successfully, reload page now. TransactionID = SKH539WIS5",
-            "Initiator": "Express",
-            "TrxCode": "SKH539WIS5"
-           }*/
-                        let result_body = await order_status_query.json();
-                        console.log(result_body);
-
-                        let ResultCode = result_body.ResultCode;
-                        let TrxCode = result_body["TrxCode"];
-                        Remarks = result_body.Remarks;
-
-
-                        if (ResultCode == 0) {
-                            //success
-                            clearInterval(checkout_query_interval);    // stop interval
-                            Swal.hideLoading();
-                            Swal.fire({
-                                title: `Payment confirmed ${TrxCode}`,
-                                text: 'Click Sign In to continue',
-                                icon: 'success',
-                                showCancelButton: true,
-                                cancelButtonText: 'Cancel',
-                                showConfirmButton: true,
-                                confirmButtonText: 'Sign In',          // plain text (keeps default styling)
-                                allowOutsideClick: true,
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    // Redirect when the styled button is clicked
-                                    window.location.href = `http://${hostname}/login?username=${TrxCode}&password=${TrxCode}&dst=https://youtube.com&popup=true`;
-                                    // or window.open('https://your-signin-page.com', '_blank');
-                                }
-                            });
-
-
-                            document.sendin.username.value = TrxCode;
-                            document.sendin.password.value = TrxCode;
-                            document.sendin.submit();
-
-
-                        } else if (ResultCode == null) {
-                            //pending
-                            Swal.update({
-                                icon: 'info',
-                                title: `Pending ...`,
-                                text: `Payment request sent to ${phone}, confirm and accept.`,
-                                showConfirmButton: false,
-                            });
-                            Swal.showLoading();
-
-                        } else if (ResultCode > 0) {//            
-                            //failed
-                            clearInterval(checkout_query_interval);// stop interval
-                            
-                            //console.log(Remarks);
-                            if (typeof Remarks != "string") {
-                                Remarks = "Payment request failed, try again or contact support";
-                            }
-                            //console.log(Remarks);
-
-                            Swal.hideLoading();
-                            Swal.update({
-                                icon: 'error',
-                                title: 'Failed...',
-                                text: Remarks,
-                                showConfirmButton: false,
-                                showCancelButton: true
-
-                            });
-                        } else {
-                            //resultcode somthing else other than 0
-                            //not null
-                            //not zero
-                            //not greater than 0
-                            clearInterval(checkout_query_interval);// stop interval
-
-
-                            Swal.hideLoading();
-                            Swal.update({
-                                icon: 'error',
-                                title: 'Failed...',
-                                text: `Failed to get payment request status, try again or contact support [${order_status_query.status}]`,
-                                showConfirmButton: false,
-                                showCancelButton: true,
-                                cancelButtonText: 'Cancel',         // plain text (keeps default styling)
-                                allowOutsideClick: true,
-
-                            });
-                        }
-                    } else {
-                        //check order status returned a http code diff from 200
-                        clearInterval(checkout_query_interval);// stop interval
+                    if (result_body.status === 'success') {
+                        clearInterval(checkout_query_interval);
                         Swal.hideLoading();
 
-                        if (typeof Remarks != "string") {
-                            Remarks = "Payment request failed (checkout stage 1), try again or contact support";
-                        }
+                        let username = result_body.username;
+                        let password = result_body.password;
 
+                        Swal.fire({
+                            title: `Payment confirmed`,
+                            text: 'Click Sign In to continue',
+                            icon: 'success',
+                            showCancelButton: true,
+                            cancelButtonText: 'Cancel',
+                            showConfirmButton: true,
+                            confirmButtonText: 'Sign In',
+                            allowOutsideClick: true,
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = `http://${hostname}/login?username=${username}&password=${password}&dst=https://youtube.com&popup=true`;
+                            }
+                        });
+
+                        document.sendin.username.value = username;
+                        document.sendin.password.value = password;
+                        document.sendin.submit();
+
+                    } else if (result_body.status === 'pending') {
+                        Swal.update({
+                            icon: 'info',
+                            title: `Pending ...`,
+                            text: `Payment request sent to ${phone}, confirm and accept.`,
+                            showConfirmButton: false,
+                        });
+                        Swal.showLoading();
+
+                    } else {
+                        // 'failed', or anything unexpected
+                        clearInterval(checkout_query_interval);
+                        Swal.hideLoading();
                         Swal.update({
                             icon: 'error',
                             title: 'Failed...',
-                            text: `${Remarks} [${order_status_query.status}]`,
+                            text: 'The payment was not completed. Try again or contact support.',
                             showConfirmButton: false,
                             showCancelButton: true,
-                            cancelButtonText: 'Cancel',         // plain text (keeps default styling)
+                            cancelButtonText: 'Cancel',
                             allowOutsideClick: true,
-
                         });
                     }
-                }, 3000);//query status of payment request every 3 seconds
-
-
-
-            } else if (ResponseCode == 10) {//for recovered vouchers
-
-
-                let recovered_items = response_body.items;
-                console.log("VOUCHER RECOVERY ON CHECKOUT: ", response_body);
-
-                item = recovered_items;
-
-                let item_username = item.username;
-                let item_amount = item.amount;
-                let item_date = item.TrxDate;
-
-                Swal.hideLoading();
-
-                Swal.fire({
-                    title: `1 UNUSED VOUCHER ${item_username}`,
-                    text: 'Click Sign In to continue',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    cancelButtonText: 'Cancel',
-                    confirmButtonText: 'Sign In',          // plain text (keeps default styling)
-                    allowOutsideClick: true,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Redirect when the styled button is clicked
-                        window.location.href = `http://${hostname}/login?username=${item_username}&password=${item_username}&dst=https://youtube.com&popup=true`;
-                        // or window.open('https://your-signin-page.com', '_blank');
-                    }
-                });
-
-            } else {
-                //.hotspot.php returned something that is not = 10
-                //not is in 0
-                Swal.hideLoading();
-                if (typeof Remarks != "string") {
-                    Remarks = "Payment request failed (checkout stage 1), try again or contact support";
+                } else {
+                    clearInterval(checkout_query_interval);
+                    Swal.hideLoading();
+                    Swal.update({
+                        icon: 'error',
+                        title: 'Failed...',
+                        text: `Could not check payment status, try again or contact support [${order_status_query.status}]`,
+                        showConfirmButton: false,
+                        showCancelButton: true,
+                        cancelButtonText: 'Cancel',
+                        allowOutsideClick: true,
+                    });
                 }
-
-
-                Swal.update({
-                    icon: 'error',
-                    title: 'Failed...',
-                    text: `${Remarks} [${submit_checkout.status}]`,
-                    showConfirmButton: false,
-                    showCancelButton: true,
-                    cancelButtonText: 'Cancel',         // plain text (keeps default styling)
-                    allowOutsideClick: true,
-
-                });
-            }
+            }, 3000);
 
         } else {
-            //http info for hotspot.php
-            //is not 200
             Swal.hideLoading();
-
             Swal.update({
                 icon: 'error',
                 title: 'Failed...',
-                text: `Payment request to ${phone} failed, try again or contact support [${submit_checkout.status}]`,
+                text: response_body.error || `Payment request to ${phone} failed, try again or contact support [${submit_checkout.status}]`,
                 showConfirmButton: false,
                 showCancelButton: true,
-                cancelButtonText: 'Cancel',         // plain text (keeps default styling)
+                cancelButtonText: 'Cancel',
                 allowOutsideClick: true,
-
             });
         }
 

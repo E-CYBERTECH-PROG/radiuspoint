@@ -63,8 +63,19 @@ Route::get('/portal/{router:public_token}/status/{transaction}', [PaymentPortalC
 // Public ZTP bootstrap fetch — a router's own script calls this to pull its config
 Route::get('/nas/startup/{router:public_token}', [NasProvisioningController::class, 'startup'])->name('nas.startup');
 
+// Router-specific hotspot skin pages — the only files in public/hotspot/* that need this
+// tenant's business name/support number/API base baked in rather than served as-is.
+Route::get('/nas/hotspot-page/{router:public_token}/{page}', [NasProvisioningController::class, 'hotspotPage'])
+    ->where('page', 'login\.html|login2\.html|status\.html')
+    ->name('nas.hotspot-page');
+
 // Public hotspot captive portal, reached via the login.html redirect stub RouterOS serves
 Route::get('/captive/{router:public_token}', [CaptivePortalController::class, 'show'])->name('captive.show');
+// JSON feed for the router-hosted static skin (public/hotspot/*) — see NasProvisioningController
+// for how that skin gets pushed to routers.
+Route::get('/captive/{router:public_token}/startup.json', [CaptivePortalController::class, 'startup'])
+    ->middleware('throttle:30,1')
+    ->name('captive.startup');
 Route::post('/captive/{router:public_token}/lookup', [CaptivePortalController::class, 'lookup'])
     ->middleware('throttle:6,1')
     ->name('captive.lookup');

@@ -29,10 +29,11 @@
     let hostname = "$(hostname)";
     let device_mac_address = "$(mac)";
     let device_ip_address = "$(ip)";
-    let patner = "[this_patner_username]";
-    let apikey = patner_apikey = "[this_patner_apikey]";
-    let nasname = "[nasname]";
-    const destination_instance = "[destination_instance]";
+    // Baked in per-router when this page is pushed to the MikroTik — see
+    // NasProvisioningController::hotspotPage(). Everything below talks to RadiusPoint's own
+    // captive-portal/payment endpoints, not a third party.
+    const rpCaptiveBase = "[rp_captive_base]";
+    const rpPortalBase = "[rp_portal_base]";
 
     //host
     let host_server_name = "$(server-name)";
@@ -137,9 +138,7 @@
 
         <div class="packages-wrapper" id="packages-go-here-1">
 
-
-          [this_users_plans]
-
+          <div class="offer"><div class="deal-text">Loading packages&hellip;</div></div>
 
         </div>
         <!--select_options_here-->
@@ -289,9 +288,7 @@
         </div>
       </div>
       <div class="footer-item">
-        <a href="https://billnasi.com" target="_blank" style="color: orange;">
-          BILLNASI <span class="year" id="show-year"></span>
-        </a>
+        <span style="color: orange;">Powered by RadiusPoint <span class="year" id="show-year"></span></span>
       </div>
 
     </div>
@@ -318,148 +315,56 @@
   let has_unused_voucher = false;
 
 
-  async function recover_unused_voucher() {
-    let recover_unused_voucher_query = await fetch(`https://${destination_instance}/endpoints/v3/recover_vouchers.php?patner=${patner}&mac=${device_mac_address}&ip=${device_ip_address}&nasname=${nasname}`);
-
-    if (recover_unused_voucher_query.status == 200) {
-      let json_response = await recover_unused_voucher_query.json();
-      console.log("VOUCHER RECOVERY SUCCESS: ", json_response);
-
-      username = await json_response.username;
-      password = await json_response.password;
-      has_unused_voucher = true;
-
-      Swal.fire({
-        title: `1 UNUSED VOUCHER ${username}`,
-        text: 'Click Sign In to continue',
-        icon: 'info',
-        showCancelButton: true,
-        cancelButtonText: 'Cancel',
-        confirmButtonText: 'Sign In',          // plain text (keeps default styling)
-        allowOutsideClick: false,
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Redirect when the styled button is clicked
-          window.location.href = `http://${hostname}/login?username=${username}&password=${password}&dst=https://youtube.com&popup=true`;
-          // or window.open('https://your-signin-page.com', '_blank');
-        }
-      });
-
-    } else {
-      let json_response = await recover_unused_voucher_query.json();
-      console.log("VOUCHER RECOVERY FAIL: ", json_response);
-    }
-
-  }
-  recover_unused_voucher();
-
+  // Auto-recovering an unused voucher purely by MAC address (no phone/receipt entered) isn't
+  // wired up yet — that needs its own backend lookup, not built as of this skin's rewrite.
+  // Customers can still recover a purchase via the M-Pesa code box below.
 
   async function get_signin_page_startup_data() {
-    let curl = await fetch(`https://${destination_instance}/endpoints/v3/hs_startup.php?api-key=${patner_apikey}&nasname=${nasname}`);
-    //http status code 200 is success
-    //any other is error
+    let curl = await fetch(`${rpCaptiveBase}/startup.json`);
     if (curl.status == 200) {
-      let hs_startup_data = await curl.json();
-      console.log("success got a response from startup endpoint");
+      let data = await curl.json();
 
+      let support_number = data.support_phone;
+      let currency = data.currency || 'KES';
 
-      let ResponseCode = hs_startup_data.ResponseCode;//0  for success
-      let networkname = hs_startup_data.networkname;
-      let support_number = hs_startup_data.phone;
-      let local_currency = hs_startup_data.local_currency;
+      if (support_number) {
+        document.querySelectorAll(".org-support").forEach(element => {
+          element.innerText = support_number;
+        });
+      }
 
-      document.querySelectorAll(".org-support").forEach(element => {
-        element.innerText = support_number;
+      let plans = data.plans || [];
+      let packages_wrapper_div = document.querySelector(".packages-wrapper");
+      packages_wrapper_div.replaceChildren();
+
+      if (plans.length === 0) {
+        packages_wrapper_div.innerHTML = "NO PACKAGES FOUND";
+        return;
+      }
+
+      plans.forEach(plan => {
+        const package_container = document.createElement("div");
+        package_container.className = "offer";
+
+        const deal_text_content = document.createElement("div");
+        deal_text_content.className = "deal-text";
+        deal_text_content.textContent = `${plan.name} — ${currency} ${plan.price}`;
+
+        const buy_button = document.createElement("button");
+        buy_button.className = "get-deal";
+        buy_button.textContent = "BUY";
+        buy_button.onclick = function () {
+          show_checkout_modal(plan.price, currency, plan.name, plan.id);
+        };
+
+        package_container.appendChild(deal_text_content);
+        package_container.appendChild(buy_button);
+        packages_wrapper_div.appendChild(package_container);
       });
-
-
-      let number_of_packages = hs_startup_data.packages_count;
-
-      if (number_of_packages > 0) {
-        let packages_content_json = await hs_startup_data.packages_data;
-        console.log(packages_content_json);
-        let packages_wrapper_div = document.querySelector(".packages-wrapper");
-        let select_options_container = document.querySelector(".analog-format-container select");
-        //clear current content of packages div
-        packages_wrapper_div.replaceChildren();
-
-        packages_content_json.forEach(package_item => {
-          let package_groupname = package_item.groupname;
-          let package_amount = package_item.amount;
-          let package_productid = package_item.productid;
-
-
-          const package_container = document.createElement("div");
-          package_container.className = "offer";
-
-          // Deal text div
-          const deal_text_content = document.createElement("div");
-          deal_text_content.className = "deal-text";
-          deal_text_content.textContent = package_groupname;
-
-          // buy_button
-          const buy_button = document.createElement("button");
-          buy_button.className = "get-deal";
-
-          // Set data attributes
-          buy_button.dataset.package = package_groupname;
-          buy_button.dataset.amount = package_amount;
-          buy_button.dataset.productid = package_productid;
-
-          //add onclick to buy_button
-          //buy buy_button hii
-          buy_button.onclick = function () {
-            show_checkout_modal(package_amount, local_currency, package_groupname, package_productid);
-          };
-
-          buy_button.textContent = "BUY";
-
-          // Append children to parent div
-          package_container.appendChild(deal_text_content);
-          package_container.appendChild(buy_button);
-          packages_wrapper_div.appendChild(package_container);
-
-          //append select options
-          if (select_options_container != undefined) {
-            const option = new Option(package_groupname, package_productid);
-            select_options_container.appendChild(option);
-          }
-
-        })
-
-      } else {
-        document.getElementById("packages-go-here-1").innerHTML = "NO PACKAGES FOUND";
-        //document.getElementById("packages-go-here-2").remove();
-      }
-
-      //check for alerts
-
-      if (hs_startup_data.alerts_count > 0) {
-        let alert_data = await hs_startup_data.alerts_data;
-        let alert_info = alert_data[0].info;
-        let alert_entry_date = alert_data[0].entry;
-        //let alert_entry_date = alert_data[0].entry;
-        document.querySelector(".system-alert-content").innerText = alert_info + " - " + alert_entry_date;
-        //remove hide class from system alert wrapper to show it if not already shown by login error
-        document.getElementById("system-alert-wrapper").classList.remove("hide");
-        //show admin alert if there is any
-        document.querySelector(".alert-set-by-admin").style.display = "block";
-
-      }
-
-
     } else {
-      //if curl error
-      let hs_startup_data = await curl.json();
-      //console.log(hs_startup_data);
-
       console.log("GETTING STARTUP DATA ERROR");
-
     }
   }
-  //func to refresh packages
-  //update phonenumber for org
-  //update org name too
   get_signin_page_startup_data();
 
 
