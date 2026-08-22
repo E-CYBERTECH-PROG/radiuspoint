@@ -32,7 +32,14 @@ class ActivateUsedVouchers extends Command
                 continue;
             }
 
-            $expiresAt = $plan->addDurationTo($firstConnect);
+            // Always computed from the real first-connect time, but never allowed to land in
+            // the past by the time this actually runs — this command is polled once a minute,
+            // and users:expire-overdue right behind it, so a short-duration voucher (or a
+            // scheduler that's fallen behind) could otherwise have its entire validity window
+            // eaten by that lag and be yanked on the very next tick, before the customer who
+            // just redeemed it ever got to use it. A floor of 5 minutes from actual activation
+            // guarantees every voucher gets at least some real usable time.
+            $expiresAt = $plan->addDurationTo($firstConnect)->max(now()->addMinutes(5));
 
             $voucher->update([
                 'status' => 'active',
@@ -43,7 +50,7 @@ class ActivateUsedVouchers extends Command
                 'mac_address' => $voucher->mac_address ?? RadiusSyncService::latestSessionMac($voucher->phone_number),
             ]);
 
-            RadiusSyncService::setExpiration($voucher->phone_number, $expiresAt);
+            RadiusSyncService::setExpiryWindow($voucher->phone_number, $expiresAt);
 
             $activated++;
         }

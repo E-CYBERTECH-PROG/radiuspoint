@@ -101,6 +101,9 @@ class PppoeUserController extends Controller
             // Admin-supplied password from the modal when present, otherwise the same
             // random-password fallback the standalone form always used.
             RadiusSyncService::sync($user->username, $request->input('password') ?: Str::password(10), $plan?->speed_limit);
+            if ($user->expires_at) {
+                RadiusSyncService::setExpiryWindow($user->username, $user->expires_at);
+            }
 
             SmsTriggerService::fire($user->tenant_id, 'pppoe_welcome', $user->phone_number, [
                 'name' => $user->name ?: $user->username,
@@ -233,6 +236,9 @@ class PppoeUserController extends Controller
             } else {
                 RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
             }
+            if ($pppoe_user->expires_at) {
+                RadiusSyncService::setExpiryWindow($pppoe_user->username, $pppoe_user->expires_at);
+            }
         } else {
             RadiusSyncService::remove($pppoe_user->username);
         }
@@ -289,7 +295,7 @@ class PppoeUserController extends Controller
         } else {
             RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
         }
-        RadiusSyncService::setExpiration($pppoe_user->username, $newExpiry);
+        RadiusSyncService::setExpiryWindow($pppoe_user->username, $newExpiry);
         ExpiredBlockService::clear($pppoe_user->router, $pppoe_user->username);
 
         SmsTriggerService::fire($pppoe_user->tenant_id, 'pppoe_renewed', $pppoe_user->phone_number, [
@@ -353,6 +359,9 @@ class PppoeUserController extends Controller
             RadiusSyncService::updateRateLimit($pppoe_user->username, $pppoe_user->plan?->speed_limit);
         } else {
             RadiusSyncService::sync($pppoe_user->username, Str::password(10), $pppoe_user->plan?->speed_limit);
+        }
+        if ($pppoe_user->expires_at) {
+            RadiusSyncService::setExpiryWindow($pppoe_user->username, $pppoe_user->expires_at);
         }
 
         $message = 'Customer enabled.';

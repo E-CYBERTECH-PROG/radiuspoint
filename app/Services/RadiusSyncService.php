@@ -62,6 +62,26 @@ class RadiusSyncService
     }
 
     /**
+     * Sets both the calendar-date reject (Expiration) and the accurate per-session countdown
+     * (Session-Timeout) from the same deadline, so they can never disagree. This is the one
+     * that should be called everywhere a customer's expiry is established or changed — creation,
+     * enable, extend, voucher activation — not setExpiration() alone. Without Session-Timeout,
+     * RouterOS's hotspot has nothing to compute $(session-time-left) from (it only reads that
+     * off the RADIUS reply, never the check-only Expiration attribute), so it shows blank/stale
+     * — and since Session-Timeout is only ever a snapshot taken at sync time, not something
+     * FreeRADIUS recomputes live per request, this is "accurate as of the last time we touched
+     * this account" rather than perfectly live between those events; Expiration is what actually
+     * guarantees a customer can never authenticate past their real deadline regardless.
+     */
+    public static function setExpiryWindow(string $username, Carbon $expiresAt): void
+    {
+        self::setExpiration($username, $expiresAt);
+
+        $secondsRemaining = max(60, $expiresAt->getTimestamp() - now()->getTimestamp());
+        self::setSessionTimeout($username, $secondsRemaining);
+    }
+
+    /**
      * Standard RADIUS Session-Timeout attribute — tells the NAS to end the session
      * itself after N seconds. Used by Free Mode to cap a session at a fixed window.
      */

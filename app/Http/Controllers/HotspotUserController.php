@@ -93,6 +93,9 @@ class HotspotUserController extends Controller
 
         if ($user->status === 'active') {
             RadiusSyncService::sync($user->phone_number, Str::password(10), $plan?->speed_limit);
+            if ($user->expires_at) {
+                RadiusSyncService::setExpiryWindow($user->phone_number, $user->expires_at);
+            }
         }
 
         // Lets the Customers hub's "New Customer" modal (customers/index.blade.php) send the
@@ -220,6 +223,9 @@ class HotspotUserController extends Controller
             } else {
                 RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $plan?->speed_limit);
             }
+            if ($hotspot_user->expires_at) {
+                RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $hotspot_user->expires_at);
+            }
         } else {
             RadiusSyncService::remove($hotspot_user->phone_number);
         }
@@ -269,7 +275,7 @@ class HotspotUserController extends Controller
         } else {
             RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $plan?->speed_limit);
         }
-        RadiusSyncService::setExpiration($hotspot_user->phone_number, $newExpiry);
+        RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $newExpiry);
 
         $message = "Extended to {$newExpiry->format('d M Y H:i')}.";
 
@@ -342,6 +348,9 @@ class HotspotUserController extends Controller
             RadiusSyncService::updateRateLimit($hotspot_user->phone_number, $hotspot_user->plan?->speed_limit);
         } else {
             RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $hotspot_user->plan?->speed_limit);
+        }
+        if ($hotspot_user->expires_at) {
+            RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $hotspot_user->expires_at);
         }
 
         $message = 'Customer enabled.';

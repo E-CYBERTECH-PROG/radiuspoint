@@ -61,6 +61,30 @@ class RadiusSyncServiceTest extends TestCase
             ->where('username', '254700000005')->where('attribute', 'Expiration')->value('value'));
     }
 
+    public function test_set_expiry_window_sets_both_expiration_and_session_timeout(): void
+    {
+        $expiresAt = now()->addHours(2);
+
+        RadiusSyncService::setExpiryWindow('254700000007', $expiresAt);
+
+        $this->assertSame($expiresAt->format('d M Y H:i:s'), DB::table('radcheck')
+            ->where('username', '254700000007')->where('attribute', 'Expiration')->value('value'));
+
+        $sessionTimeout = (int) DB::table('radreply')
+            ->where('username', '254700000007')->where('attribute', 'Session-Timeout')->value('value');
+        // ~2 hours in seconds, allowing a little slack for time elapsed during the test itself.
+        $this->assertGreaterThan(7100, $sessionTimeout);
+        $this->assertLessThanOrEqual(7200, $sessionTimeout);
+    }
+
+    public function test_set_expiry_window_floors_session_timeout_at_60_seconds(): void
+    {
+        RadiusSyncService::setExpiryWindow('254700000008', now()->subMinute());
+
+        $this->assertSame('60', DB::table('radreply')
+            ->where('username', '254700000008')->where('attribute', 'Session-Timeout')->value('value'));
+    }
+
     public function test_clear_expiration_removes_only_that_attribute(): void
     {
         RadiusSyncService::sync('254700000006', 'secret', null);
