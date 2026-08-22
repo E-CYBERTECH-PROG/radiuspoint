@@ -278,16 +278,26 @@ class RouterController extends Controller
             Log::warning("Could not add the {$slug}-expired firewall rule: " . $e->getMessage());
         }
 
-        // RouterOS's default fasttrack rule skips further firewall/queue processing for a
-        // connection's lifetime, which can bypass both the expired-block rule above and FUP
-        // throttling. Disabled (not removed) rather than left on.
+        // RouterOS's fasttrack rule skips further firewall/NAT processing for a connection's
+        // lifetime, which bypasses not just the expired-block rule above and FUP throttling,
+        // but also Hotspot's own unauthenticated-client redirect — a fasttracked connection
+        // never gets a chance to be intercepted, so the client's OS never sees anything
+        // prompting its "Sign in to network" popup; it just sits there reporting "Connected"
+        // until someone manually browses to the router's address. Matched by action rather
+        // than the factory-default comment ("defconf: fasttrack"), since a router that's been
+        // reconfigured, imported, or had its default rule renamed/recreated wouldn't have that
+        // exact comment — action=fasttrack-connection is the one thing that's always true of
+        // whichever rule is actually doing the bypassing. Disabled (not removed) rather than
+        // left on; every match is handled, not just the first, in case more than one exists.
         try {
-            $fasttrackRuleId = $api->findId('/ip/firewall/filter/print', 'comment', 'defconf: fasttrack');
-            if ($fasttrackRuleId) {
-                $api->setById('/ip/firewall/filter/set', $fasttrackRuleId, ['disabled' => 'yes']);
+            $fasttrackRules = $api->queryWhere('/ip/firewall/filter/print', 'action', 'fasttrack-connection');
+            foreach ($fasttrackRules as $rule) {
+                if (($rule['disabled'] ?? 'false') !== 'true') {
+                    $api->setById('/ip/firewall/filter/set', $rule['.id'], ['disabled' => 'yes']);
+                }
             }
         } catch (Exception $e) {
-            Log::warning("Could not disable the default fasttrack rule: " . $e->getMessage());
+            Log::warning("Could not disable the fasttrack rule(s): " . $e->getMessage());
         }
     }
 
