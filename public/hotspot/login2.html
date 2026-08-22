@@ -7,7 +7,7 @@
   <meta http-equiv="expires" content="-1" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>[network_name]</title>
-  <link rel="stylesheet" href="assets/css/style.css?v=18June20261148H" />
+  <link rel="stylesheet" href="assets/css/style.css?v=12Dec2025-1732" />
   <script src="assets/js/swal.js"></script>
 
 
@@ -23,8 +23,11 @@
       "server-name": "$(server-name)",
       "ssl-login": "$(ssl-login)",
     };
-
-
+    const api_credentials = {
+      patner: "[this_patner_username]",
+      apikey: "[this_patner_apikey]",
+      nas: "[nasname]"
+    };
 
     let hostname = "$(hostname)";
     let device_mac_address = "$(mac)";
@@ -41,7 +44,7 @@
     //preload to avoid customer buying another before utilising previous one
     //use swal to show successfull fetch
   </script>
-  <script src="assets/js/daraja.js?v=18June20261148H" defer></script>
+  <script src="assets/js/daraja.js?v=12Dec2025-1732" defer></script>
   <!--  
 
         DATE OF mod [date_modified]
@@ -51,66 +54,6 @@
 
 <body>
 
-
-  <div class="system-alert-wrapper hide" id="system-alert-wrapper" $(if error) style="display: block;" $(endif)>
-
-    $(if error)
-    <div class="alert-content login-error-alert">
-      $(error)
-    </div>
-    $(endif)
-
-    <div class="alert-content alert-set-by-admin">
-      <div class="system-alert-content">
-
-      </div>
-      <div class="system-alert-close-btn" id="system-alert-close-btn"
-        onclick="document.getElementById('system-alert-wrapper').remove()">Dismiss</div>
-    </div>
-  </div>
-
-
-
-  <style>
-    .alert-set-by-admin {
-      display: none;
-    }
-
-    .system-alert-wrapper {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      color: white;
-      text-align: center;
-      padding: 5px;
-      z-index: 1000;
-    /*  background-color: #fff;*/
-    }
-
-    .alert-content {
-      background-color: #f44336;
-      padding: 10px;
-      margin-bottom: 5px;
-
-    }
-
-    .system-alert-close-btn {
-      margin-top: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      text-align: left;
-      color: #f44336;
-      background-color: white;
-      width: fit-content;
-      padding: 5px 10px;
-      border-radius: 5px;
-    }
-
-    .system-alert-close-btn:hover {
-      color: #ddd;
-    }
-  </style>
 
   <div class="bgimg">
     <img src="assets/img/data_center.webp" alt="data center image" />
@@ -133,7 +76,7 @@
         </div>
 
 
-        <!--mpesa_recover-->
+  <!--mpesa_recover-->
 
         <div class="packages-wrapper" id="packages-go-here-1">
 
@@ -142,7 +85,47 @@
 
 
         </div>
-        <!--select_options_here-->
+
+        <div class="analog-format-container">
+              <div class="analog-format">
+
+          <h3 class="notice hide">SIGN IN METHOD 2</h3>
+
+          <form action="https://[destination_instance]/checkout/hotspot.php" method="post">
+            <input type="hidden" name="synchronous" value="yes">
+            <input type="hidden" name="patner" value="[this_patner_username]">
+            <input type="hidden" name="account" value="$(mac)">
+            <input type="hidden" name="ip" value="$(ip)">
+            <input type="hidden" name="nas" value="[nasname]">
+            <input type="hidden" name="hostname" value="$(hostname)">
+            <input type="hidden" name="servername" value="$(server-name)">
+            <div id="packages-go-here-2">
+              <label for="analog-productid">Select Package To Buy: </label>
+
+
+              <select required name="productid" id="analog-productid">
+
+
+                <option value="">-- select package --</option>
+               
+
+          <!--select_options_here-->
+          
+              </select>
+            </div>
+            <div>
+              <label for="analog-phonenumber">Phonenumber: </label>
+              <input required type="text" name="phonenumber" id="analog-phonenumber" placeholder="enter phone number">
+            </div>
+
+            <div>
+              <button class='submit-button' type="submit">Submit</button>
+            </div>
+          </form>
+
+        </div>
+
+        </div>
 
       </div>
 
@@ -217,8 +200,8 @@
 
         <form name="userpassword" action="$(link-login-only)" method="post" id="user-password"
           class="pap-form user-password hide">
-          <input type="hidden" name="dst" value="https://youtube.com" />
-          <input type="hidden" name="popup" value="true" />
+          <input type="hidden" name="dst" value="https://youtube.com"/>
+          <input type="hidden" name="popup" value="true"/>
 
 
           <!-- login fields -->
@@ -227,9 +210,7 @@
             <div class="input-field">
               <div class="input">
                 <label for="username">USERNAME:</label>
-                <input title="Only numbers (0-9) and letters (A-Za-z) are allowed." class="input-text" required
-                  name="username" id="username-login" type="text" value="$(username)" placeholder="enter login username"
-                  pattern="^[a-zA-Z0-9]*$" />
+                <input title="Only numbers (0-9) and letters (A-Za-z) are allowed." class="input-text" required name="username" id="username-login" type="text" value="$(username)" placeholder="enter login username" pattern="^[a-zA-Z0-9]*$" />
               </div>
             </div>
             <!-- input password if neccessary-->
@@ -297,13 +278,22 @@
     </div>
   </div>
 
-
+  $(if error)
+  <div class="info" id="error-info-dialog">
+    <p class="close" onclick="document.getElementById('error-info-dialog').remove()">
+      <i>
+        <u>Click here to dismiss.</u>
+      </i>
+    </p>
+    <p class="error-msg">$(error)</p>
+  </div>
+  $(endif)
 </body>
 
 <script>
 
   function duplicate_user_and_password() {
-    //for loging in with voucher
+    //fo loging in with voucher
     //vouchers have password same as username
     document.sendin.username.value = document.login1.username.value;
     document.sendin.password.value = document.login1.username.value;
@@ -319,7 +309,7 @@
 
 
   async function recover_unused_voucher() {
-    let recover_unused_voucher_query = await fetch(`https://${destination_instance}/endpoints/v3/recover_vouchers.php?patner=${patner}&mac=${device_mac_address}&ip=${device_ip_address}&nasname=${nasname}`);
+    let recover_unused_voucher_query = await fetch(`https://${destination_instance}/endpoints/v2/recover_vouchers.php?patner=${patner}&mac=${device_mac_address}&ip=${device_ip_address}&nasname=${nasname}`);
 
     if (recover_unused_voucher_query.status == 200) {
       let json_response = await recover_unused_voucher_query.json();
@@ -355,96 +345,42 @@
 
 
   async function get_signin_page_startup_data() {
-    let curl = await fetch(`https://${destination_instance}/endpoints/v3/hs_startup.php?api-key=${patner_apikey}&nasname=${nasname}`);
+    let curl = await fetch(`https://${destination_instance}/endpoints/v2/hs_startup.php?patner=${patner}&api-key=${patner_apikey}&nasname=${nasname}`);
     //http status code 200 is success
     //any other is error
     if (curl.status == 200) {
       let hs_startup_data = await curl.json();
-      console.log("success got a response from startup endpoint");
+      console.log("startup data success");
+
+
+      //  console.log("HEY HEY HEY");
+
+      // console.log(hs_startup_data);
 
 
       let ResponseCode = hs_startup_data.ResponseCode;//0  for success
       let networkname = hs_startup_data.networkname;
       let support_number = hs_startup_data.phone;
-      let local_currency = hs_startup_data.local_currency;
 
       document.querySelectorAll(".org-support").forEach(element => {
         element.innerText = support_number;
       });
 
 
-      let number_of_packages = hs_startup_data.packages_count;
+      let number_of_packages = hs_startup_data.count;
 
       if (number_of_packages > 0) {
-        let packages_content_json = await hs_startup_data.packages_data;
-        console.log(packages_content_json);
-        let packages_wrapper_div = document.querySelector(".packages-wrapper");
-        let select_options_container = document.querySelector(".analog-format-container select");
-        //clear current content of packages div
-        packages_wrapper_div.replaceChildren();
+        let div_html = await hs_startup_data.div_html;
+        let select_html = await hs_startup_data.select_html;
 
-        packages_content_json.forEach(package_item => {
-          let package_groupname = package_item.groupname;
-          let package_amount = package_item.amount;
-          let package_productid = package_item.productid;
+        //console.log(div_html, select_html);
 
-
-          const package_container = document.createElement("div");
-          package_container.className = "offer";
-
-          // Deal text div
-          const deal_text_content = document.createElement("div");
-          deal_text_content.className = "deal-text";
-          deal_text_content.textContent = package_groupname;
-
-          // buy_button
-          const buy_button = document.createElement("button");
-          buy_button.className = "get-deal";
-
-          // Set data attributes
-          buy_button.dataset.package = package_groupname;
-          buy_button.dataset.amount = package_amount;
-          buy_button.dataset.productid = package_productid;
-
-          //add onclick to buy_button
-          //buy buy_button hii
-          buy_button.onclick = function () {
-            show_checkout_modal(package_amount, local_currency, package_groupname, package_productid);
-          };
-
-          buy_button.textContent = "BUY";
-
-          // Append children to parent div
-          package_container.appendChild(deal_text_content);
-          package_container.appendChild(buy_button);
-          packages_wrapper_div.appendChild(package_container);
-
-          //append select options
-          if (select_options_container != undefined) {
-            const option = new Option(package_groupname, package_productid);
-            select_options_container.appendChild(option);
-          }
-
-        })
+        document.getElementById("packages-go-here-1").innerHTML = div_html;
+        document.getElementById("packages-go-here-2").innerHTML = select_html;
 
       } else {
         document.getElementById("packages-go-here-1").innerHTML = "NO PACKAGES FOUND";
         //document.getElementById("packages-go-here-2").remove();
-      }
-
-      //check for alerts
-
-      if (hs_startup_data.alerts_count > 0) {
-        let alert_data = await hs_startup_data.alerts_data;
-        let alert_info = alert_data[0].info;
-        let alert_entry_date = alert_data[0].entry;
-        //let alert_entry_date = alert_data[0].entry;
-        document.querySelector(".system-alert-content").innerText = alert_info + " - " + alert_entry_date;
-        //remove hide class from system alert wrapper to show it if not already shown by login error
-        document.getElementById("system-alert-wrapper").classList.remove("hide");
-        //show admin alert if there is any
-        document.querySelector(".alert-set-by-admin").style.display = "block";
-
       }
 
 
@@ -457,9 +393,7 @@
 
     }
   }
-  //func to refresh packages
-  //update phonenumber for org
-  //update org name too
+
   get_signin_page_startup_data();
 
 

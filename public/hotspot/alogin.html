@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="refresh" content="2; url=$(link-redirect)">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="expires" content="-1">
+    <title>Internet- Redirect</title>
+    <!-- <link rel="stylesheet" href="assets/css/style.css"> -->
+    <script>
+        function startClock() {
+            $(if popup == 'true')
+                open('$(link-status)', 'hotspot_status', 'toolbar=0,location=0,directories=0,status=0,menubars=0,resizable=1,width=290,height=200');
+            $(endif)
+            location.href = unescape('$(link-redirect-esc)');
+        }
+
+    </script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@200;300;400;500;600;800;900&display=swap");
+
+        body {
+            font-family: "Lexend Deca", sans-serif;
+            color: white;
+            overflow-x: hidden;
+            width: 100vw;
+            height: 100vh;
+            min-width: 2.5in;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgb(31, 31, 31);
+        }
+
+        
+        .container {
+            width: 2.5in;
+            padding: .2in;         
+            font-weight: 600;
+            line-height: .3in;
+        }
+
+        a{
+            text-decoration: none;
+            color: red;
+        }
+
+        p {
+            width: 100%;
+            text-align: center;
+            margin: 0;
+        }
+
+        .head {
+            font-size: 15pt;
+            color: rgb(0, 81, 255);
+        }
+
+        p:not(.head) {
+            font-size: 10pt;
+        }
+    </style>
+
+
+</head>
+
+<body onLoad="startClock()">
+    
+    <div class="ie-fixMinHeight">
+        <div class="main">
+            <div class="wrap">
+                
+                <h1>Recharge Successful</h1>
+                <p class="info">If nothing happens, click <a href="https://youtube.com">here</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
