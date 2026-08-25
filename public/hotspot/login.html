@@ -114,41 +114,34 @@
   </style>
 
   <div class="bgimg">
-    <img src="assets/img/data_center.webp" alt="data center image" />
+    <img src="assets/img/global-network.jpg" alt="data center image" />
   </div>
 
 
   <div class="wrap animated fadeIn">
     <div class="main-container payment-options">
-      <div class=" container networkname-banner">
+      <div class="container networkname-banner">
+        <div class="wifi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 18.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Z" fill="currentColor" />
+            <path d="M8.2 15.3a5.6 5.6 0 0 1 7.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M4.8 11.9a10.4 10.4 0 0 1 14.4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M1.5 8.6a15 15 0 0 1 21 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </div>
         <h1 class="ssid">[network_name]</h1>
-        <p>Tap <b>"BUY"</b> button on your desired package and follow the prompts.</p>
-        <div>CALL/TEXT: <b class="org-support">[supportnumber]</b> </div>
-        <div class="device-details">$(mac) $(ip)</div>
-      </div>
-      <div class="container lipa-na-mpesa">
-
-
-        <div id="lipa-na-mpesa">
-          <img id="lipa-na-mpesa-banner" src="assets/img/powered_by.png" alt="" />
+        <p class="banner-instruction">Select a package below to get started</p>
+        <div class="support-badge">
+          <span class="support-badge-label">Call / Text</span>
+          <span class="org-support">[supportnumber]</span>
         </div>
-
-
-        <!--mpesa_recover-->
-
-        <div class="packages-wrapper" id="packages-go-here-1">
-
-          <div class="offer"><div class="deal-text">Loading packages&hellip;</div></div>
-
-        </div>
-        <!--select_options_here-->
-
+        <div class="device-details">$(mac) &middot; $(ip)</div>
       </div>
 
       <form class="hide" name="sendin" action="$(link-login-only)" method="post">
         <input type="hidden" name="username" />
         <input type="hidden" name="password" />
-        <input type="hidden" name="dst" value="https://youtube.com" />
+        <input type="hidden" name="dst" value="https://google.com" />
         <input type="hidden" name="popup" value="true" />
       </form>
 
@@ -169,8 +162,8 @@
         <div class="input-type-selector-wrapper">
           <div class="input-type-selector type-voucher selected"
             onclick="toggle_voucher_input_selectors(this, 'voucher-only')">VOUCHER</div>
-          <div class="input-type-selector type-user-password"
-            onclick="toggle_voucher_input_selectors(this, 'user-password')">USERNAME AND PASSWORD</div>
+          <div class="input-type-selector type-mpesa-paste"
+            onclick="toggle_voucher_input_selectors(this, 'mpesa-paste-only')">PASTE M-PESA MESSAGE</div>
         </div>
 
         <form name="login1" action="$(link-login-only)" method="post" onsubmit="return duplicate_user_and_password()"
@@ -214,46 +207,29 @@
           </div>
         </form>
 
-        <form name="userpassword" action="$(link-login-only)" method="post" id="user-password"
-          class="pap-form user-password hide">
-          <input type="hidden" name="dst" value="https://youtube.com" />
-          <input type="hidden" name="popup" value="true" />
+        <div id="mpesa-paste-only" class="pap-form mpesa-paste hide">
+          <div class="resolve-payment">
+            <div class="input-rows">
 
-
-          <!-- login fields -->
-          <div class="input-rows">
-
-            <div class="input-field">
-              <div class="input">
-                <label for="username">USERNAME:</label>
-                <input title="Only numbers (0-9) and letters (A-Za-z) are allowed." class="input-text" required
-                  name="username" id="username-login" type="text" value="$(username)" placeholder="enter login username"
-                  pattern="^[a-zA-Z0-9]*$" />
-              </div>
-            </div>
-            <!-- input password if neccessary-->
-            <div class="input-field ">
-              <div class="input">
-                <label for="password">
-                  PASSWORD: (leave blank if password is not provided)
-                </label>
-                <br />
-                <div>
-                  <input class="input-text" name="password" type="text" placeholder="enter password"
-                    id="password-login" />
+              <div class="input-field">
+                <div class="input">
+                  <label for="mpesa-code">PASTE M-PESA MESSAGE OR CODE</label>
+                  <textarea class="input-text mpesa-code-input" id="mpesa-code" required minlength="6" rows="3"
+                    placeholder="Paste the full M-Pesa confirmation SMS here" oninput="trim_resolve_input()"></textarea>
                 </div>
+                <div class="mpesa-paste-hint">We'll pull the transaction code out automatically and look up your
+                  package.</div>
               </div>
+
+              <div class="input-group">
+                <button class="submit-button" type="button" id="search-api-button" disabled>
+                  Resolve Payment
+                </button>
+              </div>
+
             </div>
-
-            <div class="input-group">
-              <button class="submit-button" type="submit" id="submit-login-user-password">
-                Sign In To Network
-              </button>
-            </div>
-
-
           </div>
-        </form>
+        </div>
 
 
         <div id="agree-to-terms">
@@ -263,34 +239,25 @@
 
         </div>
       </div>
+
+      <div class="container lipa-na-mpesa">
+
+        <!--mpesa_recover-->
+
+        <div class="packages-wrapper" id="packages-go-here-1">
+
+          <div class="offer"><div class="deal-text">Loading packages&hellip;</div></div>
+
+        </div>
+        <!--select_options_here-->
+
+      </div>
     </div>
 
-    <div class="footer">
-      <!--     I have read the
-          <a class="link" href="tandc.html" target="_self">Terms and Conditions</a>
-          of this service and I agree to comply with and be bound by
-          them. <p>
-        <a href="./faqs.html" target="_self">Frequently Asked Questions</a>
-      </p>
-      <p>
-      <p>
-        <a href="./tandc.html" target="_self">Terms & Conditions</a>
-      </p>
-    </p>-->
-
-
-      <div class="footer-item">
-
-        <div class="footer-item">For Enquiries </div>
-        <div class="footer-item">
-          <span> Call/SMS/Whatsapp us on </span>
-          <span class="org-support">[supportnumber]</span>
-        </div>
-      </div>
+    <div class="footer">    
       <div class="footer-item">
         <span style="color: orange;">Powered by RadiusPoint <span class="year" id="show-year"></span></span>
       </div>
-
     </div>
   </div>
 

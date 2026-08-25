@@ -1,15 +1,3 @@
-
-/**
-* modified on 07 - 12 - 2025 09:23:19
-* DO NOT MODIFY ANYTHING ON THIS PAGE
-* BILLNASI HOTSPOT VERSION(1) DEC 2020
-* BILLNASI HOTSPOT VERSION(2) NOV 2024
-* BILLNASI HOTSPOT VERSION(3) MAR 2025
-* BILLNASI HOTSPOT VERSION(4) APR 2025
-* CODE CLEANUP, REVEIW AND OPTIMISATION DEC 2025
-*/
-//simpler js all complexities removed
-
 function remove_info_dialog() {
     let info_dialog = document.querySelector(".info");
     if (info_dialog) {
