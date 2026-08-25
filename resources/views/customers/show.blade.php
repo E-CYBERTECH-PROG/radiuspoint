@@ -1,9 +1,9 @@
 {{-- Full customer profile page — replaces the old global slide-over panel for the Customers
      hub. $user/$usage/$transactions/$totalSpent/$connectionLogs are all real, server-side
      data (see CustomerController::show()). A few tiles here (Wallet, Deposit, Request
-     Payment, Install Fee, Adjust Balance, Resolve Payment, CPE Configuration, Update Group
-     Policy, Override Package) have no backing feature in this app yet and are shown
-     inert/disabled rather than faked — same honesty pattern as "Coming soon" in the sidebar. --}}
+     Payment, Adjust Balance, Resolve Payment, CPE Configuration, Update Group Policy,
+     Override Package) have no backing feature in this app yet and are shown inert/disabled
+     rather than faked — same honesty pattern as "Coming soon" in the sidebar. --}}
 @php
     $oneispIsHotspot = $type === 'hotspot';
     $oneispIdentifier = $oneispIsHotspot ? $user->phone_number : $user->username;
@@ -110,7 +110,6 @@
 
                         <div class="flex flex-wrap gap-2">
                             <button type="button" disabled title="No payment-request feature yet" class="border border-emerald-300 text-emerald-500 text-sm font-bold py-2.5 px-4 rounded-lg cursor-not-allowed opacity-60">Request Payment</button>
-                            <button type="button" disabled title="No install-fee feature yet" class="border border-amber-300 text-amber-500 text-sm font-bold py-2.5 px-4 rounded-lg cursor-not-allowed opacity-60">Install Fee</button>
                             <button type="button" disabled title="No wallet feature yet" class="bg-amber-400/60 text-white text-sm font-bold py-2.5 px-4 rounded-lg cursor-not-allowed">Adjust Balance</button>
                         </div>
                     </div>
