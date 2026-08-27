@@ -138,7 +138,14 @@ class RadiusSyncService
             ->orderBy('acctstarttime')
             ->value('acctstarttime');
 
-        return $timestamp ? Carbon::parse($timestamp) : null;
+        // FreeRADIUS writes acctstarttime in UTC regardless of the app/tenant timezone (see
+        // UsageCycleService::bytesUsed()). Parsing it without an explicit source timezone made
+        // Carbon read it as app-local (Africa/Nairobi, UTC+3) time — silently shifting every
+        // "first connect" 3 hours into the past. ActivateUsedVouchers then computed the plan's
+        // expiry from that wrong instant, which regularly landed in the past for plans up to a
+        // few hours long, collapsing them onto the 5-minute floor and getting the customer
+        // kicked ("admin reset") within minutes of redeeming a multi-hour voucher.
+        return $timestamp ? Carbon::parse($timestamp, 'UTC')->setTimezone(config('app.timezone')) : null;
     }
 
     /**
