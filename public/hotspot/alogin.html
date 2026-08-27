@@ -7,8 +7,7 @@
     <meta http-equiv="refresh" content="2; url=$(link-redirect)">
     <meta http-equiv="pragma" content="no-cache">
     <meta http-equiv="expires" content="-1">
-    <title>Internet- Redirect</title>
-    <!-- <link rel="stylesheet" href="assets/css/style.css"> -->
+    <title>You're Online</title>
     <script>
         function startClock() {
             $(if popup == 'true')
@@ -19,47 +18,97 @@
 
     </script>
     <style>
-        @import url("https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@200;300;400;500;600;800;900&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+        * {
+            box-sizing: border-box;
+        }
 
         body {
-            font-family: "Lexend Deca", sans-serif;
-            color: white;
+            font-family: "Inter", sans-serif;
+            color: #0f172a;
             overflow-x: hidden;
             width: 100vw;
             height: 100vh;
             min-width: 2.5in;
+            margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: rgb(31, 31, 31);
+            background: linear-gradient(180deg, #f0fdf4 0%, #eff6ff 100%);
         }
 
-        
         .container {
-            width: 2.5in;
-            padding: .2in;         
-            font-weight: 600;
-            line-height: .3in;
-        }
-
-        a{
-            text-decoration: none;
-            color: red;
-        }
-
-        p {
-            width: 100%;
+            width: 2.6in;
+            padding: .25in .2in;
             text-align: center;
-            margin: 0;
         }
 
-        .head {
-            font-size: 15pt;
-            color: rgb(0, 81, 255);
+        .badge {
+            width: .55in;
+            height: .55in;
+            margin: 0 auto .12in;
+            border-radius: 50%;
+            background: #22c55e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(34, 197, 94, .35);
         }
 
-        p:not(.head) {
-            font-size: 10pt;
+        .badge svg {
+            width: .3in;
+            height: .3in;
+        }
+
+        h1 {
+            margin: 0 0 .06in;
+            font-size: 13pt;
+            font-weight: 800;
+            color: #14532d;
+        }
+
+        .subtext {
+            margin: 0 0 .16in;
+            font-size: 9pt;
+            font-weight: 500;
+            color: #475569;
+            line-height: 1.4;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 5px;
+            border-radius: 999px;
+            background: #dcfce7;
+            overflow: hidden;
+            margin-bottom: .14in;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 100%;
+            background: #16a34a;
+            border-radius: 999px;
+            transform-origin: left;
+            animation: fill 2s linear forwards;
+        }
+
+        @keyframes fill {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+
+        a.manual-link {
+            display: inline-block;
+            text-decoration: none;
+            font-size: 8.5pt;
+            font-weight: 600;
+            color: #2563eb;
+        }
+
+        a.manual-link:hover {
+            text-decoration: underline;
         }
     </style>
 
@@ -67,13 +116,23 @@
 </head>
 
 <body onLoad="startClock()">
-    
+
     <div class="ie-fixMinHeight">
         <div class="main">
             <div class="wrap">
-                
-                <h1>Recharge Successful</h1>
-                <p class="info">If nothing happens, click <a href="https://youtube.com">here</a></p>
+                <div class="container">
+                    <div class="badge">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 13l4 4L19 7" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h1>You're Connected</h1>
+                    <p class="subtext">Payment confirmed. Taking you back to the internet now &mdash; sit tight.</p>
+                    <div class="progress-track">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <a class="manual-link" href="$(link-redirect)">Not redirected? Tap here</a>
+                </div>
             </div>
         </div>
     </div>
