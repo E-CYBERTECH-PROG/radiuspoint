@@ -81,6 +81,7 @@ class BillingController extends Controller
 
         $password = Str::password(10);
         RadiusSyncService::sync($hotspotUser->phone_number, $password, $plan->speed_limit);
+        RadiusSyncService::setExpiryWindow($hotspotUser->phone_number, $hotspotUser->expires_at);
         ExpiredBlockService::clear(Router::withoutGlobalScope('tenant')->find($transaction->router_id), $hotspotUser->phone_number);
 
         SmsTriggerService::fire(
