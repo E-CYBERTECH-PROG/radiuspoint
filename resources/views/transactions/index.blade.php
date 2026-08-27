@@ -1,13 +1,18 @@
 <x-sidebar-layout title="Transactions">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Organization payments made into the system through M-Pesa/Kopokopo.</p>
+    </div>
+
     <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div class="flex items-center gap-2">
             <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'success']))) }}"
-               class="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest px-4 py-2 rounded-full border font-bold whitespace-nowrap transition-colors {{ request('status') === 'success' ? 'text-white bg-green-600 border-green-600 shadow-sm shadow-green-600/30' : 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-900/40' }}">
-                <i class="bx bxs-check-circle text-sm"></i> Success
+               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ request('status') === 'success' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                Success
             </a>
             <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'failed']))) }}"
-               class="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest px-4 py-2 rounded-full border font-bold whitespace-nowrap transition-colors {{ request('status') === 'failed' ? 'text-white bg-red-600 border-red-600 shadow-sm shadow-red-600/30' : 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40' }}">
-                <i class="bx bxs-x-circle text-sm"></i> Failed
+               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ request('status') === 'failed' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                Failed
             </a>
         </div>
         <a href="{{ route('transactions.export', request()->query()) }}" class="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg border border-gray-200 dark:border-gray-800 transition-colors">

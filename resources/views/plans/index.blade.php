@@ -10,11 +10,11 @@
         {{-- === TABS === --}}
         <div class="flex items-center gap-2 mb-3">
             <a href="{{ route('plans.index', array_filter(['tab' => 'pppoe', 'search' => request('search')])) }}"
-               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'pppoe' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }}">
+               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'pppoe' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                 PPPoE ({{ $pppoeCount }})
             </a>
             <a href="{{ route('plans.index', array_filter(['tab' => 'hotspot', 'search' => request('search')])) }}"
-               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'hotspot' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }}">
+               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'hotspot' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                 Hotspot ({{ $hotspotCount }})
             </a>
         </div>
@@ -154,7 +154,7 @@
                                 </td>
                                 <td class="px-6 py-3">
                                     @if($plan->status === 'active')
-                                        <x-status-badge color="green" dot>Active</x-status-badge>
+                                        <x-status-badge color="green">Active</x-status-badge>
                                     @else
                                         <x-status-badge color="gray">Inactive</x-status-badge>
                                     @endif

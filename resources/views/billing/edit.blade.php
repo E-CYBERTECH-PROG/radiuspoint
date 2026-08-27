@@ -3,11 +3,11 @@
 
     @php
         $statusStyle = [
-            'active' => 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50',
-            'trial' => 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50',
-            'expired' => 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50',
-            'cancelled' => 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800',
-        ][$tenant->subscription_status] ?? 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 border-gray-200';
+            'active' => 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400',
+            'trial' => 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
+            'expired' => 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400',
+            'cancelled' => 'bg-gray-100 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400',
+        ][$tenant->subscription_status] ?? 'bg-gray-100 dark:bg-gray-900/40 text-gray-500';
     @endphp
 
     <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-6 mb-3">
@@ -16,8 +16,8 @@
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Plan</p>
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ ucfirst($tenant->subscription_tier) }}</h2>
             </div>
-            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full border {{ $statusStyle }}">
-                <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $tenant->subscription_status }}
+            <span class="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full {{ $statusStyle }}">
+                {{ $tenant->subscription_status }}
             </span>
         </div>
 

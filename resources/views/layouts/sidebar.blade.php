@@ -19,6 +19,7 @@
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
         <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
@@ -134,13 +135,42 @@
         })();
     </script>
 
-    <div x-data="{ sidebarOpen: (localStorage.getItem('rp_sidebar_open') ?? '1') === '1', mobileMenu: false, darkMode: document.documentElement.classList.contains('dark') }"
+    <div x-data="{ sidebarOpen: (localStorage.getItem('rp_sidebar_open') ?? '1') === '1', sidebarPeek: false, mobileMenu: false, darkMode: document.documentElement.classList.contains('dark') }"
          class="flex h-screen bg-gray-100 dark:bg-gray-950 transition-colors duration-300 font-sans text-gray-800 dark:text-gray-200 overflow-hidden">
 
         <div x-show="mobileMenu" @click="mobileMenu = false" class="fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-sm lg:hidden"></div>
 
-        <aside class="shrink-0 fixed lg:relative z-50 h-screen bg-white dark:bg-gray-900 shadow-xl lg:shadow-none border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col"
-               x-bind:class="(sidebarOpen ? 'w-72' : 'w-20') + ' ' + (mobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')">
+        {{-- Desktop layout spacer — reserves the collapsed/expanded width in normal flex flow so
+             <main> doesn't reflow when the fixed-position <aside> below temporarily widens into
+             a "peek" overlay on hover (matching one-isp's collapsed-sidebar hover behavior). --}}
+        <div class="hidden lg:block shrink-0 h-screen transition-all duration-300 ease-in-out"
+             x-bind:class="{ 'w-[260px]': sidebarOpen, 'w-20': !sidebarOpen }">
+            <script>
+                document.currentScript.parentElement.classList.add(
+                    localStorage.getItem('rp_sidebar_open') === '0' ? 'w-20' : 'w-[260px]'
+                );
+            </script>
+        </div>
+
+        {{-- Object-form :class (not string concatenation) is required here — Alpine's string-form
+             class binding only ever ADDS the computed classes, it never removes a class from a
+             previous evaluation (or one set by the pre-mount script below) that isn't present in
+             the new string. That left both `w-20` and `w-[260px]` stuck on the element at once
+             after toggling, and Tailwind's cascade order happened to make the arbitrary-value
+             `w-[260px]` win regardless of which one was "supposed" to be active — the exact bug
+             behind the dead gap between the collapsed icon rail and the page content. Object-form
+             `:class="{ 'x': cond }"` correctly diffs and removes classes whose condition flips to
+             false. --}}
+        <aside class="shrink-0 fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col"
+               @mouseenter="if (!sidebarOpen) sidebarPeek = true" @mouseleave="sidebarPeek = false"
+               x-bind:class="{
+                   'w-[260px]': sidebarOpen || sidebarPeek,
+                   'w-20': !sidebarOpen && !sidebarPeek,
+                   'translate-x-0': mobileMenu,
+                   '-translate-x-full lg:translate-x-0': !mobileMenu,
+                   'shadow-xl': mobileMenu || (sidebarPeek && !sidebarOpen),
+                   'shadow-none': !mobileMenu && !(sidebarPeek && !sidebarOpen)
+               }">
             <script>
                 // Applies the persisted width before Alpine mounts (Alpine's script is deferred),
                 // so a returning user doesn't see a flash of the wrong width first — same
@@ -148,7 +178,7 @@
                 // is the only thing that controls width once Alpine takes over; this just covers
                 // the gap before that happens.
                 document.currentScript.parentElement.classList.add(
-                    localStorage.getItem('rp_sidebar_open') === '0' ? 'w-20' : 'w-72'
+                    localStorage.getItem('rp_sidebar_open') === '0' ? 'w-20' : 'w-[260px]'
                 );
             </script>
 
@@ -157,12 +187,12 @@
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm">
                         <i class="bx bxs-network-chart text-white text-base"></i>
                     </div>
-                    <span class="font-extrabold text-base text-gray-900 dark:text-white whitespace-nowrap truncate" x-show="sidebarOpen">
+                    <span class="font-extrabold text-base text-gray-900 dark:text-white whitespace-nowrap truncate" x-show="sidebarOpen || sidebarPeek">
                         {{ Auth::user()->is_platform_admin ? 'Platform Admin' : Auth::user()->tenant->company_name }}
                     </span>
                 </a>
                 @unless(Auth::user()->is_platform_admin)
-                    <a href="{{ route('search') }}" x-show="sidebarOpen" title="Search" class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                    <a href="{{ route('search') }}" x-show="sidebarOpen || sidebarPeek" title="Search" class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                         <i class="bx bx-search text-lg"></i>
                     </a>
                 @endunless
@@ -172,23 +202,23 @@
                 @if(Auth::user()->is_platform_admin)
                     <a href="{{ route('platform-admin.dashboard') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('platform-admin.dashboard') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bxs-dashboard text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Dashboard</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Dashboard</span>
                     </a>
 
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 mt-3" x-show="sidebarOpen">Platform</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 mt-3" x-show="sidebarOpen || sidebarPeek">Platform</p>
                     <div x-data="{ open: {{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'true' : 'false' }} }">
                         <button @click="open = !open" class="w-full flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <i class="bx bx-shield-quarter text-lg shrink-0"></i>
-                            <span class="ml-3 font-bold flex-1 text-left whitespace-nowrap" x-show="sidebarOpen">Platform</span>
+                            <span class="ml-3 font-bold flex-1 text-left whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Platform</span>
                             @php
                                 $pendingCount = \App\Models\Tenant::where('status', 'pending')->count();
                             @endphp
                             @if($pendingCount > 0)
-                                <span class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mr-2" x-show="sidebarOpen">{{ $pendingCount }}</span>
+                                <span class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mr-2" x-show="sidebarOpen || sidebarPeek">{{ $pendingCount }}</span>
                             @endif
-                            <i class="bx bx-chevron-down transition-transform" :class="open ? 'rotate-180' : ''" x-show="sidebarOpen"></i>
+                            <i class="bx bx-chevron-down transition-transform" :class="open ? 'rotate-180' : ''" x-show="sidebarOpen || sidebarPeek"></i>
                         </button>
-                        <div x-show="open && sidebarOpen" class="ml-9 mt-1 space-y-0.5">
+                        <div x-show="open && (sidebarOpen || sidebarPeek)" class="ml-9 mt-1 space-y-0.5">
                             <a href="{{ route('platform-admin.tenants.index') }}" class="block py-0.5 text-sm {{ request()->routeIs('platform-admin.tenants.index') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Tenants</a>
                             <a href="{{ route('platform-admin.tenants.import-form') }}" class="block py-0.5 text-sm {{ request()->routeIs('platform-admin.tenants.import-form') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Import Tenants</a>
                             <a href="{{ route('platform-admin.invoices.index') }}" class="block py-0.5 text-sm {{ request()->routeIs('platform-admin.invoices.index') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Commission Invoices</a>
@@ -198,77 +228,77 @@
                 @else
                     <a href="{{ route('dashboard') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bxs-dashboard text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Dashboards</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Dashboards</span>
                     </a>
 
                     {{-- === MANAGEMENT === --}}
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen">Management</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen || sidebarPeek">Management</p>
 
                     <a href="{{ route('routers.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('routers.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-globe text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">NAS</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">NAS</span>
                     </a>
 
                     <a href="{{ route('vouchers.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('vouchers.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-barcode-reader text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Vouchers</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Vouchers</span>
                     </a>
 
                     <a href="{{ route('plans.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('plans.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-box text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Packages</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Packages</span>
                     </a>
 
                     {{-- === CRM === --}}
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen">CRM</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen || sidebarPeek">CRM</p>
 
                     <a href="{{ route('customers.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs(['customers.*', 'pppoe-users.*', 'hotspot-users.*']) ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-group text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Customers</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Customers</span>
                     </a>
 
                     <a href="{{ route('leads.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('leads.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-user-plus text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Leads</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Leads</span>
                     </a>
 
                     <a href="{{ route('tickets.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('tickets.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-support text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Tickets</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Tickets</span>
                     </a>
 
                     {{-- === REVENUE === --}}
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen">Revenue</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen || sidebarPeek">Revenue</p>
 
                     <a href="{{ route('reports.receipts') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.receipts*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-wallet text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Payments</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Payments</span>
                     </a>
 
                     <a href="{{ route('transactions.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('transactions.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-receipt text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Transactions</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Transactions</span>
                     </a>
 
                     @if(Auth::user()->role !== 'Sales Agent')
                         <a href="{{ route('billing.edit') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('billing.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                             <i class="bx bx-file text-lg shrink-0"></i>
-                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Invoices</span>
+                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Invoices</span>
                         </a>
                     @endif
 
                     <a href="{{ route('expenses.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('expenses.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-money-withdraw text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Expenses</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Expenses</span>
                     </a>
 
                     <div x-data="{ open: {{ request()->routeIs('reports.*') && ! request()->routeIs('reports.receipts*') ? 'true' : 'false' }} }">
                         <button @click="open = !open" class="w-full flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.*') && ! request()->routeIs('reports.receipts*') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                             <i class="bx bxs-report text-lg shrink-0"></i>
-                            <span class="ml-3 flex-1 text-left whitespace-nowrap" x-show="sidebarOpen">Reports</span>
-                            <i class="bx bx-chevron-down transition-transform" :class="open ? 'rotate-180' : ''" x-show="sidebarOpen"></i>
+                            <span class="ml-3 flex-1 text-left whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Reports</span>
+                            <i class="bx bx-chevron-down transition-transform" :class="open ? 'rotate-180' : ''" x-show="sidebarOpen || sidebarPeek"></i>
                         </button>
-                        <div x-show="open && sidebarOpen" class="ml-9 mt-1 space-y-0.5">
+                        <div x-show="open && (sidebarOpen || sidebarPeek)" class="ml-9 mt-1 space-y-0.5">
                             <a href="{{ route('reports.pppoe-balances') }}" class="block py-0.5 text-sm {{ request()->routeIs('reports.pppoe-balances') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Fixed User Balances</a>
                             <a href="{{ route('reports.fixed-sales') }}" class="block py-0.5 text-sm {{ request()->routeIs('reports.fixed-sales') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Fixed Service Sales</a>
                             <a href="{{ route('reports.hotspot-sales') }}" class="block py-0.5 text-sm {{ request()->routeIs('reports.hotspot-sales') ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">Hotspot Service Sales</a>
@@ -279,33 +309,33 @@
                     </div>
 
                     {{-- === COMMS === --}}
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen">Comms</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen || sidebarPeek">Comms</p>
 
                     <a href="{{ route('sms.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('sms.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-message-square-dots text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">SMS</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">SMS</span>
                     </a>
 
                     @if(Auth::user()->role !== 'Sales Agent')
                         <a href="{{ route('captive-announcements.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('captive-announcements.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                             <i class="bx bx-bell text-lg shrink-0"></i>
-                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Announcements</span>
+                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Announcements</span>
                         </a>
                     @endif
 
                     {{-- === SETTINGS === --}}
-                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen">Settings</p>
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 pt-6" x-show="sidebarOpen || sidebarPeek">Settings</p>
 
                     @if(Auth::user()->role === 'SuperAdmin')
                         <a href="{{ route('team.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('team.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                             <i class="bx bx-lock-alt text-lg shrink-0"></i>
-                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Access Control</span>
+                            <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Access Control</span>
                         </a>
                     @endif
 
                     <a href="{{ route('account.index') }}" class="flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('account.*') ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                         <i class="bx bx-user-circle text-lg shrink-0"></i>
-                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen">Account</span>
+                        <span class="ml-3 whitespace-nowrap" x-show="sidebarOpen || sidebarPeek">Account</span>
                     </a>
                 @endif
             </nav>

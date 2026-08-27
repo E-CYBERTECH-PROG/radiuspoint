@@ -91,11 +91,11 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
                 <a href="{{ route('customers.index', array_filter(['tab' => 'pppoe', 'status' => request('status'), 'search' => request('search')])) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'pppoe' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }}">
+                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'pppoe' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     PPPoE ({{ $pppoeCount }})
                 </a>
                 <a href="{{ route('customers.index', array_filter(['tab' => 'hotspot', 'status' => request('status'), 'search' => request('search')])) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'hotspot' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }}">
+                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === 'hotspot' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Hotspot ({{ $hotspotCount }})
                 </a>
             </div>
@@ -248,10 +248,10 @@
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $allPlans[$user->current_plan_id]->name ?? '—' }}</td>
                             <td class="px-6 py-4">
                                 <template x-if="live['{{ $oneispKey }}']?.online">
-                                    <x-status-badge color="green" dot pulse>Online</x-status-badge>
+                                    <x-status-badge color="green" plain>Online</x-status-badge>
                                 </template>
                                 <template x-if="live['{{ $oneispKey }}'] && !live['{{ $oneispKey }}'].online">
-                                    <x-status-badge color="gray">Offline</x-status-badge>
+                                    <x-status-badge color="orange" plain>Offline</x-status-badge>
                                 </template>
                                 <template x-if="!live['{{ $oneispKey }}']">
                                     <span class="text-[10px] text-gray-300 dark:text-gray-700">·</span>
@@ -259,13 +259,13 @@
                             </td>
                             <td class="px-6 py-4">
                                 @if($user->status === 'active')
-                                    <x-status-badge color="green" dot>Active</x-status-badge>
+                                    <x-status-badge color="green">active</x-status-badge>
                                 @elseif($user->status === 'expired')
-                                    <x-status-badge color="amber">Expired</x-status-badge>
+                                    <x-status-badge color="red">expired</x-status-badge>
                                 @elseif($user->status === 'unused')
-                                    <x-status-badge color="gray">Unused</x-status-badge>
+                                    <x-status-badge color="gray">unused</x-status-badge>
                                 @else
-                                    <x-status-badge color="red">Offline</x-status-badge>
+                                    <x-status-badge color="orange">offline</x-status-badge>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $user->expires_at?->format('H:i M d, Y') ?? '—' }}</td>

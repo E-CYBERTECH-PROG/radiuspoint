@@ -92,11 +92,11 @@
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if($router->status === 'active')
-                                    <x-status-badge color="green" dot pulse>Online</x-status-badge>
+                                    <x-status-badge color="green" plain>Online</x-status-badge>
                                 @elseif($router->status === 'provisioning' || $router->status === 'pending')
                                     <x-status-badge color="amber" icon="bx-loader-alt bx-spin">Awaiting Uplink</x-status-badge>
                                 @else
-                                    <x-status-badge color="red" dot>Offline</x-status-badge>
+                                    <x-status-badge color="orange" plain>Offline</x-status-badge>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-right">

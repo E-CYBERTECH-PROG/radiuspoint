@@ -9,7 +9,7 @@
         <div class="flex items-center gap-2 mb-3">
             @foreach(['available' => 'Available', 'online' => 'Online', 'expired' => 'Expired'] as $key => $label)
                 <a href="{{ route('vouchers.index', array_filter(['tab' => $key, 'search' => request('search')])) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === $key ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' }}">
+                   class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ $tab === $key ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     {{ $label }} ({{ $counts[\App\Http\Controllers\VoucherController::STATUS_MAP[$key]] ?? 0 }})
                 </a>
             @endforeach
@@ -129,11 +129,11 @@
                                 <td class="px-6 py-3 text-gray-500 dark:text-gray-400">{{ $plansById[$voucher->current_plan_id]->name ?? '—' }}</td>
                                 <td class="px-6 py-3">
                                     @if($voucher->status === 'active')
-                                        <x-status-badge color="green" dot>Online</x-status-badge>
+                                        <x-status-badge color="green">online</x-status-badge>
                                     @elseif($voucher->status === 'expired')
-                                        <x-status-badge color="amber">Expired</x-status-badge>
+                                        <x-status-badge color="red">expired</x-status-badge>
                                     @else
-                                        <x-status-badge color="gray">Available</x-status-badge>
+                                        <x-status-badge color="gray">available</x-status-badge>
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-gray-500 dark:text-gray-400">{{ $voucher->expires_at?->format('H:i M d, Y') ?? '—' }}</td>
