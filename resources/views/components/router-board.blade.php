@@ -2,9 +2,9 @@
 
 @php
     $ledColor = match($status) {
-        'online', 'active' => 'bg-green-500',
-        'pending', 'provisioning' => 'bg-amber-500',
-        default => 'bg-red-500',
+        'online', 'active' => 'bg-green',
+        'pending', 'provisioning' => 'bg-yellow',
+        default => 'bg-red',
     };
     $blinkSpeed = match($status) {
         'online', 'active' => '1s',
@@ -13,22 +13,22 @@
     };
 @endphp
 
-<div {{ $attributes->merge(['class' => 'inline-block']) }}>
+<div {{ $attributes->merge(['class' => 'd-inline-block']) }}>
     {{-- Real product photo, hotlinked from MikroTik's official CDN. The uplink status LED
          is overlaid on the photo itself rather than a separate port diagram — we don't have
          per-model port coordinates to place it on the correct physical port precisely. --}}
-    <div class="relative shrink-0 {{ $compact ? 'w-10 h-10' : 'w-32 h-32' }} bg-white dark:bg-gray-100 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden mx-auto">
+    <div class="router-board-photo {{ $compact ? 'router-board-photo-sm' : '' }} position-relative bg-white border rounded d-flex align-items-center justify-content-center overflow-hidden mx-auto">
         @if ($image)
-            <img src="{{ $image }}" loading="lazy" alt="MikroTik board photo" class="w-full h-full object-contain p-2">
+            <img src="{{ $image }}" loading="lazy" alt="MikroTik board photo" class="w-100 h-100 p-2" style="object-fit:contain">
         @else
-            <i class='bx bx-router text-gray-300 {{ $compact ? "text-xl" : "text-5xl" }}'></i>
+            <i class="ti ti-router text-muted {{ $compact ? 'fs-3' : '' }}" style="{{ $compact ? '' : 'font-size:3rem' }}"></i>
         @endif
-        <span class="router-board-led absolute {{ $compact ? '-top-0.5 -right-0.5 w-2 h-2' : '-top-1 -right-1 w-3.5 h-3.5' }} rounded-full {{ $ledColor }} ring-2 ring-white dark:ring-gray-950"
+        <span class="router-board-led position-absolute rounded-circle {{ $ledColor }}"
               @if($blinkSpeed) style="animation: router-board-blink {{ $blinkSpeed }} steps(1) infinite;" @endif
               title="Uplink status"></span>
     </div>
     @unless($compact)
-        <p class="text-[10px] text-gray-400 text-center mt-1 uppercase tracking-wide">{{ ucfirst($status) }}</p>
+        <p class="text-muted text-center mt-1 mb-0 text-uppercase small">{{ ucfirst($status) }}</p>
     @endunless
 </div>
 

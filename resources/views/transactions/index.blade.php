@@ -1,79 +1,83 @@
 <x-sidebar-layout title="Transactions">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Organization payments made into the system through M-Pesa/Kopokopo.</p>
+    <div class="mb-4">
+        <h1 class="mb-1">Transactions</h1>
+        <p class="text-muted mb-0">Organization payments made into the system through M-Pesa/Kopokopo.</p>
     </div>
 
-    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div class="flex items-center gap-2">
-            <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'success']))) }}"
-               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ request('status') === 'success' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                Success
-            </a>
-            <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'failed']))) }}"
-               class="px-4 py-2 rounded-lg text-sm font-bold transition-colors {{ request('status') === 'failed' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                Failed
-            </a>
-        </div>
-        <a href="{{ route('transactions.export', request()->query()) }}" class="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg border border-gray-200 dark:border-gray-800 transition-colors">
-            <i class='bx bx-download text-lg'></i> Export CSV
+    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'success']))) }}" class="nav-link {{ request('status') === 'success' ? 'active' : '' }}">
+                    Success
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'failed']))) }}" class="nav-link {{ request('status') === 'failed' ? 'active' : '' }}">
+                    Failed
+                </a>
+            </li>
+        </ul>
+        <a href="{{ route('transactions.export', request()->query()) }}" class="btn">
+            <i class="ti ti-download icon"></i> Export CSV
         </a>
     </div>
 
-    <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3 flex-wrap">
+    <form method="GET" class="mb-4 d-flex flex-wrap gap-2">
         <input type="hidden" name="status" value="{{ request('status') }}">
-        <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1 min-w-[200px]">
-            <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, phone, or receipt..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+        <div class="input-icon" style="min-width:14rem;flex:1">
+            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, phone, or receipt..." class="form-control">
         </div>
-        <input type="date" name="from" value="{{ request('from') }}" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
-        <input type="date" name="to" value="{{ request('to') }}" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
+        <input type="date" name="from" value="{{ request('from') }}" class="form-control w-auto">
+        <input type="date" name="to" value="{{ request('to') }}" class="form-control w-auto">
         <x-per-page-select :default="25" />
-        <button type="submit" class="bg-gray-900 dark:bg-gray-700 text-white text-sm font-bold px-5 py-2 rounded-lg">Filter</button>
+        <button type="submit" class="btn btn-dark">Filter</button>
         @if(request()->hasAny(['search', 'status', 'from', 'to']))
-            <a href="{{ route('transactions.index') }}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 self-center">Clear</a>
+            <a href="{{ route('transactions.index') }}" class="btn btn-link align-self-center">Clear</a>
         @endif
     </form>
 
-    <div x-data="transactionLiveStatus()" x-init="startPolling()" class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
                 <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">
-                        <th class="px-6 py-4">Customer</th>
-                        <th class="px-6 py-4">Package</th>
-                        <th class="px-6 py-4">Amount</th>
-                        <th class="px-6 py-4">Method</th>
-                        <th class="px-6 py-4">Receipt</th>
-                        <th class="px-6 py-4">Status</th>
-                        <th class="px-6 py-4 text-right">Time</th>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Package</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Receipt</th>
+                        <th>Status</th>
+                        <th class="text-end">Time</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                <tbody>
                     @forelse($transactions as $transaction)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-                            <td class="px-6 py-4">
-                                <p class="font-bold text-gray-900 dark:text-white">{{ $transaction->customer_name }}</p>
-                                <p class="text-xs text-gray-500">{{ $transaction->phone_number }}</p>
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ $transaction->customer_name }}</div>
+                                <div class="text-muted small">{{ $transaction->phone_number }}</div>
                             </td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $transaction->package_name }}</td>
-                            <td class="px-6 py-4 font-fira font-bold text-gray-900 dark:text-white">KES {{ number_format($transaction->amount) }}</td>
-                            <td class="px-6 py-4">
-                                <x-status-badge color="blue">{{ $transaction->payment_method }}</x-status-badge>
+                            <td class="text-muted">{{ $transaction->package_name }}</td>
+                            <td class="font-monospace fw-bold">KES {{ number_format($transaction->amount) }}</td>
+                            <td><x-status-badge color="blue">{{ $transaction->payment_method }}</x-status-badge></td>
+                            <td class="text-muted font-monospace" data-live-receipt="{{ $transaction->id }}">{{ $transaction->mpesa_receipt ?: '—' }}</td>
+                            <td data-live-status="{{ $transaction->id }}" data-status="{{ $transaction->status }}">
+                                @if($transaction->status === 'success')
+                                    <x-status-badge color="green" icon="ti-circle-check-filled">Success</x-status-badge>
+                                @elseif($transaction->status === 'pending')
+                                    <x-status-badge color="amber" icon="ti-loader-2 icon-spin">Pending</x-status-badge>
+                                @else
+                                    <x-status-badge color="red" icon="ti-circle-x-filled">Failed</x-status-badge>
+                                @endif
                             </td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-fira" x-text="(live[{{ $transaction->id }}]?.mpesa_receipt ?? {{ \Illuminate\Support\Js::from($transaction->mpesa_receipt) }}) || '—'"></td>
-                            <td class="px-6 py-4" x-data="{ status: {{ \Illuminate\Support\Js::from($transaction->status) }} }" x-effect="status = live[{{ $transaction->id }}]?.status ?? status">
-                                <x-status-badge color="green" icon="bxs-check-circle" x-show="status === 'success'">Success</x-status-badge>
-                                <x-status-badge color="amber" icon="bx-loader-alt bx-spin" x-show="status === 'pending'">Pending</x-status-badge>
-                                <x-status-badge color="red" icon="bxs-x-circle" x-show="status === 'failed'">Failed</x-status-badge>
-                            </td>
-                            <td class="px-6 py-4 text-right text-xs text-gray-500">{{ $transaction->created_at->diffForHumans() }}</td>
+                            <td class="text-end text-muted small">{{ $transaction->created_at->diffForHumans() }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-400">
-                                <i class="bx bx-receipt text-4xl mb-3 text-gray-200"></i>
-                                <p class="text-xs tracking-widest uppercase">No transactions recorded yet.</p>
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <i class="ti ti-receipt icon icon-lg mb-2 d-block"></i>
+                                <p class="text-uppercase small mb-0">No transactions recorded yet.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -81,7 +85,7 @@
             </table>
         </div>
         @if($transactions->hasPages())
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+            <div class="card-footer">
                 {{ $transactions->links() }}
             </div>
         @endif
@@ -89,39 +93,48 @@
 
     <x-slot name="scripts">
         <script>
-            function transactionLiveStatus() {
-                return {
-                    live: {},
-                    pendingIds: @json($transactions->where('status', 'pending')->pluck('id')->values()),
+            (function () {
+                var pendingIds = @json($transactions->where('status', 'pending')->pluck('id')->values());
+                if (pendingIds.length === 0) return;
 
-                    startPolling() {
-                        if (this.pendingIds.length === 0) return;
-                        this.poll();
-                        // 5s matches the dashboard's online-counter cadence — payment confirmation
-                        // is exactly the kind of thing worth feeling immediate.
-                        this.interval = setInterval(() => this.poll(), 5000);
-                    },
-
-                    async poll() {
-                        try {
-                            const params = new URLSearchParams();
-                            this.pendingIds.forEach(id => params.append('ids[]', id));
-                            const res = await fetch(`{{ route('transactions.live-status') }}?${params}`, { headers: { 'Accept': 'application/json' } });
-                            const json = await res.json();
-                            this.live = json.data || {};
-
-                            // Stop polling entirely once nothing's pending anymore — a fully
-                            // settled page shouldn't poll forever.
-                            this.pendingIds = this.pendingIds.filter(id => (this.live[id]?.status ?? 'pending') === 'pending');
-                            if (this.pendingIds.length === 0 && this.interval) {
-                                clearInterval(this.interval);
-                            }
-                        } catch (e) {
-                            // Transient failure — next tick retries.
-                        }
-                    },
+                var interval = null;
+                var badges = {
+                    success: '<span class="badge bg-green-lt"><i class="ti ti-circle-check-filled me-1"></i>Success</span>',
+                    pending: '<span class="badge bg-yellow-lt"><i class="ti ti-loader-2 icon-spin me-1"></i>Pending</span>',
+                    failed: '<span class="badge bg-red-lt"><i class="ti ti-circle-x-filled me-1"></i>Failed</span>',
                 };
-            }
+
+                async function poll() {
+                    try {
+                        var params = new URLSearchParams();
+                        pendingIds.forEach(function (id) { params.append('ids[]', id); });
+                        var res = await fetch("{{ route('transactions.live-status') }}?" + params, { headers: { Accept: 'application/json' } });
+                        var json = await res.json();
+                        var live = json.data || {};
+
+                        pendingIds.forEach(function (id) {
+                            var info = live[id];
+                            if (!info) return;
+                            var statusCell = document.querySelector('[data-live-status="' + id + '"]');
+                            var receiptCell = document.querySelector('[data-live-receipt="' + id + '"]');
+                            if (statusCell && info.status && badges[info.status]) statusCell.innerHTML = badges[info.status];
+                            if (receiptCell && info.mpesa_receipt) receiptCell.textContent = info.mpesa_receipt;
+                        });
+
+                        // Stop polling entirely once nothing's pending anymore — a fully
+                        // settled page shouldn't poll forever.
+                        pendingIds = pendingIds.filter(function (id) { return (live[id] && live[id].status ? live[id].status : 'pending') === 'pending'; });
+                        if (pendingIds.length === 0 && interval) clearInterval(interval);
+                    } catch (e) {
+                        // Transient failure — next tick retries.
+                    }
+                }
+
+                poll();
+                // 5s matches the dashboard's online-counter cadence — payment confirmation
+                // is exactly the kind of thing worth feeling immediate.
+                interval = setInterval(poll, 5000);
+            })();
         </script>
     </x-slot>
 </x-sidebar-layout>

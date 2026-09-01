@@ -7,167 +7,197 @@
     <title>{{ $tenant->company_name }} — WiFi Payment</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Figtree', 'ui-sans-serif', 'system-ui'] } } } }</script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    @vite(['resources/css/app.scss', 'resources/js/app.js'])
 </head>
-<body class="font-sans bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="d-flex align-items-center justify-content-center min-vh-100 bg-body-secondary p-3">
 
-    <div x-data="paymentPortal()" class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white text-center">
-            <i class="bx bx-wifi text-4xl"></i>
-            <h1 class="text-xl font-bold mt-2">{{ $tenant->company_name }}</h1>
-            <p class="text-sm text-blue-100">Buy internet access</p>
+    <div class="card shadow-lg" style="width:100%;max-width:28rem;border-radius:1rem;overflow:hidden">
+        <div class="p-4 text-white text-center" style="background:linear-gradient(to right, var(--tblr-primary), var(--tblr-indigo))">
+            <i class="ti ti-wifi fs-1"></i>
+            <h1 class="h4 mt-2 mb-0">{{ $tenant->company_name }}</h1>
+            <p class="text-white-50 small mb-0">Buy internet access</p>
         </div>
 
-        <div class="p-6">
-            <!-- Step 1: pick a plan + enter phone -->
-            <template x-if="step === 'select'">
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        @forelse($plans as $plan)
-                            <button type="button" @click="selectedPlan = {{ $plan->id }}"
-                                class="w-full text-left border rounded-xl p-4 transition-colors"
-                                :class="selectedPlan === {{ $plan->id }} ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <p class="font-bold text-gray-900">{{ $plan->name }}</p>
-                                        <p class="text-xs text-gray-500">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }} &middot; {{ $plan->speed_limit }}</p>
-                                    </div>
-                                    <p class="font-bold text-blue-600">KES {{ number_format($plan->price) }}</p>
+        <div class="card-body p-4">
+            {{-- Step 1: pick a plan + enter phone --}}
+            <div id="rp-portal-step-select">
+                <div class="d-flex flex-column gap-2 mb-3">
+                    @forelse($plans as $plan)
+                        <button type="button" class="btn text-start p-3" data-rp-plan-option data-rp-plan-id="{{ $plan->id }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <p class="fw-bold mb-0">{{ $plan->name }}</p>
+                                    <p class="text-muted small mb-0">{{ $plan->duration_value }} {{ ucfirst($plan->duration_unit) }} &middot; {{ $plan->speed_limit }}</p>
                                 </div>
-                            </button>
-                        @empty
-                            <p class="text-sm text-gray-500 text-center py-6">No packages are available on this network yet.</p>
-                        @endforelse
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Phone Number (M-Pesa)</label>
-                        <input type="tel" x-model="phone" placeholder="0712345678" class="w-full border border-gray-200 rounded-lg py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <p x-show="error" x-text="error" class="text-sm text-red-500"></p>
-
-                    <button type="button" @click="pay()" :disabled="!selectedPlan || !phone || paying"
-                        class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-colors">
-                        <span x-show="!paying">Pay Now</span>
-                        <span x-show="paying">Sending request...</span>
-                    </button>
+                                <p class="fw-bold text-primary mb-0">KES {{ number_format($plan->price) }}</p>
+                            </div>
+                        </button>
+                    @empty
+                        <p class="text-muted text-center py-4 mb-0">No packages are available on this network yet.</p>
+                    @endforelse
                 </div>
-            </template>
 
-            <!-- Step 2: waiting for STK push completion -->
-            <template x-if="step === 'waiting'">
-                <div class="text-center py-8 space-y-4">
-                    <i class="bx bx-loader-alt bx-spin text-4xl text-blue-600"></i>
-                    <p class="font-bold text-gray-900">Check your phone</p>
-                    <p class="text-sm text-gray-500">Enter your M-Pesa PIN to complete the payment. This page will update automatically.</p>
+                <div class="mb-3">
+                    <label class="form-label">Phone Number (M-Pesa)</label>
+                    <input type="tel" id="rp-portal-phone" placeholder="0712345678" class="form-control">
                 </div>
-            </template>
 
-            <!-- Step 3: success -->
-            <template x-if="step === 'success'">
-                <div class="text-center py-4 space-y-4">
-                    <i class="bx bxs-check-circle text-4xl text-green-500"></i>
-                    <p class="font-bold text-gray-900">You're connected!</p>
-                    <div class="bg-gray-50 rounded-lg p-4 text-left space-y-1">
-                        <p class="text-xs text-gray-500 uppercase tracking-wide">Username</p>
-                        <p class="font-bold font-mono" x-text="username"></p>
-                        <p class="text-xs text-gray-500 uppercase tracking-wide mt-2">Password</p>
-                        <p class="font-bold font-mono" x-text="password"></p>
-                    </div>
-                    <p class="text-xs text-gray-500">Open your WiFi login page and enter these details to get online.</p>
-                </div>
-            </template>
+                <p class="text-danger small d-none" id="rp-portal-error"></p>
 
-            <!-- Step 4: failed -->
-            <template x-if="step === 'failed'">
-                <div class="text-center py-8 space-y-4">
-                    <i class="bx bxs-x-circle text-4xl text-red-500"></i>
-                    <p class="font-bold text-gray-900">Payment failed</p>
-                    <p class="text-sm text-gray-500" x-text="error || 'The payment was not completed. Please try again.'"></p>
-                    <button type="button" @click="reset()" class="w-full bg-gray-900 text-white font-bold py-3 rounded-lg">Try Again</button>
+                <button type="button" id="rp-portal-pay-btn" disabled class="btn btn-primary w-100">
+                    <span id="rp-portal-pay-label">Pay Now</span>
+                </button>
+            </div>
+
+            {{-- Step 2: waiting for STK push completion --}}
+            <div id="rp-portal-step-waiting" class="d-none text-center py-4">
+                <i class="ti ti-loader-2 icon-spin fs-1 text-primary"></i>
+                <p class="fw-bold mt-3 mb-1">Check your phone</p>
+                <p class="text-muted small mb-0">Enter your M-Pesa PIN to complete the payment. This page will update automatically.</p>
+            </div>
+
+            {{-- Step 3: success --}}
+            <div id="rp-portal-step-success" class="d-none text-center py-2">
+                <i class="ti ti-circle-check-filled fs-1 text-success"></i>
+                <p class="fw-bold mt-3 mb-3">You're connected!</p>
+                <div class="bg-body-secondary rounded p-3 text-start mb-3">
+                    <p class="text-uppercase text-muted small mb-0">Username</p>
+                    <p class="fw-bold font-monospace" id="rp-portal-username"></p>
+                    <p class="text-uppercase text-muted small mb-0 mt-2">Password</p>
+                    <p class="fw-bold font-monospace mb-0" id="rp-portal-password"></p>
                 </div>
-            </template>
+                <p class="text-muted small mb-0">Open your WiFi login page and enter these details to get online.</p>
+            </div>
+
+            {{-- Step 4: failed --}}
+            <div id="rp-portal-step-failed" class="d-none text-center py-4">
+                <i class="ti ti-circle-x-filled fs-1 text-danger"></i>
+                <p class="fw-bold mt-3 mb-1">Payment failed</p>
+                <p class="text-muted small mb-3" id="rp-portal-failed-message">The payment was not completed. Please try again.</p>
+                <button type="button" id="rp-portal-retry-btn" class="btn btn-dark w-100">Try Again</button>
+            </div>
         </div>
     </div>
 
     <script>
-        function paymentPortal() {
-            return {
-                step: 'select',
-                selectedPlan: null,
-                phone: '',
-                paying: false,
-                error: null,
-                username: null,
-                password: null,
-                pollTimer: null,
+        (function () {
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            var mac = @json($mac);
+            var selectedPlan = null;
+            var pollTimer = null;
 
-                async pay() {
-                    this.paying = true;
-                    this.error = null;
-
-                    try {
-                        const response = await fetch("{{ route('portal.pay', $router) }}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                plan_id: this.selectedPlan,
-                                phone: this.phone,
-                                mac: @json($mac),
-                            }),
-                        });
-
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            this.error = data.error || 'Something went wrong. Please try again.';
-                            this.paying = false;
-                            return;
-                        }
-
-                        this.step = 'waiting';
-                        this.pollStatus(data.transaction_id);
-                    } catch (e) {
-                        this.error = 'Network error. Please try again.';
-                        this.paying = false;
-                    }
-                },
-
-                pollStatus(transactionId) {
-                    const url = "{{ route('portal.status', [$router, '__ID__']) }}".replace('__ID__', transactionId);
-
-                    this.pollTimer = setInterval(async () => {
-                        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                        const data = await response.json();
-
-                        if (data.status === 'success') {
-                            clearInterval(this.pollTimer);
-                            this.username = data.username;
-                            this.password = data.password;
-                            this.step = 'success';
-                        } else if (data.status === 'failed') {
-                            clearInterval(this.pollTimer);
-                            this.step = 'failed';
-                        }
-                    }, 3000);
-                },
-
-                reset() {
-                    this.step = 'select';
-                    this.paying = false;
-                    this.error = null;
-                    if (this.pollTimer) clearInterval(this.pollTimer);
-                },
+            var steps = {
+                select: document.getElementById('rp-portal-step-select'),
+                waiting: document.getElementById('rp-portal-step-waiting'),
+                success: document.getElementById('rp-portal-step-success'),
+                failed: document.getElementById('rp-portal-step-failed'),
             };
-        }
+            var phoneInput = document.getElementById('rp-portal-phone');
+            var errorEl = document.getElementById('rp-portal-error');
+            var payBtn = document.getElementById('rp-portal-pay-btn');
+            var payLabel = document.getElementById('rp-portal-pay-label');
+
+            function showStep(name) {
+                Object.keys(steps).forEach(function (key) {
+                    steps[key].classList.toggle('d-none', key !== name);
+                });
+            }
+
+            function syncPayButton() {
+                payBtn.disabled = !selectedPlan || !phoneInput.value;
+            }
+
+            document.querySelectorAll('[data-rp-plan-option]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    selectedPlan = btn.getAttribute('data-rp-plan-id');
+                    document.querySelectorAll('[data-rp-plan-option]').forEach(function (b) {
+                        b.classList.toggle('btn-outline-primary', b === btn);
+                        b.classList.toggle('active', b === btn);
+                    });
+                    syncPayButton();
+                });
+            });
+
+            phoneInput.addEventListener('input', syncPayButton);
+
+            function setError(message) {
+                if (message) {
+                    errorEl.textContent = message;
+                    errorEl.classList.remove('d-none');
+                } else {
+                    errorEl.classList.add('d-none');
+                }
+            }
+
+            async function pay() {
+                payBtn.disabled = true;
+                payLabel.textContent = 'Sending request...';
+                setError(null);
+
+                try {
+                    var response = await fetch("{{ route('portal.pay', $router) }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            Accept: 'application/json',
+                        },
+                        body: JSON.stringify({
+                            plan_id: selectedPlan,
+                            phone: phoneInput.value,
+                            mac: mac,
+                        }),
+                    });
+
+                    var data = await response.json();
+
+                    if (!response.ok) {
+                        setError(data.error || 'Something went wrong. Please try again.');
+                        payBtn.disabled = false;
+                        payLabel.textContent = 'Pay Now';
+                        return;
+                    }
+
+                    showStep('waiting');
+                    pollStatus(data.transaction_id);
+                } catch (e) {
+                    setError('Network error. Please try again.');
+                    payBtn.disabled = false;
+                    payLabel.textContent = 'Pay Now';
+                }
+            }
+
+            function pollStatus(transactionId) {
+                var url = "{{ route('portal.status', [$router, '__ID__']) }}".replace('__ID__', transactionId);
+
+                pollTimer = setInterval(async function () {
+                    var response = await fetch(url, { headers: { Accept: 'application/json' } });
+                    var data = await response.json();
+
+                    if (data.status === 'success') {
+                        clearInterval(pollTimer);
+                        document.getElementById('rp-portal-username').textContent = data.username;
+                        document.getElementById('rp-portal-password').textContent = data.password;
+                        showStep('success');
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollTimer);
+                        showStep('failed');
+                    }
+                }, 3000);
+            }
+
+            payBtn.addEventListener('click', pay);
+
+            document.getElementById('rp-portal-retry-btn').addEventListener('click', function () {
+                selectedPlan = null;
+                payBtn.disabled = true;
+                payLabel.textContent = 'Pay Now';
+                setError(null);
+                if (pollTimer) clearInterval(pollTimer);
+                document.querySelectorAll('[data-rp-plan-option]').forEach(function (b) { b.classList.remove('btn-outline-primary', 'active'); });
+                showStep('select');
+            });
+        })();
     </script>
 </body>
 </html>

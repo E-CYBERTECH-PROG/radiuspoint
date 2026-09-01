@@ -1,51 +1,61 @@
 <x-sidebar-layout title="Import Tenants">
-    <div class="mb-6">
-        <a href="{{ route('platform-admin.tenants.index') }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2 mb-2">
-            <i class="bx bx-left-arrow-alt text-lg"></i> Back to Tenants
+    <div class="mb-4">
+        <a href="{{ route('platform-admin.tenants.index') }}" class="d-inline-flex align-items-center gap-2 mb-2">
+            <i class="ti ti-arrow-left icon"></i> Back to Tenants
         </a>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Import Tenants</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">From a CSV file — each new owner gets a temporary password by email.</p>
+        <h1 class="mb-1">Import Tenants</h1>
+        <p class="text-muted mb-0">From a CSV file — each new owner gets a temporary password by email.</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8 max-w-2xl space-y-6">
-        <a href="{{ route('platform-admin.tenants.import-template') }}" class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-            <i class="bx bx-download text-lg"></i> Download CSV Template
-        </a>
+    <div class="card" style="max-width:42rem">
+        <div class="card-body">
+            <a href="{{ route('platform-admin.tenants.import-template') }}" class="d-inline-flex align-items-center gap-2 fw-bold mb-4">
+                <i class="ti ti-download icon"></i> Download CSV Template
+            </a>
 
-        <form action="{{ route('platform-admin.tenants.import') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
-            @csrf
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">CSV File <span class="text-red-500">*</span></label>
-                <input type="file" name="file" accept=".csv,.txt" required class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg outline-none">
-                @error('file') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors inline-flex items-center gap-2">
-                <i class="bx bx-upload text-lg"></i> Import
-            </button>
-        </form>
+            <form action="{{ route('platform-admin.tenants.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="mb-3">
+                    <label class="form-label">CSV File <span class="text-danger">*</span></label>
+                    <input type="file" name="file" accept=".csv,.txt" required class="form-control">
+                    @error('file') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-upload icon"></i> Import
+                </button>
+            </form>
+        </div>
     </div>
 
     @if(session('importResults'))
         @php($results = session('importResults'))
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-            <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
-                <h3 class="text-md font-bold text-green-600 dark:text-green-400 mb-4">Created ({{ count($results['created']) }})</h3>
-                <div class="space-y-2 text-sm">
-                    @forelse($results['created'] as $row)
-                        <p class="text-gray-700 dark:text-gray-300">Row {{ $row['row'] }}: <span class="font-bold">{{ $row['company_name'] }}</span> &middot; {{ $row['owner_email'] }}</p>
-                    @empty
-                        <p class="text-gray-500 dark:text-gray-400">None.</p>
-                    @endforelse
+        <div class="row g-3 mt-1" style="max-width:64rem">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h3 class="card-title text-success">Created ({{ count($results['created']) }})</h3>
+                        <div class="d-flex flex-column gap-1">
+                            @forelse($results['created'] as $row)
+                                <p class="mb-0">Row {{ $row['row'] }}: <span class="fw-bold">{{ $row['company_name'] }}</span> &middot; {{ $row['owner_email'] }}</p>
+                            @empty
+                                <p class="text-muted mb-0">None.</p>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
-                <h3 class="text-md font-bold text-red-600 dark:text-red-400 mb-4">Failed ({{ count($results['failed']) }})</h3>
-                <div class="space-y-2 text-sm">
-                    @forelse($results['failed'] as $row)
-                        <p class="text-gray-700 dark:text-gray-300">Row {{ $row['row'] }}: <span class="text-red-500">{{ $row['reason'] }}</span></p>
-                    @empty
-                        <p class="text-gray-500 dark:text-gray-400">None.</p>
-                    @endforelse
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h3 class="card-title text-danger">Failed ({{ count($results['failed']) }})</h3>
+                        <div class="d-flex flex-column gap-1">
+                            @forelse($results['failed'] as $row)
+                                <p class="mb-0">Row {{ $row['row'] }}: <span class="text-danger">{{ $row['reason'] }}</span></p>
+                            @empty
+                                <p class="text-muted mb-0">None.</p>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -7,116 +7,142 @@
             else $counts['other']++;
         }
     @endphp
-    <div>
-        <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Fleet Status</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Every router at a glance &mdash; updated every minute automatically.</p>
-            </div>
-            <a href="{{ route('routers.index') }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                <i class="bx bx-list-ul text-lg"></i> Table View
-            </a>
-        </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm text-center">
-                <p class="text-3xl font-fira font-extrabold text-green-600 dark:text-green-400">{{ $counts['active'] }}</p>
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Online</p>
-            </div>
-            <div class="bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm text-center">
-                <p class="text-3xl font-fira font-extrabold text-red-600 dark:text-red-400">{{ $counts['offline'] }}</p>
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Offline</p>
-            </div>
-            <div class="bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm text-center">
-                <p class="text-3xl font-fira font-extrabold text-amber-600 dark:text-amber-400">{{ $counts['other'] }}</p>
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Awaiting Uplink</p>
+    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
+        <div>
+            <h1 class="mb-1">Fleet Status</h1>
+            <p class="text-muted mb-0">Every router at a glance &mdash; updated every minute automatically.</p>
+        </div>
+        <a href="{{ route('routers.index') }}" class="btn">
+            <i class="ti ti-list icon"></i> Table View
+        </a>
+    </div>
+
+    <div class="row row-cols-3 g-3 mb-4">
+        <div class="col">
+            <div class="card card-sm text-center">
+                <div class="card-body">
+                    <p class="fs-2 font-monospace fw-bold text-success mb-0">{{ $counts['active'] }}</p>
+                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Online</p>
+                </div>
             </div>
         </div>
-
-        @if($routers->isEmpty())
-            <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 text-center text-gray-400">
-                <i class='bx bx-radar text-4xl mb-3 text-gray-200'></i>
-                <p class="text-xs tracking-widest uppercase">No hardware deployed yet.</p>
+        <div class="col">
+            <div class="card card-sm text-center">
+                <div class="card-body">
+                    <p class="fs-2 font-monospace fw-bold text-danger mb-0">{{ $counts['offline'] }}</p>
+                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Offline</p>
+                </div>
             </div>
-        @else
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                @foreach($routers as $router)
-                    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
-                         x-data="{
-                            live: null,
-                            refreshing: false,
-                            async refresh() {
-                                this.refreshing = true;
-                                try {
-                                    const res = await fetch('{{ route('routers.test-connection', $router) }}', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                                    });
-                                    this.live = await res.json();
-                                } catch (e) {
-                                    // Leave `live` as-is — the status badge already reflects DB state.
-                                } finally {
-                                    this.refreshing = false;
-                                }
-                            },
-                         }">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="flex items-center gap-3">
-                                <x-router-board
-                                    :port-count="$models[$router->board_model]['ports'] ?? 5"
-                                    :sfp-count="$models[$router->board_model]['sfp'] ?? 0"
-                                    :image="$models[$router->board_model]['image'] ?? null"
-                                    :status="$router->status"
-                                    compact
-                                />
-                                <div>
-                                    <a href="{{ route('routers.show', $router) }}" class="text-gray-900 dark:text-white font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors block">{{ $router->name }}</a>
-                                    <span class="text-[10px] text-gray-400 font-fira">{{ $router->ip_address }}</span>
+        </div>
+        <div class="col">
+            <div class="card card-sm text-center">
+                <div class="card-body">
+                    <p class="fs-2 font-monospace fw-bold text-warning mb-0">{{ $counts['other'] }}</p>
+                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Awaiting Uplink</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if($routers->isEmpty())
+        <div class="card">
+            <div class="card-body text-center text-muted py-5">
+                <i class="ti ti-radar icon icon-lg mb-2 d-block"></i>
+                <p class="text-uppercase small mb-0">No hardware deployed yet.</p>
+            </div>
+        </div>
+    @else
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+            @foreach($routers as $router)
+                <div class="col">
+                    <div class="card card-sm h-100" data-rp-router-card data-rp-test-url="{{ route('routers.test-connection', $router) }}">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <x-router-board
+                                        :port-count="$models[$router->board_model]['ports'] ?? 5"
+                                        :sfp-count="$models[$router->board_model]['sfp'] ?? 0"
+                                        :image="$models[$router->board_model]['image'] ?? null"
+                                        :status="$router->status"
+                                        compact
+                                    />
+                                    <div>
+                                        <a href="{{ route('routers.show', $router) }}" class="fw-bold d-block">{{ $router->name }}</a>
+                                        <span class="text-muted font-monospace" style="font-size:.625rem">{{ $router->ip_address }}</span>
+                                    </div>
+                                </div>
+                                @if($router->status === 'active')
+                                    <span class="badge bg-green-lt flex-shrink-0">Online</span>
+                                @elseif($router->status === 'offline')
+                                    <span class="badge bg-red-lt flex-shrink-0">Offline</span>
+                                @else
+                                    <span class="badge bg-amber-lt flex-shrink-0"><i class="ti ti-loader-2 icon-spin"></i> {{ ucfirst($router->status) }}</span>
+                                @endif
+                            </div>
+
+                            <div class="text-muted small mb-3">
+                                Last seen: {{ $router->last_seen ? $router->last_seen->diffForHumans() : 'never' }}
+                            </div>
+
+                            <div class="row g-2 small border-top pt-3 mb-3" data-rp-router-live style="display:none">
+                                <div class="col-6">
+                                    <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">CPU</p>
+                                    <p class="fw-bold mb-0" data-rp-router-cpu>—</p>
+                                </div>
+                                <div class="col-6">
+                                    <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">Uptime</p>
+                                    <p class="fw-bold mb-0" data-rp-router-uptime>—</p>
                                 </div>
                             </div>
-                            @if($router->status === 'active')
-                                <span class="inline-flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-900/50 font-bold shrink-0">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
-                                </span>
-                            @elseif($router->status === 'offline')
-                                <span class="inline-flex items-center gap-1.5 text-[10px] text-red-700 dark:text-red-400 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-900/50 font-bold shrink-0">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-1.5 text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50 font-bold shrink-0">
-                                    <i class='bx bx-loader-alt bx-spin'></i> {{ ucfirst($router->status) }}
-                                </span>
-                            @endif
-                        </div>
 
-                        <div class="text-xs text-gray-400 mb-3">
-                            Last seen: {{ $router->last_seen ? $router->last_seen->diffForHumans() : 'never' }}
-                        </div>
-
-                        <template x-if="live">
-                            <div class="grid grid-cols-2 gap-3 text-xs border-t border-gray-100 dark:border-gray-800 pt-3 mb-3">
-                                <div>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">CPU</p>
-                                    <p class="font-bold text-gray-900 dark:text-white" x-text="(live.cpu_load ?? '—') + '%'"></p>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Uptime</p>
-                                    <p class="font-bold text-gray-900 dark:text-white" x-text="live.uptime ?? '—'"></p>
-                                </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <button type="button" class="btn btn-sm flex-fill" data-rp-router-refresh>
+                                    <i class="ti ti-refresh"></i> Refresh Now
+                                </button>
+                                <a href="{{ route('routers.monitor', $router) }}" class="text-muted" title="Live Monitor">
+                                    <i class="ti ti-activity"></i>
+                                </a>
                             </div>
-                        </template>
-
-                        <div class="flex items-center gap-3">
-                            <button type="button" @click="refresh()" :disabled="refreshing" class="flex-1 inline-flex items-center justify-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 border border-gray-200 dark:border-gray-700 py-2 rounded-lg transition-colors disabled:opacity-50">
-                                <i class="bx" :class="refreshing ? 'bx-loader-alt bx-spin' : 'bx-refresh'"></i> Refresh Now
-                            </button>
-                            <a href="{{ route('routers.monitor', $router) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Live Monitor">
-                                <i class="bx bx-pulse text-lg"></i>
-                            </a>
                         </div>
                     </div>
-                @endforeach
-            </div>
-        @endif
-    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            document.querySelectorAll('[data-rp-router-card]').forEach(function (card) {
+                var btn = card.querySelector('[data-rp-router-refresh]');
+                var icon = btn.querySelector('i');
+                var liveRow = card.querySelector('[data-rp-router-live]');
+                var cpuEl = card.querySelector('[data-rp-router-cpu]');
+                var uptimeEl = card.querySelector('[data-rp-router-uptime]');
+
+                btn.addEventListener('click', async function () {
+                    btn.disabled = true;
+                    icon.className = 'ti ti-loader-2 icon-spin';
+
+                    try {
+                        var res = await fetch(card.getAttribute('data-rp-test-url'), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        });
+                        var live = await res.json();
+                        cpuEl.textContent = (live.cpu_load ?? '—') + '%';
+                        uptimeEl.textContent = live.uptime ?? '—';
+                        liveRow.style.display = '';
+                    } catch (e) {
+                        // Leave the card as-is — the status badge already reflects DB state.
+                    } finally {
+                        btn.disabled = false;
+                        icon.className = 'ti ti-refresh';
+                    }
+                });
+            });
+        });
+    </script>
 </x-sidebar-layout>

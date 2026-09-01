@@ -1,15 +1,10 @@
-{{-- Self-contained JS/CSS for the "One ISP" layout — deliberately not sharing
-     dashboard/partials/_scripts.blade.php, since that file wires up the live-poll
-     `dashboard()` Alpine component this layout doesn't use (see oneisp.blade.php's
-     top comment). Expects $chartLabels, $chartData, $growthLabels, $growthData,
-     $subscriptionsSparkline, $packageBreakdown, $currency in scope. --}}
+{{-- Self-contained JS for the "One ISP" dashboard layout. Expects $chartLabels, $chartData,
+     $growthLabels, $growthData, $subscriptionsSparkline, $packageBreakdown, $currency in scope. --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    {{-- Runs synchronously as the parser reaches it (no defer/DOMContentLoaded wrapper) — the
-         canvases above are already parsed by this point, and this must register its
-         'alpine:init' listener before Alpine's own deferred script fires that event,
-         matching the pattern in dashboard/partials/_scripts.blade.php. --}}
     (function () {
+        const isDarkNow = () => document.documentElement.getAttribute('data-bs-theme') === 'dark';
+
         const sparklineBase = {
             responsive: true,
             maintainAspectRatio: false,
@@ -118,7 +113,7 @@
                 datasets: [{
                     data: @json($packageBreakdown->pluck('revenue')),
                     backgroundColor: ['#6366f1', '#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6'],
-                    borderColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+                    borderColor: isDarkNow() ? '#111827' : '#ffffff',
                     borderWidth: 2,
                 }],
             },
@@ -157,27 +152,6 @@
             });
         }
 
-        document.addEventListener('alpine:init', () => {
-            Alpine.effect(() => {
-                const isDark = Alpine.$data(document.querySelector('[x-data]')).darkMode;
-                updateOneispChartTheme(isDark);
-            });
-        });
+        document.addEventListener('rp:theme-changed', (e) => updateOneispChartTheme(e.detail.dark));
     })();
 </script>
-
-<style>
-    [x-cloak] { display: none !important; }
-
-    @keyframes rp-rise {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .rp-rise {
-        animation: rp-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
-        animation-delay: var(--rp-delay, 0ms);
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .rp-rise { animation: none; }
-    }
-</style>

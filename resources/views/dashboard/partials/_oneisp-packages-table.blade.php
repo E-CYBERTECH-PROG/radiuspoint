@@ -1,43 +1,43 @@
 {{-- Expects $packageBreakdown/$packagePlanTypes/$currency in scope.
      "Sales" is left as "—" — the reference design shows the same placeholder dash there,
      since this app doesn't distinguish a separate "sales" metric from the subscription count. --}}
-<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm h-full flex flex-col rp-rise" style="--rp-delay: {{ $delay ?? 0 }}ms">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Packages</h3>
-        <a href="{{ route('reports.analytics') }}" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Full Report</a>
+<div class="card h-100 rp-rise" style="--rp-delay: {{ $delay ?? 0 }}ms">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title mb-0">Packages</h3>
+        <a href="{{ route('reports.analytics') }}" class="small fw-bold">Full Report</a>
     </div>
 
     @if($packageBreakdown->isEmpty())
-        <p class="text-center text-gray-400 text-xs tracking-widest uppercase py-16">No package sales this month.</p>
+        <div class="card-body text-center text-muted text-uppercase small py-5">No package sales this month.</div>
     @else
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="table-responsive">
+            <table class="table card-table table-vcenter">
                 <thead>
-                    <tr class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        <th class="text-left px-5 py-2.5">Packages</th>
-                        <th class="text-left px-5 py-2.5">Category</th>
-                        <th class="text-left px-5 py-2.5">Subscription</th>
-                        <th class="text-left px-5 py-2.5">Revenue</th>
-                        <th class="text-left px-5 py-2.5">Sales</th>
+                    <tr>
+                        <th>Packages</th>
+                        <th>Category</th>
+                        <th>Subscription</th>
+                        <th>Revenue</th>
+                        <th>Sales</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50 dark:divide-gray-900">
+                <tbody>
                     @foreach($packageBreakdown as $row)
                         @php $oneispType = $packagePlanTypes[$row->package_name] ?? 'ppp'; @endphp
                         <tr>
-                            <td class="px-5 py-3 font-bold text-gray-900 dark:text-white whitespace-nowrap">{{ $row->package_name }}</td>
-                            <td class="px-5 py-3">
-                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-                                    <i class="bx {{ $oneispType === 'hotspot' ? 'bx-broadcast' : 'bx-desktop' }} text-base"></i>
+                            <td class="fw-bold text-nowrap">{{ $row->package_name }}</td>
+                            <td>
+                                <span class="avatar avatar-sm bg-primary-lt">
+                                    <i class="ti {{ $oneispType === 'hotspot' ? 'ti-broadcast' : 'ti-device-desktop' }}"></i>
                                 </span>
-                                <span class="ml-1.5 text-xs text-gray-400 align-middle">{{ $oneispType }}</span>
+                                <span class="text-muted small align-middle ms-1">{{ $oneispType }}</span>
                             </td>
-                            <td class="px-5 py-3">
-                                <span class="font-bold text-gray-900 dark:text-white">{{ number_format($row->sales_count) }}</span>
-                                <span class="block text-[11px] text-gray-400">in 1 month</span>
+                            <td>
+                                <span class="fw-bold">{{ number_format($row->sales_count) }}</span>
+                                <span class="d-block text-muted" style="font-size:.6875rem">in 1 month</span>
                             </td>
-                            <td class="px-5 py-3 font-bold text-gray-900 dark:text-white whitespace-nowrap">{{ $currency }} {{ number_format($row->revenue) }}</td>
-                            <td class="px-5 py-3 text-gray-300 dark:text-gray-600">&mdash;</td>
+                            <td class="fw-bold text-nowrap">{{ $currency }} {{ number_format($row->revenue) }}</td>
+                            <td class="text-muted">&mdash;</td>
                         </tr>
                     @endforeach
                 </tbody>

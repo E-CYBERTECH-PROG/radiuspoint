@@ -1,0 +1,110 @@
+// App-specific rules that don't belong in Tabler's own SCSS.
+
+@keyframes rp-icon-spin {
+    to { transform: rotate(360deg); }
+}
+
+.icon-spin {
+    animation: rp-icon-spin 1s linear infinite;
+}
+
+// dashboard/partials/_oneisp-*.blade.php — staggered rise-in on load, each card sets its
+// own --rp-delay inline.
+@keyframes rp-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.rp-rise {
+    animation: rp-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--rp-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+    .rp-rise { animation: none; }
+}
+
+// components/router-board.blade.php — fixed-size product photo tile with an overlaid
+// uplink-status LED, no Bootstrap utility covers these exact dimensions.
+.router-board-photo {
+    width: 8rem;
+    height: 8rem;
+
+    &.router-board-photo-sm {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+.router-board-led {
+    top: -0.25rem;
+    right: -0.25rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid var(--tblr-bg-surface, #fff);
+}
+
+.router-board-photo-sm .router-board-led {
+    top: -0.125rem;
+    right: -0.125rem;
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+// layouts/sidebar.blade.php — desktop-only "icon rail" collapse on top of Tabler's stock
+// navbar-vertical (which otherwise is full-width-or-offcanvas only), matching the app's
+// previous collapse/hover-peek sidebar behavior. rp-shell.js toggles .rp-collapsed.
+@include media-breakpoint-up(lg) {
+    #rp-sidebar.rp-collapsed {
+        width: 4.5rem;
+        overflow: visible;
+        transition: width .15s ease-in-out;
+
+        .navbar-brand-title,
+        .nav-link-title,
+        .rp-nav-badge {
+            display: none;
+        }
+
+        .collapse:not(.show) {
+            display: none;
+        }
+
+        &:hover {
+            width: $sidebar-width;
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175);
+            z-index: 1035;
+
+            .navbar-brand-title,
+            .nav-link-title,
+            .rp-nav-badge {
+                display: inline;
+            }
+        }
+    }
+
+    #rp-sidebar.rp-collapsed ~ .page-wrapper {
+        margin-left: 4.5rem;
+    }
+}
+
+// Auto-hiding scrollbar: invisible at rest, fades in only on hover/scroll.
+.custom-scrollbar {
+    scrollbar-width: none;
+
+    &:hover {
+        scrollbar-width: thin;
+    }
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 10px;
+        transition: background-color .2s ease;
+    }
+
+    &:hover::-webkit-scrollbar-thumb {
+        background-color: var(--tblr-border-color);
+    }
+}

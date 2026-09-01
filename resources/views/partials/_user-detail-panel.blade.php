@@ -1,221 +1,247 @@
 {{--
-    Global slide-over user detail panel. Open it from anywhere by dispatching a window
-    `open-user-panel` event with a `panelUrl`.
+    Global slide-over user detail panel. Open it from anywhere with
+    `window.rpOpenUserPanel(panelUrl)`.
 --}}
-<div
-    x-data="userDetailPanel()"
-    @open-user-panel.window="open($event.detail.panelUrl)"
-    x-show="visible"
-    x-cloak
-    class="fixed inset-0 z-[60]"
->
-    <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-[1px]" x-show="visible" x-transition.opacity @click="close()"></div>
-
-    <div
-        class="absolute right-0 top-0 h-full w-full sm:w-96 max-w-full bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col"
-        x-show="visible"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="translate-x-full"
-        x-transition:enter-end="translate-x-0"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="translate-x-0"
-        x-transition:leave-end="translate-x-full"
-        @click.outside="close()"
-    >
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-            <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400" x-text="data?.type === 'pppoe' ? 'PPPoE Customer' : 'Hotspot Customer'"></p>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white font-fira truncate" x-text="data?.title || '—'"></h3>
-            </div>
-            <button @click="close()" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0 ml-3"><i class="bx bx-x text-2xl"></i></button>
+<div class="offcanvas offcanvas-end" tabindex="-1" id="rp-user-panel" aria-labelledby="rp-user-panel-title">
+    <div class="offcanvas-header border-bottom">
+        <div class="min-w-0">
+            <p class="text-uppercase text-muted small fw-bold mb-0" id="rp-user-panel-type">Customer</p>
+            <h3 class="offcanvas-title font-monospace text-truncate" id="rp-user-panel-title">—</h3>
         </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body" id="rp-user-panel-body">
+        <div class="text-center text-muted py-5" id="rp-user-panel-loading" style="display:none">
+            <i class="ti ti-loader-2 icon-spin icon icon-lg"></i>
+        </div>
+        <p class="text-danger" id="rp-user-panel-error" style="display:none"></p>
+        <div id="rp-user-panel-content" style="display:none">
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                <span class="badge" id="rp-panel-status"></span>
+                <span class="badge bg-orange-lt" id="rp-panel-throttled" style="display:none"><i class="ti ti-gauge"></i> FUP Throttled</span>
+                <span class="text-muted small" id="rp-panel-subtitle"></span>
+            </div>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
-            <template x-if="loading">
-                <div class="flex items-center justify-center py-16 text-gray-400">
-                    <i class="bx bx-loader-alt bx-spin text-3xl"></i>
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="text-uppercase text-muted small fw-bold">Router</div>
+                    <div class="fw-bold" id="rp-panel-router">—</div>
                 </div>
-            </template>
-
-            <template x-if="error">
-                <p class="text-sm text-red-500" x-text="error"></p>
-            </template>
-
-            <template x-if="!loading && data">
-                <div class="space-y-6">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border font-bold"
-                              :class="{
-                                  'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/50': data.status === 'active',
-                                  'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50': data.status === 'expired',
-                                  'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50': data.status === 'offline',
-                              }" x-text="data.status"></span>
-                        <template x-if="data.usage?.throttled">
-                            <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border font-bold text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-900/50">
-                                <i class="bx bx-tachometer"></i> FUP Throttled
-                            </span>
-                        </template>
-                        <span x-show="subtitle_text" class="text-xs text-gray-500 dark:text-gray-400" x-text="subtitle_text"></span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Router</p>
-                            <p class="text-gray-900 dark:text-white font-bold" x-text="data.router_name || '—'"></p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Expiry</p>
-                            <p class="text-gray-900 dark:text-white font-bold" x-text="data.expires_at || '—'"></p>
-                            <p class="text-xs text-gray-400" x-text="data.expires_human || ''"></p>
-                        </div>
-                        <template x-if="data.phone_number">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Phone</p>
-                                <p class="text-gray-900 dark:text-white font-bold" x-text="data.phone_number"></p>
-                            </div>
-                        </template>
-                        <template x-if="data.mac_address">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">MAC</p>
-                                <p class="text-gray-900 dark:text-white font-bold font-fira text-xs" x-text="data.mac_address"></p>
-                            </div>
-                        </template>
-                    </div>
-
-                    <template x-if="data.usage">
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Data Usage This Cycle</p>
-                            <p class="text-sm font-fira font-bold text-gray-900 dark:text-white">
-                                <span x-text="data.usage.used_mb.toLocaleString()"></span> MB
-                                <template x-if="data.usage.cap_mb"><span> / <span x-text="data.usage.cap_mb.toLocaleString()"></span> MB</span></template>
-                            </p>
-                            <template x-if="data.usage.percent !== null">
-                                <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full mt-2 overflow-hidden">
-                                    <div class="h-full" :class="data.usage.percent >= 100 ? 'bg-red-500' : (data.usage.percent >= 80 ? 'bg-amber-500' : 'bg-blue-500')" :style="`width: ${data.usage.percent}%`"></div>
-                                </div>
-                            </template>
-                            <p class="text-xs text-gray-400 mt-1">Since <span x-text="data.usage.cycle_start"></span></p>
-                        </div>
-                    </template>
-
-                    <div class="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Extend</p>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" @click="extend(1)" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors">+1 Day</button>
-                                <button type="button" @click="extend(7)" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors">+7 Days</button>
-                                <button type="button" @click="extend(30)" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors">+30 Days</button>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button type="button" @click="disconnect()" :disabled="acting" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors inline-flex items-center gap-1.5 disabled:opacity-50">
-                                <i class="bx bx-power-off"></i> Force Disconnect
-                            </button>
-                            <button type="button" x-show="data.type === 'hotspot'" @click="resetMac()" :disabled="acting" class="text-xs font-bold bg-gray-100 dark:bg-gray-900 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg transition-colors inline-flex items-center gap-1.5 disabled:opacity-50">
-                                <i class="bx bx-reset"></i> Reset MAC
-                            </button>
-                        </div>
-
-                        <template x-if="message">
-                            <p class="text-xs font-bold" :class="messageOk ? 'text-green-600' : 'text-red-500'" x-text="message"></p>
-                        </template>
-                    </div>
-
-                    <a :href="data.edit_url" class="block text-center text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 pt-2">
-                        View Full Profile <i class="bx bx-right-arrow-alt align-middle"></i>
-                    </a>
+                <div class="col-6">
+                    <div class="text-uppercase text-muted small fw-bold">Expiry</div>
+                    <div class="fw-bold" id="rp-panel-expiry">—</div>
+                    <div class="text-muted small" id="rp-panel-expiry-human"></div>
                 </div>
-            </template>
+                <div class="col-6" id="rp-panel-phone-wrap" style="display:none">
+                    <div class="text-uppercase text-muted small fw-bold">Phone</div>
+                    <div class="fw-bold" id="rp-panel-phone"></div>
+                </div>
+                <div class="col-6" id="rp-panel-mac-wrap" style="display:none">
+                    <div class="text-uppercase text-muted small fw-bold">MAC</div>
+                    <div class="fw-bold font-monospace small" id="rp-panel-mac"></div>
+                </div>
+            </div>
+
+            <div class="mb-3" id="rp-panel-usage-wrap" style="display:none">
+                <div class="text-uppercase text-muted small fw-bold mb-1">Data Usage This Cycle</div>
+                <div class="font-monospace fw-bold" id="rp-panel-usage-text"></div>
+                <div class="progress progress-sm mt-2" id="rp-panel-usage-bar-wrap" style="display:none">
+                    <div class="progress-bar" id="rp-panel-usage-bar" role="progressbar"></div>
+                </div>
+                <div class="text-muted small mt-1">Since <span id="rp-panel-usage-since"></span></div>
+            </div>
+
+            <div class="border-top pt-3">
+                <div class="mb-3">
+                    <div class="text-uppercase text-muted small fw-bold mb-2">Extend</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm" data-extend-days="1">+1 Day</button>
+                        <button type="button" class="btn btn-sm" data-extend-days="7">+7 Days</button>
+                        <button type="button" class="btn btn-sm" data-extend-days="30">+30 Days</button>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm" id="rp-panel-disconnect"><i class="ti ti-power"></i> Force Disconnect</button>
+                    <button type="button" class="btn btn-sm" id="rp-panel-reset-mac" style="display:none"><i class="ti ti-refresh"></i> Reset MAC</button>
+                </div>
+
+                <p class="small fw-bold mt-2 mb-0" id="rp-panel-action-message" style="display:none"></p>
+            </div>
+
+            <a href="#" class="d-block text-center mt-3" id="rp-panel-edit-link">
+                View Full Profile <i class="ti ti-arrow-right align-middle"></i>
+            </a>
         </div>
     </div>
 </div>
 
 <script>
-    function userDetailPanel() {
-        return {
-            visible: false,
-            loading: false,
-            acting: false,
-            data: null,
-            error: null,
-            message: null,
-            messageOk: true,
-            panelUrl: null,
+    (function () {
+        var panelEl = document.getElementById('rp-user-panel');
+        var offcanvas = null;
+        var state = { panelUrl: null, data: null, acting: false };
+        var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            get subtitle_text() {
-                return this.data?.subtitle || '';
-            },
+        function getOffcanvas() {
+            if (!offcanvas) offcanvas = new bootstrap.Offcanvas(panelEl);
+            return offcanvas;
+        }
 
-            async open(panelUrl) {
-                this.panelUrl = panelUrl;
-                this.visible = true;
-                this.loading = true;
-                this.error = null;
-                this.message = null;
-                this.data = null;
+        function setLoading(loading) {
+            document.getElementById('rp-user-panel-loading').style.display = loading ? '' : 'none';
+        }
 
-                try {
-                    const res = await fetch(panelUrl, { headers: { 'Accept': 'application/json' } });
-                    if (! res.ok) throw new Error('failed');
-                    this.data = await res.json();
-                } catch (e) {
-                    this.error = 'Could not load customer details.';
-                } finally {
-                    this.loading = false;
+        function setError(message) {
+            var el = document.getElementById('rp-user-panel-error');
+            el.textContent = message || '';
+            el.style.display = message ? '' : 'none';
+        }
+
+        function statusClass(status) {
+            if (status === 'active') return 'bg-green-lt';
+            if (status === 'expired') return 'bg-amber-lt';
+            if (status === 'offline') return 'bg-red-lt';
+            return 'bg-secondary-lt';
+        }
+
+        function usageBarClass(percent) {
+            if (percent >= 100) return 'bg-red';
+            if (percent >= 80) return 'bg-amber';
+            return 'bg-blue';
+        }
+
+        function render() {
+            var data = state.data;
+            var contentEl = document.getElementById('rp-user-panel-content');
+
+            if (!data) {
+                contentEl.style.display = 'none';
+                return;
+            }
+
+            document.getElementById('rp-user-panel-type').textContent = data.type === 'pppoe' ? 'PPPoE Customer' : 'Hotspot Customer';
+            document.getElementById('rp-user-panel-title').textContent = data.title || '—';
+
+            var statusEl = document.getElementById('rp-panel-status');
+            statusEl.textContent = data.status || '';
+            statusEl.className = 'badge ' + statusClass(data.status);
+
+            document.getElementById('rp-panel-throttled').style.display = data.usage && data.usage.throttled ? '' : 'none';
+            document.getElementById('rp-panel-subtitle').textContent = data.subtitle || '';
+
+            document.getElementById('rp-panel-router').textContent = data.router_name || '—';
+            document.getElementById('rp-panel-expiry').textContent = data.expires_at || '—';
+            document.getElementById('rp-panel-expiry-human').textContent = data.expires_human || '';
+
+            document.getElementById('rp-panel-phone-wrap').style.display = data.phone_number ? '' : 'none';
+            document.getElementById('rp-panel-phone').textContent = data.phone_number || '';
+
+            document.getElementById('rp-panel-mac-wrap').style.display = data.mac_address ? '' : 'none';
+            document.getElementById('rp-panel-mac').textContent = data.mac_address || '';
+
+            var usageWrap = document.getElementById('rp-panel-usage-wrap');
+            if (data.usage) {
+                usageWrap.style.display = '';
+                var text = data.usage.used_mb.toLocaleString() + ' MB';
+                if (data.usage.cap_mb) text += ' / ' + data.usage.cap_mb.toLocaleString() + ' MB';
+                document.getElementById('rp-panel-usage-text').textContent = text;
+                document.getElementById('rp-panel-usage-since').textContent = data.usage.cycle_start;
+
+                var barWrap = document.getElementById('rp-panel-usage-bar-wrap');
+                if (data.usage.percent !== null && data.usage.percent !== undefined) {
+                    barWrap.style.display = '';
+                    var bar = document.getElementById('rp-panel-usage-bar');
+                    bar.style.width = data.usage.percent + '%';
+                    bar.className = 'progress-bar ' + usageBarClass(data.usage.percent);
+                } else {
+                    barWrap.style.display = 'none';
                 }
-            },
+            } else {
+                usageWrap.style.display = 'none';
+            }
 
-            close() {
-                this.visible = false;
-            },
+            document.getElementById('rp-panel-reset-mac').style.display = data.type === 'hotspot' ? '' : 'none';
+            document.getElementById('rp-panel-edit-link').href = data.edit_url || '#';
 
-            async refresh() {
-                if (! this.panelUrl) return;
-                try {
-                    const res = await fetch(this.panelUrl, { headers: { 'Accept': 'application/json' } });
-                    if (res.ok) this.data = await res.json();
-                } catch (e) {
-                    // Keep showing the last-known data — the action's own message already reported success/failure.
+            contentEl.style.display = '';
+        }
+
+        async function open(panelUrl) {
+            state.panelUrl = panelUrl;
+            state.data = null;
+            setError(null);
+            setLoading(true);
+            document.getElementById('rp-user-panel-content').style.display = 'none';
+            document.getElementById('rp-panel-action-message').style.display = 'none';
+            getOffcanvas().show();
+
+            try {
+                var res = await fetch(panelUrl, { headers: { Accept: 'application/json' } });
+                if (!res.ok) throw new Error('failed');
+                state.data = await res.json();
+                render();
+            } catch (e) {
+                setError('Could not load customer details.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function refresh() {
+            if (!state.panelUrl) return;
+            try {
+                var res = await fetch(state.panelUrl, { headers: { Accept: 'application/json' } });
+                if (res.ok) {
+                    state.data = await res.json();
+                    render();
                 }
-            },
+            } catch (e) {
+                // Keep showing the last-known data — the action's own message already reported success/failure.
+            }
+        }
 
-            async runAction(url, body = {}) {
-                if (! url || this.acting) return;
-                this.acting = true;
-                this.message = null;
+        async function runAction(url, body) {
+            if (!url || state.acting) return;
+            state.acting = true;
+            var msgEl = document.getElementById('rp-panel-action-message');
 
-                try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                        body: JSON.stringify(body),
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    this.message = json.message || (res.ok ? 'Done.' : 'Action failed.');
-                    this.messageOk = res.ok;
-                    if (res.ok) await this.refresh();
-                } catch (e) {
-                    this.message = 'Action failed — check your connection.';
-                    this.messageOk = false;
-                } finally {
-                    this.acting = false;
-                }
-            },
+            try {
+                var res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: JSON.stringify(body || {}),
+                });
+                var json = await res.json().catch(function () { return {}; });
+                msgEl.textContent = json.message || (res.ok ? 'Done.' : 'Action failed.');
+                msgEl.className = 'small fw-bold mt-2 mb-0 ' + (res.ok ? 'text-success' : 'text-danger');
+                msgEl.style.display = '';
+                if (res.ok) await refresh();
+            } catch (e) {
+                msgEl.textContent = 'Action failed — check your connection.';
+                msgEl.className = 'small fw-bold mt-2 mb-0 text-danger';
+                msgEl.style.display = '';
+            } finally {
+                state.acting = false;
+            }
+        }
 
-            extend(days) {
-                this.runAction(this.data?.extend_url, { days });
-            },
+        document.querySelectorAll('[data-extend-days]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                runAction(state.data && state.data.extend_url, { days: parseInt(btn.getAttribute('data-extend-days'), 10) });
+            });
+        });
 
-            async disconnect() {
-                if (! await rpConfirmAsync('Disconnect this customer\'s active session now?')) return;
-                this.runAction(this.data?.disconnect_url);
-            },
+        document.getElementById('rp-panel-disconnect').addEventListener('click', async function () {
+            if (!(await window.rpConfirmAsync("Disconnect this customer's active session now?"))) return;
+            runAction(state.data && state.data.disconnect_url);
+        });
 
-            async resetMac() {
-                if (! await rpConfirmAsync('Clear this customer\'s bound MAC address? The next device to connect will bind automatically.')) return;
-                this.runAction(this.data?.reset_mac_url);
-            },
-        };
-    }
+        document.getElementById('rp-panel-reset-mac').addEventListener('click', async function () {
+            if (!(await window.rpConfirmAsync("Clear this customer's bound MAC address? The next device to connect will bind automatically."))) return;
+            runAction(state.data && state.data.reset_mac_url);
+        });
+
+        window.rpOpenUserPanel = open;
+    })();
 </script>

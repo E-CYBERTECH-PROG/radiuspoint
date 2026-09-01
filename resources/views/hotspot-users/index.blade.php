@@ -1,80 +1,80 @@
 <x-sidebar-layout title="Hotspot Users">
-    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Hotspot Users</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Public WiFi customers identified by phone / MAC address.</p>
+            <h1 class="mb-1">Hotspot Users</h1>
+            <p class="text-muted mb-0">Public WiFi customers identified by phone / MAC address.</p>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <form action="{{ route('hotspot-users.purge-expired') }}" method="POST" onsubmit="return rpConfirm(event, 'Delete every expired hotspot customer? This also removes their RADIUS credentials and cannot be undone.')">
                 @csrf
-                <button type="submit" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors">
-                    <i class="bx bx-trash text-lg"></i> Purge Expired
+                <button type="submit" class="btn">
+                    <i class="ti ti-trash icon"></i> Purge Expired
                 </button>
             </form>
             <form action="{{ route('hotspot-users.purge-unused') }}" method="POST" onsubmit="return rpConfirm(event, 'Delete every unused voucher (never activated)? This also removes their RADIUS credentials and cannot be undone.')">
                 @csrf
-                <button type="submit" class="inline-flex items-center gap-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-4 rounded-lg shadow-sm transition-colors">
-                    <i class="bx bx-trash text-lg"></i> Purge Unused
+                <button type="submit" class="btn">
+                    <i class="ti ti-trash icon"></i> Purge Unused
                 </button>
             </form>
-            <a href="{{ route('hotspot-users.create') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                <i class="bx bx-user-plus text-lg"></i> Add Customer
+            <a href="{{ route('hotspot-users.create') }}" class="btn btn-primary">
+                <i class="ti ti-user-plus icon"></i> Add Customer
             </a>
         </div>
     </div>
 
-    <form method="GET" class="mb-6 flex flex-col sm:flex-row gap-3">
-        <div class="flex items-center bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 flex-1">
-            <i class="bx bx-search text-gray-400 text-lg"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search phone or MAC..." class="bg-transparent border-none outline-none focus:ring-0 text-sm ml-2 w-full dark:text-gray-200 dark:placeholder-gray-500">
+    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
+        <div class="input-icon flex-fill">
+            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search phone or MAC..." class="form-control">
         </div>
-        <select name="status" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
+        <select name="status" class="form-select w-auto">
             <option value="">All Statuses</option>
             @foreach(\App\Models\HotspotUser::STATUSES as $status)
                 <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status === 'unused' ? 'Unused (Voucher)' : ucfirst($status) }}</option>
             @endforeach
         </select>
-        <select name="plan_id" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-sm px-3 py-2 text-gray-700 dark:text-gray-300 outline-none">
+        <select name="plan_id" class="form-select w-auto">
             <option value="">All Packages</option>
             @foreach($plans as $plan)
                 <option value="{{ $plan->id }}" @selected(request('plan_id') == $plan->id)>{{ $plan->name }}</option>
             @endforeach
         </select>
         <x-per-page-select />
-        <button type="submit" class="bg-gray-900 dark:bg-gray-700 text-white text-sm font-bold px-5 py-2 rounded-lg">Filter</button>
+        <button type="submit" class="btn btn-dark">Filter</button>
         @if(request()->hasAny(['search', 'status', 'plan_id']))
-            <a href="{{ route('hotspot-users.index') }}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 self-center">Clear</a>
+            <a href="{{ route('hotspot-users.index') }}" class="btn btn-link align-self-center">Clear</a>
         @endif
     </form>
 
-    <div x-data="hotspotLiveStatus()" x-init="startPolling()" class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
                 <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">
-                        <th class="px-6 py-4">Phone</th>
-                        <th class="px-6 py-4">MAC Address</th>
-                        <th class="px-6 py-4">Package</th>
-                        <th class="px-6 py-4">Router</th>
-                        <th class="px-6 py-4">Expiry</th>
-                        <th class="px-6 py-4 text-center">Status</th>
-                        <th class="px-6 py-4 text-center">Live</th>
-                        <th class="px-6 py-4 text-right">Actions</th>
+                    <tr>
+                        <th>Phone</th>
+                        <th>MAC Address</th>
+                        <th>Package</th>
+                        <th>Router</th>
+                        <th>Expiry</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Live</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                <tbody>
                     @forelse($users as $user)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-                            <td class="px-6 py-4 font-fira">
-                                <button type="button" @click="$dispatch('open-user-panel', { panelUrl: '{{ route('hotspot-users.panel', $user) }}' })" class="text-gray-900 dark:text-white font-bold hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
+                        <tr>
+                            <td class="font-monospace">
+                                <button type="button" class="btn btn-link p-0" onclick="window.rpOpenUserPanel('{{ route('hotspot-users.panel', $user) }}')">
                                     {{ $user->phone_number }}
                                 </button>
                             </td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400 font-fira">{{ $user->mac_address ?: '—' }}</td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $plans[$user->current_plan_id]->name ?? '—' }}</td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $routers[$user->current_router_id]->name ?? '—' }}</td>
-                            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $user->expires_at ? \Carbon\Carbon::parse($user->expires_at)->format('d M Y H:i') : '—' }}</td>
-                            <td class="px-6 py-4 text-center">
+                            <td class="text-muted font-monospace">{{ $user->mac_address ?: '—' }}</td>
+                            <td class="text-muted">{{ $plans[$user->current_plan_id]->name ?? '—' }}</td>
+                            <td class="text-muted">{{ $routers[$user->current_router_id]->name ?? '—' }}</td>
+                            <td class="text-muted">{{ $user->expires_at ? \Carbon\Carbon::parse($user->expires_at)->format('d M Y H:i') : '—' }}</td>
+                            <td class="text-center">
                                 @if($user->status === 'active')
                                     <x-status-badge color="green" dot>Active</x-status-badge>
                                 @elseif($user->status === 'expired')
@@ -85,49 +85,35 @@
                                     <x-status-badge color="red">Offline</x-status-badge>
                                 @endif
                                 @if($user->fup_throttled_at)
-                                    <span class="block mt-1 inline-flex items-center gap-1 text-[10px] text-orange-700 dark:text-orange-400 uppercase tracking-widest font-bold" title="Throttled since {{ $user->fup_throttled_at->diffForHumans() }}">
-                                        <i class="bx bx-tachometer"></i> FUP
+                                    <span class="d-block mt-1 text-orange text-uppercase" style="font-size:.625rem;letter-spacing:.05em" title="Throttled since {{ $user->fup_throttled_at->diffForHumans() }}">
+                                        <i class="ti ti-gauge"></i> FUP
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-center">
-                                <template x-if="live['{{ $user->phone_number }}']?.online">
-                                    <x-status-badge color="green" dot pulse>Online</x-status-badge>
-                                </template>
-                                <template x-if="live['{{ $user->phone_number }}'] && !live['{{ $user->phone_number }}'].online">
-                                    <span class="text-[10px] text-gray-400 uppercase tracking-widest">Offline</span>
-                                </template>
-                                <template x-if="!live['{{ $user->phone_number }}']">
-                                    <span class="text-[10px] text-gray-300 dark:text-gray-700">·</span>
-                                </template>
+                            <td class="text-center" data-live-cell data-phone="{{ $user->phone_number }}">
+                                <span class="text-muted">·</span>
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-3">
+                            <td class="text-end">
+                                <div class="d-flex align-items-center justify-content-end gap-3">
                                     @if($user->current_router_id)
-                                        <button type="button" x-show="live['{{ $user->phone_number }}']?.online" x-cloak
-                                                @click="disconnect('{{ $user->phone_number }}', {{ $user->current_router_id }})"
-                                                class="text-gray-400 hover:text-amber-600 transition-colors" title="Disconnect">
-                                            <i class="bx bx-unlink text-lg"></i>
-                                        </button>
-                                        <button type="button" x-show="live['{{ $user->phone_number }}']?.online" x-cloak
-                                                @click="block('{{ $user->phone_number }}', {{ $user->current_router_id }})"
-                                                class="text-gray-400 hover:text-red-600 transition-colors" title="Block">
-                                            <i class="bx bx-block text-lg"></i>
-                                        </button>
+                                        <span data-live-actions data-phone="{{ $user->phone_number }}" data-router="{{ $user->current_router_id }}" style="display:none" class="d-flex align-items-center gap-3">
+                                            <button type="button" class="text-muted" style="background:none;border:0" data-live-disconnect title="Disconnect"><i class="ti ti-plug-connected-x"></i></button>
+                                            <button type="button" class="text-muted" style="background:none;border:0" data-live-block title="Block"><i class="ti ti-ban"></i></button>
+                                        </span>
                                     @endif
-                                    <a href="{{ route('hotspot-users.edit', $user) }}" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><i class="bx bx-edit-alt text-lg"></i></a>
+                                    <a href="{{ route('hotspot-users.edit', $user) }}" class="text-muted" title="Edit"><i class="ti ti-edit"></i></a>
                                     <form action="{{ route('hotspot-users.destroy', $user) }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this customer?')">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i class="bx bx-trash text-lg"></i></button>
+                                        <button type="submit" class="text-danger" style="background:none;border:0" title="Remove"><i class="ti ti-trash"></i></button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-gray-400">
-                                <i class="bx bx-wifi text-4xl mb-3 text-gray-200"></i>
-                                <p class="text-xs tracking-widest uppercase">No hotspot customers yet.</p>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                <i class="ti ti-wifi icon icon-lg mb-2 d-block"></i>
+                                <p class="text-uppercase small mb-0">No hotspot customers yet.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -136,60 +122,91 @@
         </div>
     </div>
 
-    <div class="mt-4">{{ $users->links() }}</div>
+    <div class="mt-3">{{ $users->links() }}</div>
 
     <x-slot name="scripts">
         <script>
-            function hotspotLiveStatus() {
-                return {
-                    live: {},
-                    phoneNumbers: @json($users->pluck('phone_number')),
-                    disconnectUrlTemplate: "{{ route('routers.actions.disconnect-hotspot', ['router' => '__ROUTER__']) }}",
-                    blockUrlTemplate: "{{ route('routers.actions.block-hotspot', ['router' => '__ROUTER__']) }}",
+            (function () {
+                var phoneNumbers = @json($users->pluck('phone_number'));
+                if (phoneNumbers.length === 0) return;
 
-                    startPolling() {
-                        if (this.phoneNumbers.length === 0) return;
-                        this.poll();
-                        setInterval(() => this.poll(), 5000);
-                    },
+                var disconnectUrlTemplate = "{{ route('routers.actions.disconnect-hotspot', ['router' => '__ROUTER__']) }}";
+                var blockUrlTemplate = "{{ route('routers.actions.block-hotspot', ['router' => '__ROUTER__']) }}";
+                var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                var live = {};
 
-                    async poll() {
-                        try {
-                            const params = new URLSearchParams();
-                            this.phoneNumbers.forEach(p => params.append('phone_numbers[]', p));
-                            const res = await fetch(`{{ route('hotspot-users.live-status') }}?${params}`, { headers: { 'Accept': 'application/json' } });
-                            const json = await res.json();
-                            this.live = json.data || {};
-                        } catch (e) {
-                            // Leave `live` as-is on a transient failure.
+                function render() {
+                    document.querySelectorAll('[data-live-cell]').forEach(function (cell) {
+                        var phone = cell.getAttribute('data-phone');
+                        var session = live[phone];
+                        if (session && session.online) {
+                            cell.innerHTML = '<span class="badge bg-green-lt"><span class="badge bg-green me-1" style="width:.5rem;height:.5rem;padding:0"></span>Online</span>';
+                        } else if (session) {
+                            cell.innerHTML = '<span class="text-muted text-uppercase" style="font-size:.625rem">Offline</span>';
+                        } else {
+                            cell.innerHTML = '<span class="text-muted">·</span>';
                         }
-                    },
+                    });
 
-                    async disconnect(phone, routerId) {
-                        const session = this.live[phone];
-                        if (!session || !session.id) return;
-                        if (! await rpConfirmAsync(`Disconnect ${phone}?`)) return;
-                        await fetch(this.disconnectUrlTemplate.replace('__ROUTER__', routerId), {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                            body: JSON.stringify({ id: session.id }),
-                        });
-                        this.poll();
-                    },
+                    document.querySelectorAll('[data-live-actions]').forEach(function (el) {
+                        var phone = el.getAttribute('data-phone');
+                        var session = live[phone];
+                        el.style.display = session && session.online ? '' : 'none';
+                    });
+                }
 
-                    async block(phone, routerId) {
-                        const session = this.live[phone];
-                        if (!session || !session.address) return;
-                        if (! await rpConfirmAsync(`Block ${phone} (${session.address})? They will be denied access until unblocked in Winbox.`)) return;
-                        await fetch(this.blockUrlTemplate.replace('__ROUTER__', routerId), {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                            body: JSON.stringify({ address: session.address }),
-                        });
-                        this.poll();
-                    },
-                };
-            }
+                async function poll() {
+                    try {
+                        var params = new URLSearchParams();
+                        phoneNumbers.forEach(function (p) { params.append('phone_numbers[]', p); });
+                        var res = await fetch("{{ route('hotspot-users.live-status') }}?" + params, { headers: { Accept: 'application/json' } });
+                        var json = await res.json();
+                        live = json.data || {};
+                        render();
+                    } catch (e) {
+                        // Leave `live` as-is on a transient failure.
+                    }
+                }
+
+                async function disconnect(phone, routerId) {
+                    var session = live[phone];
+                    if (!session || !session.id) return;
+                    if (!(await window.rpConfirmAsync('Disconnect ' + phone + '?'))) return;
+                    await fetch(disconnectUrlTemplate.replace('__ROUTER__', routerId), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        body: JSON.stringify({ id: session.id }),
+                    });
+                    poll();
+                }
+
+                async function block(phone, routerId) {
+                    var session = live[phone];
+                    if (!session || !session.address) return;
+                    if (!(await window.rpConfirmAsync('Block ' + phone + ' (' + session.address + ')? They will be denied access until unblocked in Winbox.'))) return;
+                    await fetch(blockUrlTemplate.replace('__ROUTER__', routerId), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        body: JSON.stringify({ address: session.address }),
+                    });
+                    poll();
+                }
+
+                document.addEventListener('click', function (e) {
+                    var disconnectBtn = e.target.closest('[data-live-disconnect]');
+                    var blockBtn = e.target.closest('[data-live-block]');
+                    if (disconnectBtn) {
+                        var wrap = disconnectBtn.closest('[data-live-actions]');
+                        disconnect(wrap.getAttribute('data-phone'), wrap.getAttribute('data-router'));
+                    } else if (blockBtn) {
+                        var wrap2 = blockBtn.closest('[data-live-actions]');
+                        block(wrap2.getAttribute('data-phone'), wrap2.getAttribute('data-router'));
+                    }
+                });
+
+                poll();
+                setInterval(poll, 5000);
+            })();
         </script>
     </x-slot>
 </x-sidebar-layout>

@@ -23,6 +23,9 @@ class MpesaSettingController extends Controller
         $request->validate([
             'primary_gateway_type' => 'required|in:till,paybill,bank',
             'primary_shortcode' => 'nullable|string|max:255',
+            'primary_account_number' => 'nullable|string|max:255',
+            'primary_bank_paybill' => 'nullable|string|max:255',
+            'primary_bank_account_number' => 'nullable|string|max:255',
             'primary_consumer_key' => 'nullable|string|max:255',
             'primary_consumer_secret' => 'nullable|string|max:255',
             'primary_passkey' => 'nullable|string|max:255',
@@ -31,6 +34,9 @@ class MpesaSettingController extends Controller
 
             'backup_gateway_type' => 'nullable|in:till,paybill,bank',
             'backup_shortcode' => 'nullable|string|max:255',
+            'backup_account_number' => 'nullable|string|max:255',
+            'backup_bank_paybill' => 'nullable|string|max:255',
+            'backup_bank_account_number' => 'nullable|string|max:255',
             'backup_consumer_key' => 'nullable|string|max:255',
             'backup_consumer_secret' => 'nullable|string|max:255',
             'backup_passkey' => 'nullable|string|max:255',
@@ -52,6 +58,9 @@ class MpesaSettingController extends Controller
         $setting->slot = $slot;
         $setting->gateway_type = $request->input("{$prefix}_gateway_type") ?? $setting->gateway_type ?? 'till';
         $setting->shortcode = $request->input("{$prefix}_shortcode");
+        $setting->account_number = $request->input("{$prefix}_account_number");
+        $setting->bank_paybill = $request->input("{$prefix}_bank_paybill");
+        $setting->bank_account_number = $request->input("{$prefix}_bank_account_number");
         $setting->environment = $request->input("{$prefix}_environment") ?? $setting->environment ?? 'sandbox';
         $setting->is_active = $request->boolean("{$prefix}_is_active");
 
@@ -66,7 +75,10 @@ class MpesaSettingController extends Controller
         }
 
         // Slot 2 is optional; don't save a blank row unless something's actually been filled in.
-        if ($slot === 2 && ! $setting->exists && ! $request->filled('backup_shortcode') && ! $request->filled('backup_consumer_key')) {
+        if ($slot === 2 && ! $setting->exists
+            && ! $request->filled('backup_shortcode')
+            && ! $request->filled('backup_bank_paybill')
+            && ! $request->filled('backup_consumer_key')) {
             return;
         }
 

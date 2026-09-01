@@ -1,277 +1,310 @@
 {{-- Expects $tab, $user, $tenant, $mpesaPrimary, $mpesaBackup, $smsSetting, $timezones, $currencies. --}}
 <x-sidebar-layout title="Account">
-    <div x-data="{ tab: '{{ $tab }}' }">
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Account</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your profile, billing plan, and integrations.</p>
+    <div class="mb-4">
+        <h1 class="mb-1">Account</h1>
+        <p class="text-muted mb-0">Manage your profile, billing plan, and integrations.</p>
+    </div>
+
+    @php
+        $navItem = fn ($key, $icon, $label) => [$key, $icon, $label];
+        $tabs = [
+            $navItem('general', 'ti-user-circle', 'General'),
+            $navItem('licence', 'ti-shield-check', 'Licence'),
+        ];
+        if (Auth::user()->role !== 'Sales Agent') {
+            $tabs[] = $navItem('payment-gateway', 'ti-credit-card', 'Payment Gateway');
+            $tabs[] = $navItem('sms-gateway', 'ti-message-dots', 'SMS Gateway');
+        }
+        $tabs[] = $navItem('email-gateway', 'ti-mail', 'Email Gateway');
+        $tabs[] = $navItem('notes-template', 'ti-file-text', 'Notes Template');
+        $tabs[] = $navItem('change-password', 'ti-lock', 'Change Password');
+        $tabs[] = $navItem('2fa', 'ti-shield-lock', 'Enable 2FA');
+    @endphp
+
+    <div class="row">
+        <div class="col-12 col-lg-3">
+            <div class="card">
+                <div class="list-group list-group-flush nav flex-column" role="tablist">
+                    @foreach($tabs as [$key, $icon, $label])
+                        <a href="#rp-tab-{{ $key }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ $tab === $key ? 'active' : '' }}" data-bs-toggle="pill" role="tab">
+                            <i class="ti {{ $icon }}"></i> {{ $label }}
+                        </a>
+                    @endforeach
+                    <a href="{{ route('profile.edit') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 text-muted">
+                        <i class="ti ti-palette"></i> Appearance &amp; Danger Zone
+                    </a>
+                </div>
+            </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-6 items-start">
-            {{-- === TAB LIST === --}}
-            <div class="w-full lg:w-64 shrink-0 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-2">
-                @php
-                    $navItem = fn ($key, $icon, $label) => [$key, $icon, $label];
-                    $tabs = [
-                        $navItem('general', 'bx-user-circle', 'General'),
-                        $navItem('licence', 'bx-shield-quarter', 'Licence'),
-                    ];
-                    if (Auth::user()->role !== 'Sales Agent') {
-                        $tabs[] = $navItem('payment-gateway', 'bx-credit-card', 'Payment Gateway');
-                        $tabs[] = $navItem('sms-gateway', 'bx-message-square-dots', 'SMS Gateway');
-                    }
-                    $tabs[] = $navItem('email-gateway', 'bx-envelope', 'Email Gateway');
-                    $tabs[] = $navItem('notes-template', 'bx-file', 'Notes Template');
-                    $tabs[] = $navItem('change-password', 'bx-lock-alt', 'Change Password');
-                    $tabs[] = $navItem('2fa', 'bx-shield', 'Enable 2FA');
-                @endphp
-                @foreach($tabs as [$key, $icon, $label])
-                    <button type="button" @click="tab = '{{ $key }}'"
-                        :class="tab === '{{ $key }}' ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left">
-                        <i class="bx {{ $icon }} text-lg shrink-0"></i>
-                        <span>{{ $label }}</span>
-                    </button>
-                @endforeach
-                <div class="border-t border-gray-100 dark:border-gray-800 my-2"></div>
-                <a href="{{ route('profile.edit') }}" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <i class="bx bx-palette text-lg shrink-0"></i>
-                    <span>Appearance &amp; Danger Zone</span>
-                </a>
-            </div>
-
-            {{-- === TAB PANELS === --}}
-            <div class="flex-1 w-full min-w-0">
+        <div class="col-12 col-lg-9">
+            <div class="tab-content">
 
                 {{-- ---------- GENERAL ---------- --}}
-                <div x-show="tab === 'general'" x-cloak class="space-y-6">
-                    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8">
-                        <h2 class="text-md font-bold text-gray-900 dark:text-white mb-1">General</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Your personal details and business identity.</p>
+                <div class="tab-pane {{ $tab === 'general' ? 'active show' : '' }}" id="rp-tab-general" role="tabpanel">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h2 class="card-title">General</h2>
+                            <p class="text-muted small mb-4">Your personal details and business identity.</p>
 
-                        <form action="{{ route('account.update-general') }}" method="POST" class="space-y-5">
-                            @csrf @method('PUT')
-                            @php [$firstName, $lastName] = array_pad(explode(' ', $user->name, 2), 2, ''); @endphp
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">First Name</label>
-                                    <input type="text" name="first_name" required value="{{ old('first_name', $firstName) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('first_name') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            <form action="{{ route('account.update-general') }}" method="POST">
+                                @csrf @method('PUT')
+                                @php [$firstName, $lastName] = array_pad(explode(' ', $user->name, 2), 2, ''); @endphp
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">First Name</label>
+                                        <input type="text" name="first_name" required value="{{ old('first_name', $firstName) }}" class="form-control">
+                                        @error('first_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Last Name</label>
+                                        <input type="text" name="last_name" required value="{{ old('last_name', $lastName) }}" class="form-control">
+                                        @error('last_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Business Name</label>
+                                        <input type="text" name="company_name" required value="{{ old('company_name', $tenant->company_name) }}" class="form-control">
+                                        @error('company_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">ISP Prefix</label>
+                                        <input type="text" name="isp_prefix" value="{{ old('isp_prefix', $tenant->isp_prefix) }}" placeholder="e.g. ACME" class="form-control">
+                                        @error('isp_prefix') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Sub-Domain Name</label>
+                                        <input type="text" name="subdomain" value="{{ old('subdomain', $tenant->subdomain) }}" placeholder="acme" class="form-control">
+                                        @error('subdomain') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" name="email" required value="{{ old('email', $user->email) }}" class="form-control">
+                                        @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Phone</label>
+                                        <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="form-control">
+                                        @error('phone') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Last Name</label>
-                                    <input type="text" name="last_name" required value="{{ old('last_name', $lastName) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('last_name') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                                <div class="mt-4 pt-3 border-top text-end">
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Business Name</label>
-                                    <input type="text" name="company_name" required value="{{ old('company_name', $tenant->company_name) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('company_name') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">ISP Prefix</label>
-                                    <input type="text" name="isp_prefix" value="{{ old('isp_prefix', $tenant->isp_prefix) }}" placeholder="e.g. ACME" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('isp_prefix') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Sub-Domain Name</label>
-                                    <input type="text" name="subdomain" value="{{ old('subdomain', $tenant->subdomain) }}" placeholder="acme" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('subdomain') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Email</label>
-                                    <input type="email" name="email" required value="{{ old('email', $user->email) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('email') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Phone</label>
-                                    <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                    @error('phone') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                                </div>
-                            </div>
-                            <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save Changes</button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
 
                     {{-- Regional / captive-portal-facing details — still lives here, just reusing company-settings' own endpoint. --}}
-                    <div class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8">
-                        <h2 class="text-md font-bold text-gray-900 dark:text-white mb-1">Regional &amp; Support</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">Shown on your captive portals, plus timezone and currency for reports.</p>
-                        <form action="{{ route('company-settings.update') }}" method="POST" class="space-y-5">
-                            @csrf @method('PUT')
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Support Phone</label>
-                                    <input type="text" name="support_phone" value="{{ old('support_phone', $tenant->support_phone) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="card-title">Regional &amp; Support</h2>
+                            <p class="text-muted small mb-4">Shown on your captive portals, plus timezone and currency for reports.</p>
+                            <form action="{{ route('company-settings.update') }}" method="POST">
+                                @csrf @method('PUT')
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Support Phone</label>
+                                        <input type="text" name="support_phone" value="{{ old('support_phone', $tenant->support_phone) }}" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Location</label>
+                                        <input type="text" name="location" value="{{ old('location', $tenant->location) }}" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Timezone</label>
+                                        <select name="timezone" required class="form-select">
+                                            @foreach($timezones as $value => $label)
+                                                <option value="{{ $value }}" @selected(old('timezone', $tenant->timezone) === $value)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Currency</label>
+                                        <select name="currency_symbol" required class="form-select">
+                                            @foreach($currencies as $currency)
+                                                <option value="{{ $currency }}" @selected(old('currency_symbol', $tenant->currency_symbol) === $currency)>{{ $currency }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Location</label>
-                                    <input type="text" name="location" value="{{ old('location', $tenant->location) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                                <div class="mt-4 pt-3 border-top text-end">
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Timezone</label>
-                                    <select name="timezone" required class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                        @foreach($timezones as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('timezone', $tenant->timezone) === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Currency</label>
-                                    <select name="currency_symbol" required class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                        @foreach($currencies as $currency)
-                                            <option value="{{ $currency }}" @selected(old('currency_symbol', $tenant->currency_symbol) === $currency)>{{ $currency }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save Changes</button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
                 {{-- ---------- LICENCE ---------- --}}
-                <div x-show="tab === 'licence'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8">
+                <div class="tab-pane {{ $tab === 'licence' ? 'active show' : '' }}" id="rp-tab-licence" role="tabpanel">
                     @php
-                        $licenceStyle = [
-                            'active' => 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50',
-                            'trial' => 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50',
-                            'expired' => 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50',
-                            'cancelled' => 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800',
-                        ][$tenant->subscription_status] ?? 'bg-gray-50 dark:bg-gray-900/40 text-gray-500 border-gray-200';
+                        $licenceColor = [
+                            'active' => 'green',
+                            'trial' => 'primary',
+                            'expired' => 'red',
+                            'cancelled' => 'secondary',
+                        ][$tenant->subscription_status] ?? 'secondary';
                     @endphp
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Plan</p>
-                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ ucfirst($tenant->subscription_tier) }}</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                <div>
+                                    <p class="text-uppercase text-muted small fw-bold mb-1">Current Plan</p>
+                                    <h2 class="mb-0">{{ ucfirst($tenant->subscription_tier) }}</h2>
+                                </div>
+                                <span class="badge bg-{{ $licenceColor }}-lt text-uppercase">{{ $tenant->subscription_status }}</span>
+                            </div>
+                            <div class="row g-3 py-3 border-top border-bottom">
+                                <div class="col-sm-6">
+                                    <p class="text-uppercase text-muted small fw-bold mb-1">Renews / Expires</p>
+                                    <p class="fw-bold mb-0">{{ $tenant->subscription_expires_at?->format('d M Y') ?? 'No expiry set' }}</p>
+                                </div>
+                                <div class="col-sm-6">
+                                    <p class="text-uppercase text-muted small fw-bold mb-1">Account Status</p>
+                                    <p class="fw-bold mb-0">{{ ucfirst($tenant->status) }}</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                <p class="text-muted mb-0">Commission invoices, payment history, and plan changes are managed under Billing.</p>
+                                <a href="{{ route('billing.edit') }}" class="btn btn-primary flex-shrink-0">View Billing</a>
+                            </div>
                         </div>
-                        <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full border {{ $licenceStyle }}">
-                            <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $tenant->subscription_status }}
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-t border-b border-gray-100 dark:border-gray-800">
-                        <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Renews / Expires</p>
-                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ $tenant->subscription_expires_at?->format('d M Y') ?? 'No expiry set' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Status</p>
-                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ ucfirst($tenant->status) }}</p>
-                        </div>
-                    </div>
-                    <div class="mt-6 flex items-center justify-between gap-4 flex-wrap">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Commission invoices, payment history, and plan changes are managed under Billing.</p>
-                        <a href="{{ route('billing.edit') }}" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors">View Billing</a>
                     </div>
                 </div>
 
                 @if(Auth::user()->role !== 'Sales Agent')
                 {{-- ---------- PAYMENT GATEWAY ---------- --}}
-                <div x-show="tab === 'payment-gateway'" x-cloak>
-                    <div x-data="{ primaryEditing: {{ $mpesaPrimary->exists ? 'false' : 'true' }}, backupEditing: {{ $mpesaBackup->exists ? 'false' : 'true' }} }">
-                        <form action="{{ route('mpesa-settings.update') }}" method="POST" class="space-y-5">
-                            @csrf @method('PUT')
+                <div class="tab-pane {{ $tab === 'payment-gateway' ? 'active show' : '' }}" id="rp-tab-payment-gateway" role="tabpanel">
+                    <form action="{{ route('mpesa-settings.update') }}" method="POST">
+                        @csrf @method('PUT')
 
-                            <div x-show="!primaryEditing" x-cloak>
-                                <x-mpesa-gateway-card :setting="$mpesaPrimary" label="Primary" icon="bx-credit-card" color="blue" @click="primaryEditing = true" />
-                            </div>
-                            <div x-show="primaryEditing" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8 space-y-8">
-                                <div class="flex items-center justify-between">
+                        <div id="rp-primary-view" class="mb-3" @if(!$mpesaPrimary->exists) style="display:none" @endif>
+                            <x-mpesa-gateway-card :setting="$mpesaPrimary" label="Primary" icon="ti-credit-card" color="blue" data-rp-edit-toggle="rp-primary" style="cursor:pointer" />
+                        </div>
+                        <div id="rp-primary-edit" class="card mb-3" @if($mpesaPrimary->exists) style="display:none" @endif>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
                                     <div>
-                                        <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2"><i class="bx bx-credit-card text-indigo-500"></i> Primary Gateway</h2>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Every payment is attempted here first.</p>
+                                        <h2 class="card-title d-flex align-items-center gap-2 mb-1"><i class="ti ti-credit-card text-primary"></i> Primary Gateway</h2>
+                                        <p class="text-muted small mb-0">Every payment is attempted here first.</p>
                                     </div>
                                     @if($mpesaPrimary->exists)
-                                        <button type="button" @click="primaryEditing = false" class="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Cancel</button>
+                                        <button type="button" class="btn btn-link btn-sm" data-rp-edit-toggle="rp-primary">Cancel</button>
                                     @endif
                                 </div>
                                 @include('mpesa._gateway_fields', ['prefix' => 'primary', 'setting' => $mpesaPrimary])
                             </div>
+                        </div>
 
-                            <div x-show="!backupEditing" x-cloak>
-                                <x-mpesa-gateway-card :setting="$mpesaBackup" label="Backup" icon="bx-shield-quarter" color="amber" @click="backupEditing = true" />
-                            </div>
-                            <div x-show="backupEditing" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8 space-y-8">
-                                <div class="flex items-center justify-between">
+                        <div id="rp-backup-view" class="mb-3" @if(!$mpesaBackup->exists) style="display:none" @endif>
+                            <x-mpesa-gateway-card :setting="$mpesaBackup" label="Backup" icon="ti-shield-check" color="amber" data-rp-edit-toggle="rp-backup" style="cursor:pointer" />
+                        </div>
+                        <div id="rp-backup-edit" class="card mb-3" @if($mpesaBackup->exists) style="display:none" @endif>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
                                     <div>
-                                        <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2"><i class="bx bx-shield-quarter text-amber-500"></i> Backup Gateway <span class="text-xs font-normal text-gray-400 normal-case">(optional)</span></h2>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Steps in automatically if the primary fails.</p>
+                                        <h2 class="card-title d-flex align-items-center gap-2 mb-1"><i class="ti ti-shield-check text-warning"></i> Backup Gateway <span class="fw-normal text-muted text-lowercase small">(optional)</span></h2>
+                                        <p class="text-muted small mb-0">Steps in automatically if the primary fails.</p>
                                     </div>
                                     @if($mpesaBackup->exists)
-                                        <button type="button" @click="backupEditing = false" class="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Cancel</button>
+                                        <button type="button" class="btn btn-link btn-sm" data-rp-edit-toggle="rp-backup">Cancel</button>
                                     @endif
                                 </div>
                                 @include('mpesa._gateway_fields', ['prefix' => 'backup', 'setting' => $mpesaBackup])
                             </div>
+                        </div>
 
-                            <div class="flex justify-end pt-1">
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save</button>
-                            </div>
-                        </form>
-                    </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
                 </div>
 
                 {{-- ---------- SMS GATEWAY ---------- --}}
-                <div x-show="tab === 'sms-gateway'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Messages are currently log-only until a provider is connected.</p>
-                    <form action="{{ route('sms-settings.update') }}" method="POST" class="space-y-5">
-                        @csrf @method('PUT')
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Provider</label>
-                            <input type="text" name="provider" value="{{ old('provider', $smsSetting->provider) }}" placeholder="e.g., Africa's Talking" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                <div class="tab-pane {{ $tab === 'sms-gateway' ? 'active show' : '' }}" id="rp-tab-sms-gateway" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="text-muted small mb-4">Messages are currently log-only until a provider is connected.</p>
+                            <form action="{{ route('sms-settings.update') }}" method="POST">
+                                @csrf @method('PUT')
+                                <div class="mb-3">
+                                    <label class="form-label">Provider</label>
+                                    <input type="text" name="provider" value="{{ old('provider', $smsSetting->provider) }}" placeholder="e.g., Africa's Talking" class="form-control">
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Sender ID</label>
+                                        <input type="text" name="sender_id" value="{{ old('sender_id', $smsSetting->sender_id) }}" placeholder="RADIUSPOINT" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">API Username</label>
+                                        <input type="text" name="username" value="{{ old('username', $smsSetting->username) }}" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">API Key</label>
+                                        <input type="password" name="api_key" placeholder="{{ $smsSetting->exists && $smsSetting->api_key ? '•••• saved' : '' }}" class="form-control">
+                                        <p class="text-muted small mt-1 mb-0">Leave blank to keep the saved value.</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">API Secret</label>
+                                        <input type="password" name="api_secret" placeholder="{{ $smsSetting->exists && $smsSetting->api_secret ? '•••• saved' : '' }}" class="form-control">
+                                        <p class="text-muted small mt-1 mb-0">Leave blank to keep the saved value.</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-3 border-top text-end">
+                                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                                </div>
+                            </form>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Sender ID</label>
-                                <input type="text" name="sender_id" value="{{ old('sender_id', $smsSetting->sender_id) }}" placeholder="RADIUSPOINT" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">API Username</label>
-                                <input type="text" name="username" value="{{ old('username', $smsSetting->username) }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">API Key</label>
-                                <input type="password" name="api_key" placeholder="{{ $smsSetting->exists && $smsSetting->api_key ? '•••• saved' : '' }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                <p class="text-xs text-gray-400 mt-1">Leave blank to keep the saved value.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">API Secret</label>
-                                <input type="password" name="api_secret" placeholder="{{ $smsSetting->exists && $smsSetting->api_secret ? '•••• saved' : '' }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
-                                <p class="text-xs text-gray-400 mt-1">Leave blank to keep the saved value.</p>
-                            </div>
-                        </div>
-                        <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition-colors">Save Settings</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
                 @endif
 
                 {{-- ---------- INERT / COMING SOON TABS ---------- --}}
                 @foreach([
-                    'email-gateway' => ['bx-envelope', 'Email Gateway', 'Send transactional emails through your own SMTP provider.'],
-                    'notes-template' => ['bx-file', 'Notes Template', 'Reusable note templates for invoices and customer records.'],
-                    '2fa' => ['bx-shield', 'Two-Factor Authentication', 'Add an extra verification step when logging in.'],
+                    'email-gateway' => ['ti-mail', 'Email Gateway', 'Send transactional emails through your own SMTP provider.'],
+                    'notes-template' => ['ti-file-text', 'Notes Template', 'Reusable note templates for invoices and customer records.'],
+                    '2fa' => ['ti-shield-lock', 'Two-Factor Authentication', 'Add an extra verification step when logging in.'],
                 ] as $key => [$icon, $label, $desc])
-                    <div x-show="tab === '{{ $key }}'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 flex flex-col items-center justify-center text-center">
-                        <i class="bx {{ $icon }} text-4xl text-gray-300 dark:text-gray-700 mb-3"></i>
-                        <h2 class="text-md font-bold text-gray-900 dark:text-white mb-1">{{ $label }}</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xs">{{ $desc }}</p>
-                        <span title="Coming soon" class="mt-4 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full cursor-not-allowed select-none">
-                            <i class="bx bx-time-five"></i> Coming Soon
-                        </span>
+                    <div class="tab-pane {{ $tab === $key ? 'active show' : '' }}" id="rp-tab-{{ $key }}" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body py-5 d-flex flex-column align-items-center justify-content-center text-center">
+                                <i class="ti {{ $icon }} icon icon-lg text-muted mb-2"></i>
+                                <h2 class="card-title mb-1">{{ $label }}</h2>
+                                <p class="text-muted small" style="max-width:20rem">{{ $desc }}</p>
+                                <span title="Coming soon" class="badge bg-secondary-lt mt-2">
+                                    <i class="ti ti-clock"></i> Coming Soon
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 @endforeach
 
                 {{-- ---------- CHANGE PASSWORD ---------- --}}
-                <div x-show="tab === 'change-password'" x-cloak class="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-8 max-w-2xl">
-                    @include('profile.partials.update-password-form')
+                <div class="tab-pane {{ $tab === 'change-password' ? 'active show' : '' }}" id="rp-tab-change-password" role="tabpanel">
+                    <div class="card" style="max-width:36rem">
+                        <div class="card-body">
+                            @include('profile.partials.update-password-form')
+                        </div>
+                    </div>
                 </div>
 
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-rp-edit-toggle]').forEach(function (el) {
+                el.addEventListener('click', function () {
+                    var group = el.getAttribute('data-rp-edit-toggle');
+                    var view = document.getElementById(group + '-view');
+                    var edit = document.getElementById(group + '-edit');
+                    var editing = edit.style.display !== 'none';
+                    view.style.display = editing ? '' : 'none';
+                    edit.style.display = editing ? 'none' : '';
+                });
+            });
+        });
+    </script>
 </x-sidebar-layout>

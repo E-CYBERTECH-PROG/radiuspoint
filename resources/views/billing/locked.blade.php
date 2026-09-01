@@ -1,167 +1,159 @@
 <x-guest-layout>
-    <div
-        x-data="subscriptionLock()"
-        x-init="init()"
-    >
-        <div class="mb-4 text-center">
-            <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-3">
-                <i class="bx bx-lock-alt text-2xl"></i>
-            </div>
-            <h1 class="text-lg font-bold text-gray-900">Subscription Payment Required</h1>
-        </div>
+    <div class="mb-3 text-center">
+        <span class="avatar bg-red-lt mb-3"><i class="ti ti-lock fs-2"></i></span>
+        <h1 class="h3 mb-0">Subscription Payment Required</h1>
+    </div>
 
-        <div class="mb-4 text-sm text-gray-600">
-            {{ __("Your grace period ended with an unpaid commission invoice. Dashboard access is paused until it's settled — your customers' service keeps running.") }}
-        </div>
+    <div class="mb-3 text-muted small">
+        {{ __("Your grace period ended with an unpaid commission invoice. Dashboard access is paused until it's settled — your customers' service keeps running.") }}
+    </div>
 
-        <template x-if="paid">
-            <div class="mb-5 flex items-center gap-2.5 bg-green-50 border border-green-100 text-green-700 text-sm rounded-lg px-4 py-3">
-                <i class="bx bxs-check-circle text-lg shrink-0"></i>
-                <span>Payment received — redirecting you to the dashboard&hellip;</span>
-            </div>
-        </template>
+    <div class="alert alert-success d-none" id="rp-billing-paid">
+        <i class="ti ti-circle-check-filled icon"></i>
+        <span>Payment received — redirecting you to the dashboard&hellip;</span>
+    </div>
 
-        <div class="mb-6 space-y-2" x-show="!paid">
-            @foreach($overdueInvoices as $invoice)
-                <div class="bg-red-50 border border-red-100 rounded-lg px-4 py-3" x-data="{ invoiceId: {{ $invoice->id }} }">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-bold text-gray-900">{{ $invoice->period_start->format('F Y') }}</p>
-                            <p class="text-xs text-red-600">Due {{ $invoice->due_at->format('d M Y') }} &middot; {{ $invoice->due_at->diffForHumans() }}</p>
-                        </div>
-                        <p class="text-sm font-bold text-gray-900 font-fira">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->amount_due, 2) }}</p>
+    <div class="mb-4" id="rp-billing-invoices">
+        @foreach($overdueInvoices as $invoice)
+            <div class="border border-danger-subtle bg-red-lt rounded p-3 mb-2" data-rp-invoice="{{ $invoice->id }}">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="fw-bold mb-0">{{ $invoice->period_start->format('F Y') }}</p>
+                        <p class="text-danger small mb-0">Due {{ $invoice->due_at->format('d M Y') }} &middot; {{ $invoice->due_at->diffForHumans() }}</p>
                     </div>
-
-                    <template x-if="activeInvoiceId !== invoiceId">
-                        <button type="button" @click="startPaying(invoiceId)" class="mt-3 w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                            Pay Now via M-Pesa
-                        </button>
-                    </template>
-
-                    <template x-if="activeInvoiceId === invoiceId">
-                        <div class="mt-3 pt-3 border-t border-red-100">
-                            <template x-if="stage === 'form'">
-                                <form @submit.prevent="submitPay(invoiceId)" class="space-y-2">
-                                    <input type="tel" x-model="phone" placeholder="0712345678" required pattern="^(0|254)7\d{8}$" class="w-full bg-white border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-lg py-2 px-3 text-sm outline-none">
-                                    <div class="flex gap-2">
-                                        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors">Send STK Push</button>
-                                        <button type="button" @click="reset()" class="px-3 text-sm text-gray-500 hover:text-gray-900">Cancel</button>
-                                    </div>
-                                </form>
-                            </template>
-                            <template x-if="stage === 'waiting'">
-                                <div class="flex items-center gap-2 text-sm text-gray-600">
-                                    <i class="bx bx-loader-alt bx-spin text-lg"></i>
-                                    <span>Check your phone for the M-Pesa prompt and enter your PIN&hellip;</span>
-                                </div>
-                            </template>
-                            <template x-if="stage === 'error'">
-                                <div class="text-sm">
-                                    <p class="text-red-600 mb-2" x-text="error"></p>
-                                    <button type="button" @click="stage = 'form'" class="text-indigo-600 font-semibold">Try again</button>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
+                    <p class="fw-bold font-monospace mb-0">{{ $tenant->currency_symbol ?? 'KES' }} {{ number_format($invoice->amount_due, 2) }}</p>
                 </div>
-            @endforeach
-        </div>
 
-        <a href="mailto:support@radiuspoint.co.ke" class="w-full inline-flex items-center justify-center px-5 py-2.5 bg-white border border-gray-200 rounded-lg font-semibold text-sm text-gray-600 hover:bg-gray-50 transition ease-in-out duration-150">
-            Paid a different way? Contact Support
-        </a>
-
-        <div class="mt-4 flex items-center justify-end">
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    {{ __('Log Out') }}
+                <button type="button" class="btn btn-primary btn-sm w-100 mt-3" data-rp-start-pay>
+                    Pay Now via M-Pesa
                 </button>
-            </form>
-        </div>
+
+                <div class="mt-3 pt-3 border-top border-danger-subtle" data-rp-pay-panel style="display:none">
+                    <form data-rp-pay-form class="d-flex flex-column gap-2">
+                        <input type="tel" name="phone" placeholder="0712345678" required pattern="^(0|254)7\d{8}$" class="form-control form-control-sm">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm flex-fill">Send STK Push</button>
+                            <button type="button" class="btn btn-link btn-sm" data-rp-cancel-pay>Cancel</button>
+                        </div>
+                    </form>
+                    <div class="d-flex align-items-center gap-2 small text-muted" data-rp-pay-waiting style="display:none">
+                        <i class="ti ti-loader-2 icon-spin"></i>
+                        <span>Check your phone for the M-Pesa prompt and enter your PIN&hellip;</span>
+                    </div>
+                    <div data-rp-pay-error style="display:none">
+                        <p class="text-danger small mb-2" data-rp-pay-error-text></p>
+                        <button type="button" class="btn btn-link btn-sm p-0" data-rp-retry-pay>Try again</button>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <a href="mailto:support@radiuspoint.co.ke" class="btn w-100">
+        Paid a different way? Contact Support
+    </a>
+
+    <div class="mt-3 d-flex justify-content-end">
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="btn btn-link btn-sm text-muted">
+                {{ __('Log Out') }}
+            </button>
+        </form>
     </div>
 
     <script>
-        function subscriptionLock() {
-            return {
-                activeInvoiceId: null,
-                stage: 'form', // form | waiting | error
-                phone: '',
-                error: '',
-                paid: false,
-                pollTimer: null,
+        (function () {
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            var paidBanner = document.getElementById('rp-billing-paid');
+            var invoicesWrap = document.getElementById('rp-billing-invoices');
+            var paid = false;
 
-                init() {},
+            function setStage(card, stage, errorText) {
+                card.querySelector('[data-rp-pay-form]').style.display = stage === 'form' ? '' : 'none';
+                card.querySelector('[data-rp-pay-waiting]').style.display = stage === 'waiting' ? 'flex' : 'none';
+                var errorEl = card.querySelector('[data-rp-pay-error]');
+                errorEl.style.display = stage === 'error' ? '' : 'none';
+                if (stage === 'error') errorEl.querySelector('[data-rp-pay-error-text]').textContent = errorText || 'Something went wrong. Please try again.';
+            }
 
-                startPaying(invoiceId) {
-                    this.activeInvoiceId = invoiceId;
-                    this.stage = 'form';
-                    this.error = '';
-                },
+            function pollStatus(card, invoiceId) {
+                // Real M-Pesa STK prompts resolve (paid, cancelled, or timed out) well within
+                // 90s — 3s polling is frequent enough to feel instant without hammering the
+                // endpoint, matching the same cadence PaymentPortalController's customer flow uses.
+                var pollTimer = setInterval(async function () {
+                    var res = await fetch("{{ url('/subscription-required/status') }}/" + invoiceId, {
+                        headers: { Accept: 'application/json' },
+                    });
+                    var data = await res.json();
 
-                reset() {
-                    this.activeInvoiceId = null;
-                    clearInterval(this.pollTimer);
-                },
+                    if (data.status === 'paid') {
+                        clearInterval(pollTimer);
+                        paid = true;
+                        invoicesWrap.style.display = 'none';
+                        paidBanner.classList.remove('d-none');
+                        setTimeout(function () { window.location.href = '{{ route('dashboard') }}'; }, 1500);
+                    }
+                }, 3000);
 
-                async submitPay(invoiceId) {
-                    this.stage = 'waiting';
+                // Stop polling after ~2 minutes so an abandoned/failed STK push doesn't poll
+                // forever — the tenant can just tap "Pay Now" again to retry.
+                setTimeout(function () {
+                    if (!paid) {
+                        clearInterval(pollTimer);
+                        setStage(card, 'error', "We didn't receive confirmation in time. If you completed the payment, it may still arrive shortly — otherwise, please try again.");
+                    }
+                }, 120000);
+            }
+
+            document.querySelectorAll('[data-rp-invoice]').forEach(function (card) {
+                var invoiceId = card.getAttribute('data-rp-invoice');
+                var startBtn = card.querySelector('[data-rp-start-pay]');
+                var panel = card.querySelector('[data-rp-pay-panel]');
+                var form = card.querySelector('[data-rp-pay-form]');
+
+                startBtn.addEventListener('click', function () {
+                    startBtn.style.display = 'none';
+                    panel.style.display = '';
+                    setStage(card, 'form');
+                });
+
+                card.querySelector('[data-rp-cancel-pay]').addEventListener('click', function () {
+                    startBtn.style.display = '';
+                    panel.style.display = 'none';
+                });
+
+                card.querySelector('[data-rp-retry-pay]').addEventListener('click', function () {
+                    setStage(card, 'form');
+                });
+
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    setStage(card, 'waiting');
 
                     try {
-                        const res = await fetch('{{ route('billing.pay') }}', {
+                        var res = await fetch('{{ route('billing.pay') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                Accept: 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
                             },
-                            body: JSON.stringify({ invoice_id: invoiceId, phone: this.phone }),
+                            body: JSON.stringify({ invoice_id: invoiceId, phone: form.phone.value }),
                         });
-                        const data = await res.json();
+                        var data = await res.json();
 
                         if (!res.ok) {
-                            this.stage = 'error';
-                            this.error = data.error || 'Something went wrong. Please try again.';
+                            setStage(card, 'error', data.error);
                             return;
                         }
 
-                        this.pollStatus(invoiceId);
+                        pollStatus(card, invoiceId);
                     } catch (e) {
-                        this.stage = 'error';
-                        this.error = 'Could not reach the server. Please check your connection and try again.';
+                        setStage(card, 'error', 'Could not reach the server. Please check your connection and try again.');
                     }
-                },
-
-                pollStatus(invoiceId) {
-                    // Real M-Pesa STK prompts resolve (paid, cancelled, or timed out) well within
-                    // 90s — 3s polling is frequent enough to feel instant without hammering the
-                    // endpoint, matching the same cadence PaymentPortalController's customer flow uses.
-                    this.pollTimer = setInterval(async () => {
-                        const res = await fetch(`{{ url('/subscription-required/status') }}/${invoiceId}`, {
-                            headers: { 'Accept': 'application/json' },
-                        });
-                        const data = await res.json();
-
-                        if (data.status === 'paid') {
-                            clearInterval(this.pollTimer);
-                            this.paid = true;
-                            setTimeout(() => window.location.href = '{{ route('dashboard') }}', 1500);
-                        }
-                    }, 3000);
-
-                    // Stop polling after ~2 minutes so an abandoned/failed STK push doesn't poll
-                    // forever — the tenant can just tap "Pay Now" again to retry.
-                    setTimeout(() => {
-                        if (!this.paid) {
-                            clearInterval(this.pollTimer);
-                            if (this.stage === 'waiting') {
-                                this.stage = 'error';
-                                this.error = 'We didn\'t receive confirmation in time. If you completed the payment, it may still arrive shortly — otherwise, please try again.';
-                            }
-                        }
-                    }, 120000);
-                },
-            };
-        }
+                });
+            });
+        })();
     </script>
 </x-guest-layout>

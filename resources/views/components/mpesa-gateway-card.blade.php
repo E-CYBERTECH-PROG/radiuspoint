@@ -2,31 +2,41 @@
 
 @php
     $iconClasses = [
-        'blue' => 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
-        'amber' => 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
-    ][$color] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400';
+        'blue' => 'bg-blue-lt',
+        'amber' => 'bg-yellow-lt',
+    ][$color] ?? 'bg-secondary-lt';
 
     $gatewayLabels = ['till' => 'Till (Buy Goods)', 'paybill' => 'Paybill', 'bank' => 'Bank'];
 @endphp
 
-<div {{ $attributes->merge(['class' => 'w-full text-left bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 flex items-center justify-between gap-4 cursor-pointer hover:border-gray-300 dark:hover:border-gray-700 transition-colors']) }}>
-    <div class="flex items-center gap-4 min-w-0">
-        <div class="p-3 rounded-lg shrink-0 {{ $iconClasses }}">
-            <i class="bx {{ $icon }} text-xl"></i>
+<div {{ $attributes->merge(['class' => 'card card-sm w-100 text-start']) }}>
+    <div class="card-body d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+            <span class="avatar {{ $iconClasses }}">
+                <i class="ti {{ $icon }} fs-3"></i>
+            </span>
+            <div class="min-w-0">
+                <p class="fw-bold text-body text-truncate mb-0">
+                    {{ $label }} &middot; {{ $gatewayLabels[$setting->gateway_type] ?? ucfirst($setting->gateway_type) }}
+                </p>
+                <p class="text-muted small font-monospace mb-0">
+                    @if($setting->gateway_type === 'bank')
+                        {{ $setting->bank_paybill ? "Paybill {$setting->bank_paybill} · Acc {$setting->bank_account_number}" : 'No bank account set' }}
+                    @else
+                        {{ $setting->shortcode ?: 'No shortcode set' }}
+                    @endif
+                    &middot; {{ ucfirst($setting->environment) }}
+                </p>
+                <p class="text-muted mb-0" style="font-size:.7rem">
+                    {{ filled($setting->consumer_key) && filled($setting->consumer_secret) && filled($setting->passkey) && filled($setting->shortcode) ? 'Uses its own Daraja app' : "Uses RadiusPoint's shared gateway" }}
+                </p>
+            </div>
         </div>
-        <div class="min-w-0">
-            <p class="font-bold text-gray-900 dark:text-white truncate">
-                {{ $label }} &middot; {{ $gatewayLabels[$setting->gateway_type] ?? ucfirst($setting->gateway_type) }}
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-fira">
-                {{ $setting->shortcode ?: 'No shortcode set' }} &middot; {{ ucfirst($setting->environment) }}
-            </p>
+        <div class="d-flex align-items-center gap-3 shrink-0">
+            <x-status-badge :color="$setting->is_active ? 'green' : 'gray'" :dot="true" :pulse="$setting->is_active">
+                {{ $setting->is_active ? 'Active' : 'Inactive' }}
+            </x-status-badge>
+            <span class="fw-bold text-primary">Edit</span>
         </div>
-    </div>
-    <div class="flex items-center gap-3 shrink-0">
-        <x-status-badge :color="$setting->is_active ? 'green' : 'gray'" :dot="true" :pulse="$setting->is_active">
-            {{ $setting->is_active ? 'Active' : 'Inactive' }}
-        </x-status-badge>
-        <span class="text-sm font-bold text-blue-600 dark:text-blue-400">Edit</span>
     </div>
 </div>

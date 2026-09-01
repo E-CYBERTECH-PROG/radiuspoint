@@ -96,15 +96,21 @@ class PaymentPortalController extends Controller
     }
 
     /**
-     * Checks that Daraja credentials are actually set, not just that the toggle is on.
+     * Checks that this gateway actually has somewhere to send the money, not just that the
+     * toggle is on. It no longer needs its own Daraja app (consumer_key/secret/passkey) — a
+     * tenant with no app of their own still gets pushed via RadiusPoint's shared gateway, see
+     * MpesaService::for().
      */
     private function isConfigured(?MpesaSetting $settings): bool
     {
-        return $settings && $settings->is_active
-            && filled($settings->consumer_key)
-            && filled($settings->consumer_secret)
-            && filled($settings->passkey)
-            && filled($settings->shortcode);
+        if (! $settings || ! $settings->is_active) {
+            return false;
+        }
+
+        return match ($settings->gateway_type) {
+            'bank' => filled($settings->bank_paybill) && filled($settings->bank_account_number),
+            default => filled($settings->shortcode),
+        };
     }
 
     /**
@@ -113,7 +119,7 @@ class PaymentPortalController extends Controller
     private function attemptStkPush(MpesaSetting $settings, string $phone, Plan $plan, Transaction $transaction, Router $router): ?array
     {
         try {
-            $mpesa = new MpesaService($settings);
+            $mpesa = MpesaService::for($settings);
             $response = $mpesa->stkPush(
                 $phone,
                 (float) $plan->price,

@@ -1,112 +1,121 @@
 <x-sidebar-layout title="{{ $router->name }}">
-    <div x-data="routerDetail()" x-init="init()">
-        <div class="mb-6">
-            <a href="{{ route('routers.index') }}" class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors inline-flex items-center gap-2 mb-2">
-                <i class="bx bx-left-arrow-alt text-lg"></i> Back to Routers
-            </a>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $router->name }}</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $models[$router->board_model]['label'] ?? 'Unknown Model' }} &middot; {{ $router->ip_address }}</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <a href="{{ route('routers.monitor', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                        <i class="bx bx-pulse text-lg"></i> Live Monitor
-                    </a>
-                    <button @click="testConnection()" :disabled="testing" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                        <i class="bx" :class="testing ? 'bx-loader-alt bx-spin' : 'bx-broadcast'"></i>
-                        <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
-                    </button>
+    <div class="mb-4">
+        <a href="{{ route('routers.index') }}" class="d-inline-flex align-items-center gap-2 mb-2">
+            <i class="ti ti-arrow-left icon"></i> Back to Routers
+        </a>
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
+            <div>
+                <h1 class="mb-1">{{ $router->name }}</h1>
+                <p class="text-muted mb-0">{{ $models[$router->board_model]['label'] ?? 'Unknown Model' }} &middot; {{ $router->ip_address }}</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('routers.monitor', $router) }}" class="btn">
+                    <i class="ti ti-activity icon"></i> Live Monitor
+                </a>
+                <button type="button" id="rp-test-conn-btn" class="btn btn-primary">
+                    <i class="ti ti-broadcast" id="rp-test-conn-icon"></i>
+                    <span id="rp-test-conn-label">Test Connection</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column align-items-center text-center">
+                    <x-router-board
+                        :port-count="$models[$router->board_model]['ports'] ?? 5"
+                        :sfp-count="$models[$router->board_model]['sfp'] ?? 0"
+                        :image="$models[$router->board_model]['image'] ?? null"
+                        :status="$router->status"
+                    />
+                    <p class="text-muted small mt-3 mb-0">Uplink LED reflects live connection status</p>
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div class="lg:col-span-1 bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col items-center">
-                <x-router-board
-                    :port-count="$models[$router->board_model]['ports'] ?? 5"
-                    :sfp-count="$models[$router->board_model]['sfp'] ?? 0"
-                    :image="$models[$router->board_model]['image'] ?? null"
-                    :status="$router->status"
-                />
-                <p class="text-xs text-gray-400 mt-3 text-center">Uplink LED reflects live connection status</p>
-            </div>
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h3 class="card-title">Live System Info</h3>
+                    <p class="text-muted" id="rp-live-loading">Checking connection...</p>
 
-            <div class="lg:col-span-2 bg-white dark:bg-gray-950 p-6 rounded-xl border-0 shadow-[0_10px_24px_-20px_rgba(0,0,0,.32)] hover:shadow-[0_14px_28px_-20px_rgba(0,0,0,.4)] transition-shadow">
-                <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">Live System Info</h3>
-                <div class="grid grid-cols-2 gap-4 text-sm" x-show="!loaded">
-                    <p class="text-gray-400 col-span-2">Checking connection...</p>
-                </div>
-                <div x-show="loaded" x-cloak class="flex flex-col sm:flex-row gap-6">
-                    <div class="grid grid-cols-2 gap-4 text-sm flex-1">
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Identity</p>
-                            <p class="font-bold text-gray-900 dark:text-white" x-text="identity || '—'"></p>
+                    <div class="d-none flex-column flex-sm-row gap-4" id="rp-live-info">
+                        <div class="row g-3 small flex-fill">
+                            <div class="col-6">
+                                <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">Identity</p>
+                                <p class="fw-bold mb-0" id="rp-live-identity">—</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">Detected Board</p>
+                                <p class="fw-bold mb-0" id="rp-live-board">—</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">RouterOS Version</p>
+                                <p class="fw-bold mb-0" id="rp-live-version">—</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-uppercase text-muted mb-0" style="font-size:.625rem">Uptime</p>
+                                <p class="fw-bold mb-0" id="rp-live-uptime">—</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Detected Board</p>
-                            <p class="font-bold text-gray-900 dark:text-white" x-text="boardDetected || '—'"></p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">RouterOS Version</p>
-                            <p class="font-bold text-gray-900 dark:text-white" x-text="version || '—'"></p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Uptime</p>
-                            <p class="font-bold text-gray-900 dark:text-white" x-text="uptime || '—'"></p>
+                        <div class="d-flex align-items-start justify-content-center gap-4 flex-shrink-0">
+                            <x-gauge-ring id="rp-gauge-cpu" color="var(--tblr-primary)" label="CPU Load" :size="84" />
+                            <x-gauge-ring id="rp-gauge-mem" color="var(--tblr-success)" label="Memory Used" :size="84" detail="—" />
                         </div>
                     </div>
-                    <div class="flex items-start justify-center gap-6 shrink-0">
-                        <x-gauge-ring percent-expr="cpuLoad" value-expr="cpuLoad !== null ? cpuLoad + '%' : '—'" color="#2563eb" label="CPU Load" :size="84" />
-                        <x-gauge-ring percent-expr="memPercent" value-expr="memPercent !== null ? memPercent + '%' : '—'" detail-expr="memoryText" color="#16a34a" label="Memory Used" :size="84" />
-                    </div>
-                </div>
 
-                <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Web Access</p>
-                        @if($router->web_proxy_port)
-                            <a href="http://{{ config('vpn.public_ip') }}:{{ $router->web_proxy_port }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold inline-flex items-center gap-1">
-                                Open Web UI <i class="bx bx-link-external"></i>
-                            </a>
-                        @else
-                            <span class="text-xs text-gray-400">Not yet allocated — re-save this router to assign a proxy port.</span>
-                        @endif
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Winbox Address</p>
-                        @if($router->winbox_proxy_port)
-                            <button @click="copyWinbox()" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 text-sm font-bold font-fira inline-flex items-center gap-1">
-                                {{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }} <i class="bx" :class="copied ? 'bx-check text-green-500' : 'bx-copy'"></i>
-                            </button>
-                            <p class="text-[10px] text-gray-400 mt-1">Paste this into Winbox's "Connect To" field — reachable from anywhere, not just this server.</p>
-                        @else
-                            <span class="text-xs text-gray-400">Not yet allocated — re-save this router to assign a proxy port.</span>
-                        @endif
+                    <div class="row g-3 mt-3 pt-3 border-top">
+                        <div class="col-md-6">
+                            <p class="text-uppercase text-muted mb-1" style="font-size:.625rem">Web Access</p>
+                            @if($router->web_proxy_port)
+                                <a href="http://{{ config('vpn.public_ip') }}:{{ $router->web_proxy_port }}" target="_blank" class="fw-bold d-inline-flex align-items-center gap-1">
+                                    Open Web UI <i class="ti ti-external-link"></i>
+                                </a>
+                            @else
+                                <span class="text-muted small">Not yet allocated — re-save this router to assign a proxy port.</span>
+                            @endif
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-uppercase text-muted mb-1" style="font-size:.625rem">Winbox Address</p>
+                            @if($router->winbox_proxy_port)
+                                <button type="button" id="rp-copy-winbox" class="btn btn-link p-0 fw-bold font-monospace" data-rp-copy="{{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }}">
+                                    {{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }} <i class="ti ti-copy"></i>
+                                </button>
+                                <p class="text-muted mb-0" style="font-size:.625rem">Paste this into Winbox's "Connect To" field — reachable from anywhere, not just this server.</p>
+                            @else
+                                <span class="text-muted small">Not yet allocated — re-save this router to assign a proxy port.</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="captive-portal" class="bg-white dark:bg-gray-950 p-6 rounded-xl border-2 border-blue-200 dark:border-blue-900/50 shadow-sm mb-6 scroll-mt-6">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                    <i class="bx bx-globe text-xl text-blue-600 dark:text-blue-400"></i>
-                    <h3 class="text-md font-bold text-gray-900 dark:text-white">Captive Portal</h3>
+    <div id="captive-portal" class="card mb-3" style="scroll-margin-top:1.5rem;border-color:var(--tblr-primary)">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-world text-primary fs-3"></i>
+                    <h3 class="card-title mb-0">Captive Portal</h3>
                     @if(! $captivePortal)
-                        <span class="text-[10px] text-amber-700 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/50 font-bold">Using default</span>
+                        <span class="badge bg-amber-lt">Using default</span>
                     @endif
                 </div>
-                <a href="{{ route('captive.show', $router) }}" target="_blank" class="text-sm text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
-                    Preview <i class="bx bx-link-external"></i>
+                <a href="{{ route('captive.show', $router) }}" target="_blank" class="small d-inline-flex align-items-center gap-1">
+                    Preview <i class="ti ti-external-link"></i>
                 </a>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Customize the page hotspot customers see when they connect to this router's WiFi.</p>
-            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST" class="space-y-4" x-data="{ template: '{{ old('template', $captivePortal->template ?? 'light-lumen') }}' }">
+            <p class="text-muted small mb-3">Customize the page hotspot customers see when they connect to this router's WiFi.</p>
+
+            @php $oneispTemplate = old('template', $captivePortal->template ?? 'light-lumen'); @endphp
+            <form action="{{ route('routers.captive-portal.update', $router) }}" method="POST">
                 @csrf
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Template</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+                <div class="mb-3">
+                    <label class="form-label">Template</label>
+                    <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-7 g-2">
                         @php
                             $templateOptions = [
                                 'light-lumen' => ['label' => 'Light Lumen', 'swatch' => 'background:radial-gradient(circle at 30% 20%, #eef2ff, #f8fafc 70%);'],
@@ -119,280 +128,357 @@
                             ];
                         @endphp
                         @foreach($templateOptions as $key => $opt)
-                            <label class="border rounded-lg p-2.5 cursor-pointer text-center transition-colors" :class="template === '{{ $key }}' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'">
-                                <input type="radio" name="template" value="{{ $key }}" x-model="template" class="sr-only">
-                                <span class="block h-7 rounded-md mb-2" style="{{ $opt['swatch'] }}"></span>
-                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $opt['label'] }}</span>
-                            </label>
+                            <div class="col">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="template" value="{{ $key }}" class="form-selectgroup-input" @checked($oneispTemplate === $key)>
+                                    <span class="form-selectgroup-label d-block text-center p-2">
+                                        <span class="d-block rounded mb-2" style="height:1.75rem;{{ $opt['swatch'] }}"></span>
+                                        <span class="small fw-bold">{{ $opt['label'] }}</span>
+                                    </span>
+                                </label>
+                            </div>
                         @endforeach
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Logo URL <span class="text-gray-400 normal-case">(optional)</span></label>
-                        <input type="url" name="logo_url" value="{{ old('logo_url', $captivePortal->logo_url ?? '') }}" placeholder="https://..." class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Logo URL <span class="text-muted text-lowercase">(optional)</span></label>
+                        <input type="url" name="logo_url" value="{{ old('logo_url', $captivePortal->logo_url ?? '') }}" placeholder="https://..." class="form-control">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Brand Color</label>
-                        <input type="color" name="primary_color" value="{{ old('primary_color', $captivePortal->primary_color ?? '#2563eb') }}" class="w-full h-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer">
+                    <div class="col-md-6">
+                        <label class="form-label">Brand Color</label>
+                        <input type="color" name="primary_color" value="{{ old('primary_color', $captivePortal->primary_color ?? '#2563eb') }}" class="form-control form-control-color w-100">
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Plans Per Row</label>
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Plans Per Row</label>
                         @php $columnsPerRow = old('columns_per_row', $captivePortal->columns_per_row ?? ''); @endphp
-                        <select name="columns_per_row" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+                        <select name="columns_per_row" class="form-select">
                             <option value="" @selected($columnsPerRow === '')>Auto (responsive)</option>
                             @foreach([1, 2, 3, 4] as $n)
                                 <option value="{{ $n }}" @selected((string) $columnsPerRow === (string) $n)>{{ $n }} per row</option>
                             @endforeach
                         </select>
                     </div>
-                    <label class="flex items-center gap-2 h-11 cursor-pointer">
-                        <input type="checkbox" name="show_speed" value="1" @checked(old('show_speed', $captivePortal->show_speed ?? true)) class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Show plan speeds</span>
-                    </label>
-                    <label class="flex items-center gap-2 h-11 cursor-pointer">
-                        <input type="checkbox" name="show_navbar" value="1" @checked(old('show_navbar', $captivePortal->show_navbar ?? false)) class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Show top navbar</span>
-                    </label>
+                    <div class="col-md-4">
+                        <label class="form-check">
+                            <input type="checkbox" name="show_speed" value="1" @checked(old('show_speed', $captivePortal->show_speed ?? true)) class="form-check-input">
+                            <span class="form-check-label">Show plan speeds</span>
+                        </label>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-check">
+                            <input type="checkbox" name="show_navbar" value="1" @checked(old('show_navbar', $captivePortal->show_navbar ?? false)) class="form-check-input">
+                            <span class="form-check-label">Show top navbar</span>
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Title <span class="text-gray-400 normal-case">(optional)</span></label>
-                    <input type="text" name="notice_title" value="{{ old('notice_title', $captivePortal->notice_title ?? '') }}" placeholder="e.g. Scheduled maintenance" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="mb-3">
+                    <label class="form-label">Notice Title <span class="text-muted text-lowercase">(optional)</span></label>
+                    <input type="text" name="notice_title" value="{{ old('notice_title', $captivePortal->notice_title ?? '') }}" placeholder="e.g. Scheduled maintenance" class="form-control">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notice Body <span class="text-gray-400 normal-case">(optional)</span></label>
-                    <textarea name="notice_body" rows="2" placeholder="Tell your customers what's happening..." class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">{{ old('notice_body', $captivePortal->notice_body ?? '') }}</textarea>
+                <div class="mb-3">
+                    <label class="form-label">Notice Body <span class="text-muted text-lowercase">(optional)</span></label>
+                    <textarea name="notice_body" rows="2" placeholder="Tell your customers what's happening..." class="form-control">{{ old('notice_body', $captivePortal->notice_body ?? '') }}</textarea>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Testimonials <span class="text-gray-400 normal-case">(optional — only shown if filled in, use real customer quotes)</span></label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <input type="text" name="testimonial_1_text" value="{{ old('testimonial_1_text', $captivePortal->testimonial_1_text ?? '') }}" placeholder="&quot;Fast and reliable, never lets me down.&quot;" maxlength="255" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                            <input type="text" name="testimonial_1_author" value="{{ old('testimonial_1_author', $captivePortal->testimonial_1_author ?? '') }}" placeholder="— Jane, Eldoret" maxlength="100" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs">
+                <div class="mb-3">
+                    <label class="form-label">Testimonials <span class="text-muted text-lowercase">(optional — only shown if filled in, use real customer quotes)</span></label>
+                    <div class="row g-3">
+                        <div class="col-md-6 d-flex flex-column gap-2">
+                            <input type="text" name="testimonial_1_text" value="{{ old('testimonial_1_text', $captivePortal->testimonial_1_text ?? '') }}" placeholder="&quot;Fast and reliable, never lets me down.&quot;" maxlength="255" class="form-control form-control-sm">
+                            <input type="text" name="testimonial_1_author" value="{{ old('testimonial_1_author', $captivePortal->testimonial_1_author ?? '') }}" placeholder="— Jane, Eldoret" maxlength="100" class="form-control form-control-sm">
                         </div>
-                        <div class="space-y-2">
-                            <input type="text" name="testimonial_2_text" value="{{ old('testimonial_2_text', $captivePortal->testimonial_2_text ?? '') }}" placeholder="&quot;Best hotspot in the estate.&quot;" maxlength="255" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                            <input type="text" name="testimonial_2_author" value="{{ old('testimonial_2_author', $captivePortal->testimonial_2_author ?? '') }}" placeholder="— David, Langas" maxlength="100" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs">
+                        <div class="col-md-6 d-flex flex-column gap-2">
+                            <input type="text" name="testimonial_2_text" value="{{ old('testimonial_2_text', $captivePortal->testimonial_2_text ?? '') }}" placeholder="&quot;Best hotspot in the estate.&quot;" maxlength="255" class="form-control form-control-sm">
+                            <input type="text" name="testimonial_2_author" value="{{ old('testimonial_2_author', $captivePortal->testimonial_2_author ?? '') }}" placeholder="— David, Langas" maxlength="100" class="form-control form-control-sm">
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg text-sm">Save Portal Settings</button>
+                <button type="submit" class="btn btn-primary">Save Portal Settings</button>
             </form>
 
-            <div class="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800" x-data="{ pushing: false, pushResult: null, pushOk: true }">
-                <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="mt-4 pt-4 border-top">
+                <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                     <div>
-                        <p class="text-sm font-bold text-gray-900 dark:text-white">Sync Portal to Router</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pushes this portal to the router's hardware — run once, or again after a factory reset.</p>
+                        <p class="fw-bold mb-0">Sync Portal to Router</p>
+                        <p class="text-muted small mt-1 mb-0">Pushes this portal to the router's hardware — run once, or again after a factory reset.</p>
                     </div>
-                    <button type="button" @click="
-                        pushing = true; pushResult = null;
-                        fetch('{{ route('routers.captive-portal.push', $router) }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
-                            .then(r => r.json().then(data => ({ ok: r.ok, data })))
-                            .then(({ ok, data }) => { pushOk = ok; pushResult = ok ? ('Walled garden: ' + data.walled_garden + '. Hotspot files pushed: ' + data.hotspot_files_pushed + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).') : data.message; })
-                            .catch(() => { pushOk = false; pushResult = 'Network error — could not reach the router.'; })
-                            .finally(() => pushing = false);
-                    " :disabled="pushing" class="shrink-0 inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs py-2 px-4 rounded-lg disabled:opacity-50 transition-colors">
-                        <i class="bx" :class="pushing ? 'bx-loader-alt bx-spin' : 'bx-upload'"></i>
-                        <span x-text="pushing ? 'Pushing...' : 'Push Files to Router'"></span>
+                    <button type="button" id="rp-push-portal-btn" class="btn btn-sm flex-shrink-0" data-rp-push-url="{{ route('routers.captive-portal.push', $router) }}">
+                        <i class="ti ti-upload" id="rp-push-portal-icon"></i>
+                        <span id="rp-push-portal-label">Push Files to Router</span>
                     </button>
                 </div>
-                <p x-show="pushResult" x-cloak class="text-xs font-bold mt-2" :class="pushOk ? 'text-green-600 dark:text-green-400' : 'text-red-500'" x-text="pushResult"></p>
+                <p class="small fw-bold mt-2 mb-0 d-none" id="rp-push-portal-result"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h3 class="card-title">Reprovision</h3>
+            <p class="text-muted small mb-3">For a factory reset, a swapped-in replacement unit, or just re-syncing everything from scratch. Both are safe to run on an already-configured router — nothing here is destructive.</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('routers.provision', $router) }}" class="btn">
+                    <i class="ti ti-terminal-2 icon"></i> Re-run Bootstrap Script
+                </a>
+                <a href="{{ route('routers.ports', $router) }}" class="btn">
+                    <i class="ti ti-topology-star icon"></i> Reconfigure Ports
+                </a>
+            </div>
+            <p class="text-muted small mt-3 mb-0">Bootstrap script re-establishes the tunnel/RADIUS wiring (needs the router reachable to paste it into). Reconfigure Ports needs the router already online, and re-pushes hotspot/PPPoE/captive-portal/free-mode for whatever roles you assign.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h3 class="card-title">Rename / Change Model</h3>
+                    <form action="{{ route('routers.update', $router) }}" method="POST">
+                        @csrf @method('PUT')
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" name="name" required value="{{ $router->name }}" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Router Model</label>
+                            <select name="board_model" required class="form-select">
+                                @foreach($models as $key => $model)
+                                    <option value="{{ $key }}" @selected($router->board_model === $key)>{{ $model['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm mb-6">
-            <h3 class="text-md font-bold text-gray-900 dark:text-white mb-1">Reprovision</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">For a factory reset, a swapped-in replacement unit, or just re-syncing everything from scratch. Both are safe to run on an already-configured router — nothing here is destructive.</p>
-            <div class="flex flex-wrap gap-3">
-                <a href="{{ route('routers.provision', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                    <i class="bx bx-terminal text-lg"></i> Re-run Bootstrap Script
-                </a>
-                <a href="{{ route('routers.ports', $router) }}" class="inline-flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-sm py-2.5 px-5 rounded-lg shadow-sm transition-colors">
-                    <i class="bx bx-network-chart text-lg"></i> Reconfigure Ports
-                </a>
-            </div>
-            <p class="text-xs text-gray-400 mt-3">Bootstrap script re-establishes the tunnel/RADIUS wiring (needs the router reachable to paste it into). Reconfigure Ports needs the router already online, and re-pushes hotspot/PPPoE/captive-portal/free-mode for whatever roles you assign.</p>
-        </div>
+        <div class="col-lg-6">
+            <div id="decommission" class="card h-100" style="border-color:var(--tblr-danger);scroll-margin-top:1.5rem">
+                <div class="card-body">
+                    <h3 class="card-title text-danger">Decommission Hardware</h3>
+                    <p class="text-muted small mb-3">Permanently removes this router from your network topology. This cannot be undone.</p>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <h3 class="text-md font-bold text-gray-900 dark:text-white mb-4">Rename / Change Model</h3>
-                <form action="{{ route('routers.update', $router) }}" method="POST" class="space-y-4">
-                    @csrf @method('PUT')
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Name</label>
-                        <input type="text" name="name" required value="{{ $router->name }}" class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors">
+                    <div id="rp-decommission-idle">
+                        <button type="button" id="rp-decommission-start-btn" class="btn btn-danger">
+                            <i class="ti ti-trash" id="rp-decommission-start-icon"></i>
+                            <span id="rp-decommission-start-label">Decommission</span>
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Router Model</label>
-                        <select name="board_model" required class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                            @foreach($models as $key => $model)
-                                <option value="{{ $key }}" @selected($router->board_model === $key)>{{ $model['label'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg text-sm">Save Changes</button>
-                </form>
-            </div>
 
-            <div id="decommission" class="bg-white dark:bg-gray-950 p-6 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm scroll-mt-6">
-                <h3 class="text-md font-bold text-red-600 dark:text-red-400 mb-2">Decommission Hardware</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Permanently removes this router from your network topology. This cannot be undone.</p>
-
-                <template x-if="decommissionStep === 'idle'">
-                    <button type="button" @click="startDecommission()" :disabled="decommissionSending" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-lg text-sm inline-flex items-center gap-2">
-                        <i class="bx" :class="decommissionSending ? 'bx-loader-alt bx-spin' : 'bx-trash'"></i>
-                        <span x-text="decommissionSending ? 'Sending code...' : 'Decommission'"></span>
-                    </button>
-                </template>
-
-                <template x-if="decommissionStep === 'code'">
-                    <div class="space-y-3 max-w-sm">
-                        <p class="text-sm text-gray-700 dark:text-gray-300">We sent a 6-digit code to your notifications (in-app + push). Enter it to confirm removal of <strong>{{ $router->name }}</strong>.</p>
-                        <input type="text" x-model="decommissionCode" placeholder="000000" inputmode="numeric" maxlength="6" class="w-full text-center tracking-widest font-fira text-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-2.5 px-4 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-                        <p x-show="decommissionError" x-cloak x-text="decommissionError" class="text-sm text-red-500 font-bold"></p>
-                        <div class="flex items-center gap-3">
-                            <button type="button" @click="confirmDecommission()" :disabled="decommissionSending || decommissionCode.length !== 6" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-lg text-sm inline-flex items-center gap-2">
-                                <i class="bx" :class="decommissionSending ? 'bx-loader-alt bx-spin' : 'bx-check'"></i>
-                                <span x-text="decommissionSending ? 'Verifying...' : 'Confirm Removal'"></span>
+                    <div id="rp-decommission-code" class="d-none" style="max-width:24rem">
+                        <p class="mb-2">We sent a 6-digit code to your notifications (in-app + push). Enter it to confirm removal of <strong>{{ $router->name }}</strong>.</p>
+                        <input type="text" id="rp-decommission-input" placeholder="000000" inputmode="numeric" maxlength="6" class="form-control text-center font-monospace fs-4 mb-2">
+                        <p class="text-danger fw-bold d-none mb-2" id="rp-decommission-error"></p>
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" id="rp-decommission-confirm-btn" class="btn btn-danger" disabled>
+                                <i class="ti ti-check" id="rp-decommission-confirm-icon"></i>
+                                <span id="rp-decommission-confirm-label">Confirm Removal</span>
                             </button>
-                            <button type="button" @click="decommissionStep = 'idle'; decommissionCode = ''; decommissionError = null" class="text-sm text-gray-500 dark:text-gray-400 hover:underline">Cancel</button>
+                            <button type="button" id="rp-decommission-cancel-btn" class="btn btn-link btn-sm">Cancel</button>
                         </div>
                     </div>
-                </template>
+                </div>
             </div>
         </div>
     </div>
 
     <x-slot name="scripts">
         <script>
-            function routerDetail() {
-                return {
-                    testing: false,
-                    loaded: false,
-                    liveStatus: '{{ $router->status }}',
-                    identity: null,
-                    boardDetected: null,
-                    version: null,
-                    uptime: null,
-                    cpuLoad: null,
-                    freeMemory: null,
-                    totalMemory: null,
-                    copied: false,
+            (function () {
+                var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                    decommissionStep: 'idle',
-                    decommissionCode: '',
-                    decommissionError: null,
-                    decommissionSending: false,
+                // === Live system info / test connection ===
+                var testBtn = document.getElementById('rp-test-conn-btn');
+                var testIcon = document.getElementById('rp-test-conn-icon');
+                var testLabel = document.getElementById('rp-test-conn-label');
+                var loadingEl = document.getElementById('rp-live-loading');
+                var infoEl = document.getElementById('rp-live-info');
 
-                    get memoryText() {
-                        if (!this.freeMemory || !this.totalMemory) return '—';
-                        const freeMb = Math.round(this.freeMemory / 1048576);
-                        const totalMb = Math.round(this.totalMemory / 1048576);
-                        return `${freeMb} MB / ${totalMb} MB`;
-                    },
+                async function testConnection() {
+                    testBtn.disabled = true;
+                    testIcon.className = 'ti ti-loader-2 icon-spin';
+                    testLabel.textContent = 'Testing...';
 
-                    get memPercent() {
-                        if (!this.freeMemory || !this.totalMemory) return null;
-                        return Math.round(((this.totalMemory - this.freeMemory) / this.totalMemory) * 100);
-                    },
+                    try {
+                        var res = await fetch("{{ route('routers.test-connection', $router) }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        });
+                        var data = await res.json();
+                        var online = data.status === 'online';
 
-                    init() {
-                        this.testConnection();
-                    },
+                        document.getElementById('rp-live-identity').textContent = data.identity ?? '—';
+                        document.getElementById('rp-live-board').textContent = data.board_model_detected ?? '—';
+                        document.getElementById('rp-live-version').textContent = data.version ?? '—';
+                        document.getElementById('rp-live-uptime').textContent = data.uptime ?? '—';
 
-                    async testConnection() {
-                        this.testing = true;
-                        try {
-                            const response = await fetch("{{ route('routers.test-connection', $router) }}", {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                    'Accept': 'application/json',
-                                },
-                            });
-                            const data = await response.json();
-                            this.liveStatus = data.status === 'online' ? 'online' : 'offline';
-                            this.identity = data.identity ?? null;
-                            this.boardDetected = data.board_model_detected ?? null;
-                            this.version = data.version ?? null;
-                            this.uptime = data.uptime ?? null;
-                            this.cpuLoad = data.cpu_load ?? null;
-                            this.freeMemory = data.free_memory ?? null;
-                            this.totalMemory = data.total_memory ?? null;
-                            this.loaded = true;
-                            this.updateBoardLed();
-                        } catch (e) {
-                            this.liveStatus = 'offline';
-                            this.loaded = true;
-                        } finally {
-                            this.testing = false;
+                        var cpuLoad = data.cpu_load ?? null;
+                        document.getElementById('rp-gauge-cpu').style.background = 'conic-gradient(var(--tblr-primary) ' + ((cpuLoad ?? 0) * 3.6) + 'deg, var(--tblr-border-color) 0deg)';
+                        document.getElementById('rp-gauge-cpu-value').textContent = cpuLoad !== null ? cpuLoad + '%' : '—';
+
+                        var freeMemory = data.free_memory ?? null;
+                        var totalMemory = data.total_memory ?? null;
+                        var memPercent = freeMemory && totalMemory ? Math.round(((totalMemory - freeMemory) / totalMemory) * 100) : 0;
+                        document.getElementById('rp-gauge-mem').style.background = 'conic-gradient(var(--tblr-success) ' + (memPercent * 3.6) + 'deg, var(--tblr-border-color) 0deg)';
+                        document.getElementById('rp-gauge-mem-value').textContent = freeMemory && totalMemory ? memPercent + '%' : '—';
+                        document.getElementById('rp-gauge-mem-detail').textContent = freeMemory && totalMemory
+                            ? Math.round(freeMemory / 1048576) + ' MB / ' + Math.round(totalMemory / 1048576) + ' MB'
+                            : '—';
+
+                        loadingEl.style.display = 'none';
+                        infoEl.classList.remove('d-none');
+                        infoEl.classList.add('d-flex');
+
+                        updateBoardLed(online);
+                    } catch (e) {
+                        updateBoardLed(false);
+                    } finally {
+                        testBtn.disabled = false;
+                        testIcon.className = 'ti ti-broadcast';
+                        testLabel.textContent = 'Test Connection';
+                    }
+                }
+
+                function updateBoardLed(online) {
+                    var led = document.querySelector('.router-board-led');
+                    if (!led) return;
+                    led.classList.remove('bg-green', 'bg-red', 'bg-amber');
+                    if (online) {
+                        led.classList.add('bg-green');
+                        led.style.animation = 'router-board-blink 1s steps(1) infinite';
+                    } else {
+                        led.classList.add('bg-red');
+                        led.style.animation = 'none';
+                    }
+                }
+
+                testBtn.addEventListener('click', testConnection);
+                testConnection();
+
+                // === Copy winbox address ===
+                var copyBtn = document.getElementById('rp-copy-winbox');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', function () {
+                        navigator.clipboard.writeText(copyBtn.getAttribute('data-rp-copy'));
+                        var icon = copyBtn.querySelector('i');
+                        icon.className = 'ti ti-check text-success';
+                        setTimeout(function () { icon.className = 'ti ti-copy'; }, 2000);
+                    });
+                }
+
+                // === Push captive portal to router ===
+                var pushBtn = document.getElementById('rp-push-portal-btn');
+                var pushIcon = document.getElementById('rp-push-portal-icon');
+                var pushLabel = document.getElementById('rp-push-portal-label');
+                var pushResult = document.getElementById('rp-push-portal-result');
+
+                pushBtn.addEventListener('click', async function () {
+                    pushBtn.disabled = true;
+                    pushIcon.className = 'ti ti-loader-2 icon-spin';
+                    pushLabel.textContent = 'Pushing...';
+                    pushResult.classList.add('d-none');
+
+                    try {
+                        var res = await fetch(pushBtn.getAttribute('data-rp-push-url'), {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        });
+                        var data = await res.json();
+                        var ok = res.ok;
+                        pushResult.textContent = ok
+                            ? 'Walled garden: ' + data.walled_garden + '. Hotspot files pushed: ' + data.hotspot_files_pushed + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).'
+                            : data.message;
+                        pushResult.className = 'small fw-bold mt-2 mb-0 ' + (ok ? 'text-success' : 'text-danger');
+                    } catch (e) {
+                        pushResult.textContent = 'Network error — could not reach the router.';
+                        pushResult.className = 'small fw-bold mt-2 mb-0 text-danger';
+                    } finally {
+                        pushBtn.disabled = false;
+                        pushIcon.className = 'ti ti-upload';
+                        pushLabel.textContent = 'Push Files to Router';
+                    }
+                });
+
+                // === Decommission flow ===
+                var idleWrap = document.getElementById('rp-decommission-idle');
+                var codeWrap = document.getElementById('rp-decommission-code');
+                var startBtn = document.getElementById('rp-decommission-start-btn');
+                var startIcon = document.getElementById('rp-decommission-start-icon');
+                var startLabel = document.getElementById('rp-decommission-start-label');
+                var codeInput = document.getElementById('rp-decommission-input');
+                var errorEl = document.getElementById('rp-decommission-error');
+                var confirmBtn = document.getElementById('rp-decommission-confirm-btn');
+                var confirmIcon = document.getElementById('rp-decommission-confirm-icon');
+                var confirmLabel = document.getElementById('rp-decommission-confirm-label');
+                var cancelBtn = document.getElementById('rp-decommission-cancel-btn');
+
+                startBtn.addEventListener('click', async function () {
+                    startBtn.disabled = true;
+                    startIcon.className = 'ti ti-loader-2 icon-spin';
+                    startLabel.textContent = 'Sending code...';
+
+                    try {
+                        var res = await fetch("{{ route('routers.decommission.request', $router) }}", {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                        });
+                        if (!res.ok) throw new Error();
+                        idleWrap.classList.add('d-none');
+                        codeWrap.classList.remove('d-none');
+                    } catch (e) {
+                        alert('Could not send a code. Please try again.');
+                    } finally {
+                        startBtn.disabled = false;
+                        startIcon.className = 'ti ti-trash';
+                        startLabel.textContent = 'Decommission';
+                    }
+                });
+
+                codeInput.addEventListener('input', function () {
+                    confirmBtn.disabled = codeInput.value.length !== 6;
+                });
+
+                cancelBtn.addEventListener('click', function () {
+                    idleWrap.classList.remove('d-none');
+                    codeWrap.classList.add('d-none');
+                    codeInput.value = '';
+                    errorEl.classList.add('d-none');
+                });
+
+                confirmBtn.addEventListener('click', async function () {
+                    confirmBtn.disabled = true;
+                    confirmIcon.className = 'ti ti-loader-2 icon-spin';
+                    confirmLabel.textContent = 'Verifying...';
+                    errorEl.classList.add('d-none');
+
+                    try {
+                        var res = await fetch("{{ route('routers.decommission.confirm', $router) }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                            body: JSON.stringify({ code: codeInput.value }),
+                        });
+                        var data = await res.json();
+                        if (!res.ok) {
+                            errorEl.textContent = data.message || 'That code is incorrect or has expired.';
+                            errorEl.classList.remove('d-none');
+                            confirmBtn.disabled = false;
+                            confirmIcon.className = 'ti ti-check';
+                            confirmLabel.textContent = 'Confirm Removal';
+                            return;
                         }
-                    },
-
-                    copyWinbox() {
-                        navigator.clipboard.writeText('{{ config('vpn.public_ip') }}:{{ $router->winbox_proxy_port }}');
-                        this.copied = true;
-                        setTimeout(() => this.copied = false, 2000);
-                    },
-
-                    updateBoardLed() {
-                        const led = document.querySelector('.router-board-led');
-                        if (!led) return;
-                        led.classList.remove('bg-green-500', 'bg-red-500', 'bg-amber-500');
-                        if (this.liveStatus === 'online') {
-                            led.classList.add('bg-green-500');
-                            led.style.animation = 'router-board-blink 1s steps(1) infinite';
-                        } else {
-                            led.classList.add('bg-red-500');
-                            led.style.animation = 'none';
-                        }
-                    },
-
-                    async startDecommission() {
-                        this.decommissionSending = true;
-                        this.decommissionError = null;
-                        try {
-                            const res = await fetch("{{ route('routers.decommission.request', $router) }}", {
-                                method: 'POST',
-                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                            });
-                            if (!res.ok) throw new Error();
-                            this.decommissionStep = 'code';
-                        } catch (e) {
-                            this.decommissionError = 'Could not send a code. Please try again.';
-                        } finally {
-                            this.decommissionSending = false;
-                        }
-                    },
-
-                    async confirmDecommission() {
-                        this.decommissionSending = true;
-                        this.decommissionError = null;
-                        try {
-                            const res = await fetch("{{ route('routers.decommission.confirm', $router) }}", {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                                body: JSON.stringify({ code: this.decommissionCode }),
-                            });
-                            const data = await res.json();
-                            if (!res.ok) {
-                                this.decommissionError = data.message || 'That code is incorrect or has expired.';
-                                this.decommissionSending = false;
-                                return;
-                            }
-                            window.location.href = data.redirect;
-                        } catch (e) {
-                            this.decommissionError = 'Network error. Please try again.';
-                            this.decommissionSending = false;
-                        }
-                    },
-                };
-            }
+                        window.location.href = data.redirect;
+                    } catch (e) {
+                        errorEl.textContent = 'Network error. Please try again.';
+                        errorEl.classList.remove('d-none');
+                        confirmBtn.disabled = false;
+                        confirmIcon.className = 'ti ti-check';
+                        confirmLabel.textContent = 'Confirm Removal';
+                    }
+                });
+            })();
         </script>
     </x-slot>
 </x-sidebar-layout>

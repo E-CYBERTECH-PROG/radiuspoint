@@ -1,0 +1,14 @@
+// Brand overrides for @tabler/core, applied before its own !default variables
+// are evaluated. Anchored on the app's existing brand color (#7367f0) so the
+// migration keeps the same accent as the old Tailwind indigo/blue scale.
+// See App\Support\ThemePalette for the per-user runtime accent override,
+// which works by overriding the --tblr-primary CSS custom property emitted
+// from these variables, not by editing this file.
+
+$primary: #7367f0;
+
+$font-family-sans-serif: 'Montserrat', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-family-monospace: 'Fira Code', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+$enable-dark-mode: true;
+$color-mode-type: data;
