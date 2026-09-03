@@ -44,8 +44,8 @@ class TenantController extends Controller
             'routers' => $this->tenantScoped(Router::class, $tenant)->count(),
             'pppoe_active' => $this->tenantScoped(PppoeUser::class, $tenant)->where('status', 'active')->count(),
             'pppoe_total' => $this->tenantScoped(PppoeUser::class, $tenant)->count(),
-            'hotspot_active' => $this->tenantScoped(HotspotUser::class, $tenant)->where('status', 'active')->count(),
-            'hotspot_total' => $this->tenantScoped(HotspotUser::class, $tenant)->count(),
+            'hotspot_active' => $this->tenantScoped(HotspotUser::class, $tenant)->where('is_voucher', false)->where('status', 'active')->count(),
+            'hotspot_total' => $this->tenantScoped(HotspotUser::class, $tenant)->where('is_voucher', false)->count(),
             'plans' => $this->tenantScoped(Plan::class, $tenant)->count(),
             'revenue_this_month' => $this->tenantScoped(Transaction::class, $tenant)
                 ->where('status', 'success')

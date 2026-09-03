@@ -11,7 +11,6 @@ use App\Services\RadiusSyncService;
 use App\Services\SmsTriggerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
@@ -71,6 +70,7 @@ class BillingController extends Controller
         $hotspotUser = HotspotUser::withoutGlobalScope('tenant')->create([
             'tenant_id' => $transaction->tenant_id,
             'phone_number' => $transaction->phone_number,
+            'mac_address' => $transaction->mac_address,
             'current_plan_id' => $plan->id,
             'current_router_id' => $transaction->router_id,
             'status' => 'active',
@@ -79,17 +79,22 @@ class BillingController extends Controller
 
         $transaction->update(['hotspot_user_id' => $hotspotUser->id]);
 
-        $password = Str::password(10);
-        RadiusSyncService::sync($hotspotUser->phone_number, $password, $plan->speed_limit);
-        RadiusSyncService::setExpiryWindow($hotspotUser->phone_number, $hotspotUser->expires_at);
-        ExpiredBlockService::clear(Router::withoutGlobalScope('tenant')->find($transaction->router_id), $hotspotUser->phone_number);
+        // The RADIUS credential is the M-Pesa receipt itself — username=password=code, same
+        // scheme as vouchers (VoucherController::generate()) — rather than the phone number.
+        // The receipt is what's shown on the router's active-users list and what the customer
+        // re-enters to log back in (see CaptivePortalController's lookup()/lookupReceipt()).
+        // phone_number stays the app-level identity (SMS, records, dashboards) only.
+        $code = $transaction->mpesa_receipt;
+        RadiusSyncService::sync($code, $code, $plan->speed_limit);
+        RadiusSyncService::setExpiryWindow($code, $hotspotUser->expires_at);
+        ExpiredBlockService::clear(Router::withoutGlobalScope('tenant')->find($transaction->router_id), $code);
 
         SmsTriggerService::fire(
             $transaction->tenant_id, 'hotspot_purchase_confirmed', $hotspotUser->phone_number,
-            ['name' => $hotspotUser->phone_number, 'plan' => $plan->name, 'password' => $password, 'expires_at' => $hotspotUser->expires_at?->format('d M Y H:i')],
-            fallbackMessage: "Payment received for {$plan->name}. Login with Username: {$hotspotUser->phone_number} Password: {$password}"
+            ['name' => $hotspotUser->phone_number, 'plan' => $plan->name, 'password' => $code, 'expires_at' => $hotspotUser->expires_at?->format('d M Y H:i')],
+            fallbackMessage: "Payment received for {$plan->name}. Login with code: {$code}"
         );
 
-        Log::info("HotspotUser {$hotspotUser->phone_number} provisioned successfully with {$plan->speed_limit} limits.");
+        Log::info("HotspotUser {$hotspotUser->phone_number} provisioned successfully with {$plan->speed_limit} limits (code: {$code}).");
     }
 }

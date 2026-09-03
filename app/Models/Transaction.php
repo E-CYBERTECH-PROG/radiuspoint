@@ -21,6 +21,7 @@ class Transaction extends Model
     'amount',
     'customer_name',
     'phone_number',
+    'mac_address',
     'package_name',
     'payment_method',
     'status',

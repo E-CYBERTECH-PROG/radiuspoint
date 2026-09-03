@@ -32,6 +32,7 @@ class CustomerController extends Controller
 
         if ($tab === 'hotspot') {
             $users = HotspotUser::where('tenant_id', $tenantId)
+                ->where('is_voucher', false)
                 ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                     $q->where('phone_number', 'like', "%{$search}%")->orWhere('mac_address', 'like', "%{$search}%");
                 }))
@@ -65,16 +66,20 @@ class CustomerController extends Controller
         $hotspotPlans = $allPlans->where('type', 'hotspot')->values();
 
         $pppoeCount = PppoeUser::where('tenant_id', $tenantId)->count();
-        $hotspotCount = HotspotUser::where('tenant_id', $tenantId)->count();
+        // Vouchers are hotspot_users rows under the hood (is_voucher=true) but aren't real
+        // walk-up customers until redeemed, and even then belong on their own Vouchers page
+        // (vouchers.index) — excluded from every count/list here so they don't inflate or
+        // pollute the Customers hub.
+        $hotspotCount = HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->count();
 
         $stats = [
             'total' => $pppoeCount + $hotspotCount,
             'active' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'active')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->where('status', 'active')->count(),
+                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'active')->count(),
             'expired' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'expired')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->where('status', 'expired')->count(),
+                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'expired')->count(),
             'disabled' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'offline')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->whereIn('status', ['offline', 'unused'])->count(),
+                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->whereIn('status', ['offline', 'unused'])->count(),
         ];
 
         return view('customers.index', compact(
@@ -125,7 +130,7 @@ class CustomerController extends Controller
         // row once a session actually starts), so these double as the "Access-Accept" log the
         // detail page's connection-log timeline shows — this app doesn't have a radpostauth
         // table logging raw auth accept/reject events.
-        $radiusUsername = $type === 'hotspot' ? $user->phone_number : $user->username;
+        $radiusUsername = $type === 'hotspot' ? $user->radiusUsername() : $user->username;
         $connectionLogs = $radiusUsername
             ? DB::table('radacct')->where('username', $radiusUsername)->orderByDesc('acctstarttime')->limit(10)->get()
             : collect();
@@ -156,7 +161,7 @@ class CustomerController extends Controller
             return null;
         }
 
-        $username = $user instanceof HotspotUser ? $user->phone_number : $user->username;
+        $username = $user instanceof HotspotUser ? $user->radiusUsername() : $user->username;
         $cycleStart = UsageCycleService::cycleStart($user->plan, $user->expires_at);
         $usedBytes = UsageCycleService::bytesUsed($username, $cycleStart);
 

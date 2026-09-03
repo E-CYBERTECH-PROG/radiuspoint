@@ -25,6 +25,7 @@ class ReportController extends Controller
         $hotspot = DB::table('hotspot_users')
             ->where('tenant_id', $tenantId)
             ->where('status', 'expired')
+            ->where('is_voucher', false)
             ->selectRaw("'hotspot' as type, id, phone_number as identifier, NULL as name, current_plan_id, current_router_id, expires_at");
 
         $pppoe = DB::table('pppoe_users')
@@ -214,8 +215,18 @@ class ReportController extends Controller
             ->sortByDesc('total_gb')
             ->values();
 
-        // Top 10 data-consuming customers across hotspot and PPPoE.
-        $hotspotByPhone = \App\Models\HotspotUser::where('tenant_id', $tenantId)->pluck('phone_number')->flip();
+        // Top 10 data-consuming customers across hotspot and PPPoE. Excludes vouchers — not
+        // real walk-up customers. A hotspot session's radacct username is phone_number only
+        // for vouchers/manually created accounts; an auto-purchased account's actual RADIUS
+        // credential is its Transaction's M-Pesa receipt (see HotspotUser::radiusUsername()),
+        // so both are indexed here.
+        $hotspotByPhone = \App\Models\HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->pluck('phone_number')->flip();
+        $hotspotByReceipt = Transaction::where('tenant_id', $tenantId)
+            ->where('status', 'success')
+            ->whereNotNull('hotspot_user_id')
+            ->whereNotNull('mpesa_receipt')
+            ->pluck('mpesa_receipt')
+            ->flip();
         $pppoeByUsername = \App\Models\PppoeUser::where('tenant_id', $tenantId)->pluck('username')->flip();
 
         $topUsers = DB::table('radacct')
@@ -225,10 +236,10 @@ class ReportController extends Controller
             ->orderByDesc('total_bytes')
             ->limit(10)
             ->get()
-            ->filter(fn ($row) => isset($hotspotByPhone[$row->username]) || isset($pppoeByUsername[$row->username]))
+            ->filter(fn ($row) => isset($hotspotByPhone[$row->username]) || isset($hotspotByReceipt[$row->username]) || isset($pppoeByUsername[$row->username]))
             ->map(fn ($row) => [
                 'username' => $row->username,
-                'type' => isset($hotspotByPhone[$row->username]) ? 'Hotspot' : 'PPPoE',
+                'type' => (isset($hotspotByPhone[$row->username]) || isset($hotspotByReceipt[$row->username])) ? 'Hotspot' : 'PPPoE',
                 'total_gb' => round($row->total_bytes / 1073741824, 2),
             ])
             ->values();

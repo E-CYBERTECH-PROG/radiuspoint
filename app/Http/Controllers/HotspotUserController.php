@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\HotspotUser;
 use App\Models\Plan;
 use App\Models\Router;
+use App\Models\Transaction;
 use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use App\Services\SessionDisconnectService;
@@ -22,7 +23,10 @@ class HotspotUserController extends Controller
     {
         $search = $this->searchTerm($request);
 
+        // Vouchers (is_voucher=true) have their own page (vouchers.index) — excluded here so a
+        // redeemed voucher doesn't show up as a regular walk-up hotspot customer.
         $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)
+            ->where('is_voucher', false)
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('phone_number', 'like', "%{$search}%")->orWhere('mac_address', 'like', "%{$search}%");
             }))
@@ -165,7 +169,7 @@ class HotspotUserController extends Controller
         }
 
         $cycleStart = UsageCycleService::cycleStart($plan, $hotspot_user->expires_at);
-        $usedBytes = UsageCycleService::bytesUsed($hotspot_user->phone_number, $cycleStart);
+        $usedBytes = UsageCycleService::bytesUsed($hotspot_user->radiusUsername(), $cycleStart);
 
         return [
             'cycle_start' => $cycleStart,
@@ -217,17 +221,18 @@ class HotspotUserController extends Controller
 
         if ($hotspot_user->status === 'active') {
             $plan = Plan::find($hotspot_user->current_plan_id);
-            if (RadiusSyncService::hasCredential($hotspot_user->phone_number)) {
+            $radiusUsername = $hotspot_user->radiusUsername();
+            if (RadiusSyncService::hasCredential($radiusUsername)) {
                 // Preserve the existing password — only refresh the bandwidth profile.
-                RadiusSyncService::updateRateLimit($hotspot_user->phone_number, $plan?->speed_limit);
+                RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
             } else {
-                RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $plan?->speed_limit);
+                RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
             }
             if ($hotspot_user->expires_at) {
-                RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $hotspot_user->expires_at);
+                RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
             }
         } else {
-            RadiusSyncService::remove($hotspot_user->phone_number);
+            RadiusSyncService::remove($hotspot_user->radiusUsername());
         }
 
         $redirectTo = $request->input('redirect_to');
@@ -238,7 +243,7 @@ class HotspotUserController extends Controller
 
     public function destroy(HotspotUser $hotspot_user)
     {
-        RadiusSyncService::remove($hotspot_user->phone_number);
+        RadiusSyncService::remove($hotspot_user->radiusUsername());
         $hotspot_user->delete();
 
         return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer removed.');
@@ -270,12 +275,13 @@ class HotspotUserController extends Controller
         $hotspot_user->update(['status' => 'active', 'expires_at' => $newExpiry, 'fup_throttled_at' => null]);
 
         $plan = $hotspot_user->plan;
-        if (RadiusSyncService::hasCredential($hotspot_user->phone_number)) {
-            RadiusSyncService::updateRateLimit($hotspot_user->phone_number, $plan?->speed_limit);
+        $radiusUsername = $hotspot_user->radiusUsername();
+        if (RadiusSyncService::hasCredential($radiusUsername)) {
+            RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
         } else {
-            RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $plan?->speed_limit);
+            RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
         }
-        RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $newExpiry);
+        RadiusSyncService::setExpiryWindow($radiusUsername, $newExpiry);
 
         $message = "Extended to {$newExpiry->format('d M Y H:i')}.";
 
@@ -311,7 +317,7 @@ class HotspotUserController extends Controller
         }
 
         $disconnected = SessionDisconnectService::disconnect(
-            $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $hotspot_user->phone_number
+            $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $hotspot_user->radiusUsername()
         );
         $message = $disconnected ? 'Session disconnected.' : 'No active session found (they may already be offline).';
 
@@ -344,13 +350,14 @@ class HotspotUserController extends Controller
     {
         $hotspot_user->update(['status' => 'active']);
 
-        if (RadiusSyncService::hasCredential($hotspot_user->phone_number)) {
-            RadiusSyncService::updateRateLimit($hotspot_user->phone_number, $hotspot_user->plan?->speed_limit);
+        $radiusUsername = $hotspot_user->radiusUsername();
+        if (RadiusSyncService::hasCredential($radiusUsername)) {
+            RadiusSyncService::updateRateLimit($radiusUsername, $hotspot_user->plan?->speed_limit);
         } else {
-            RadiusSyncService::sync($hotspot_user->phone_number, Str::password(10), $hotspot_user->plan?->speed_limit);
+            RadiusSyncService::sync($radiusUsername, Str::password(10), $hotspot_user->plan?->speed_limit);
         }
         if ($hotspot_user->expires_at) {
-            RadiusSyncService::setExpiryWindow($hotspot_user->phone_number, $hotspot_user->expires_at);
+            RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
         }
 
         $message = 'Customer enabled.';
@@ -379,7 +386,7 @@ class HotspotUserController extends Controller
         $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)->where('status', $status)->get();
 
         foreach ($users as $user) {
-            RadiusSyncService::remove($user->phone_number);
+            RadiusSyncService::remove($user->radiusUsername());
         }
         HotspotUser::where('tenant_id', Auth::user()->tenant_id)->where('status', $status)->delete();
 
@@ -387,9 +394,11 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * Same batched-per-router pattern as PppoeUserController::liveStatus(). Matched by
-     * phone_number since RadiusSyncService::sync() uses it as the RADIUS username, which is
-     * what RouterOS's active-session "user" field contains.
+     * Same batched-per-router pattern as PppoeUserController::liveStatus(). Matched by each
+     * customer's actual RADIUS username (HotspotUser::radiusUsername()) — not always
+     * phone_number, since an auto-purchased account's real credential is its M-Pesa receipt —
+     * which is what RouterOS's active-session "user" field contains. Results stay keyed by
+     * phone_number in the response since that's what the frontend requested by and renders.
      */
     public function liveStatus(Request $request)
     {
@@ -398,7 +407,15 @@ class HotspotUserController extends Controller
         $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)
             ->whereIn('phone_number', $phoneNumbers)
             ->whereNotNull('current_router_id')
-            ->get(['phone_number', 'current_router_id']);
+            ->get(['id', 'phone_number', 'current_router_id']);
+
+        // Batch-resolve radius usernames in one query instead of one-per-user.
+        $receiptsByUserId = Transaction::whereIn('hotspot_user_id', $users->pluck('id'))
+            ->where('status', 'success')
+            ->orderByDesc('created_at')
+            ->get(['hotspot_user_id', 'mpesa_receipt'])
+            ->unique('hotspot_user_id')
+            ->pluck('mpesa_receipt', 'hotspot_user_id');
 
         $routers = Router::whereIn('id', $users->pluck('current_router_id')->unique())->get()->keyBy('id');
         $result = [];
@@ -421,7 +438,8 @@ class HotspotUserController extends Controller
                 $activeByUser = collect($api->query('/ip/hotspot/active/print'))->keyBy('user');
 
                 foreach ($groupUsers as $user) {
-                    $session = $activeByUser->get($user->phone_number);
+                    $radiusUsername = $receiptsByUserId->get($user->id) ?: $user->phone_number;
+                    $session = $activeByUser->get($radiusUsername);
                     $result[$user->phone_number] = $session
                         ? ['online' => true, 'uptime' => $session['uptime'] ?? null, 'address' => $session['address'] ?? null, 'id' => $session['.id'] ?? null, 'router_id' => $routerId]
                         : ['online' => false];

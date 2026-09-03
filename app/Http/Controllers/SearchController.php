@@ -29,6 +29,7 @@ class SearchController extends Controller
 
         if ($q !== '') {
             $results['hotspot_users'] = HotspotUser::where('tenant_id', $tenantId)
+                ->where('is_voucher', false)
                 ->where('phone_number', 'like', "%{$q}%")
                 ->limit(8)->get(['id', 'phone_number', 'status']);
 

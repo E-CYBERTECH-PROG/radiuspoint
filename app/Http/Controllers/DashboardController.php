@@ -19,24 +19,35 @@ class DashboardController extends Controller
         $now = Carbon::now();
 
         // radacct doesn't distinguish PPPoE from Hotspot sessions itself — matched by whether
-        // the open session's username belongs to a PppoeUser or a HotspotUser (phone_number is
-        // the RADIUS username for hotspot customers). Scoped to this tenant's own routers since
-        // radacct has no tenant_id column.
+        // the open session's username belongs to a PppoeUser or a HotspotUser. Scoped to this
+        // tenant's own routers since radacct has no tenant_id column.
         $routerIps = Router::where('tenant_id', Auth::user()->tenant_id)->pluck('ip_address');
         $openSessionUsernames = $routerIps->isEmpty()
             ? collect()
             : DB::table('radacct')->whereIn('nasipaddress', $routerIps)->whereNull('acctstoptime')->pluck('username');
 
         $onlinePpp = $openSessionUsernames->isEmpty() ? 0 : PppoeUser::whereIn('username', $openSessionUsernames)->count();
-        $onlineHotspot = $openSessionUsernames->isEmpty() ? 0 : HotspotUser::whereIn('phone_number', $openSessionUsernames)->count();
+        // Vouchers (is_voucher=true) are excluded everywhere in this method — they aren't real
+        // walk-up customers until redeemed, and even then belong on their own Vouchers page,
+        // not folded into "hotspot customer" counts/charts here.
+        //
+        // A hotspot session's RADIUS username is phone_number only for vouchers/manually
+        // created accounts — an auto-purchased account's actual credential is its Transaction's
+        // M-Pesa receipt (see HotspotUser::radiusUsername()), so both need checking here.
+        $onlineHotspot = $openSessionUsernames->isEmpty() ? 0 : HotspotUser::where('is_voucher', false)
+            ->where(function ($q) use ($openSessionUsernames) {
+                $q->whereIn('phone_number', $openSessionUsernames)
+                    ->orWhereHas('transactions', fn ($t) => $t->where('status', 'success')->whereIn('mpesa_receipt', $openSessionUsernames));
+            })
+            ->count();
 
         $stats = [
             'income_today' => (float) Transaction::whereDate('created_at', $now->copy()->startOfDay())->where('status', 'success')->sum('amount'),
             'income_month' => (float) Transaction::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->where('status', 'success')->sum('amount'),
             'income_last_month' => (float) Transaction::whereMonth('created_at', $now->copy()->subMonth()->month)->whereYear('created_at', $now->copy()->subMonth()->year)->where('status', 'success')->sum('amount'),
-            'hotspot_active' => HotspotUser::where('status', 'active')->count(),
+            'hotspot_active' => HotspotUser::where('is_voucher', false)->where('status', 'active')->count(),
             'pppoe_active' => PppoeUser::where('status', 'active')->count(),
-            'customers_total' => HotspotUser::count() + PppoeUser::count(),
+            'customers_total' => HotspotUser::where('is_voucher', false)->count() + PppoeUser::count(),
             'pppoe_expired' => PppoeUser::where('status', 'expired')->count(),
             'online_ppp' => $onlinePpp,
             'online_hotspot' => $onlineHotspot,
@@ -59,11 +70,11 @@ class DashboardController extends Controller
         $growthData = [];
         for ($i = 5; $i >= 0; $i--) {
             $month = $now->copy()->subMonths($i);
-            $growthData[] = HotspotUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count()
+            $growthData[] = HotspotUser::where('is_voucher', false)->whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count()
                 + PppoeUser::whereMonth('created_at', $month->month)->whereYear('created_at', $month->year)->count();
         }
 
-        $subscriptionsThisMonth = HotspotUser::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count()
+        $subscriptionsThisMonth = HotspotUser::where('is_voucher', false)->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count()
             + PppoeUser::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
 
         // Last 6 days — a short, glanceable sparkline next to "this month"'s headline number,
@@ -71,7 +82,7 @@ class DashboardController extends Controller
         $subscriptionsSparkline = [];
         for ($i = 5; $i >= 0; $i--) {
             $day = $now->copy()->subDays($i);
-            $subscriptionsSparkline[] = HotspotUser::whereDate('created_at', $day)->count()
+            $subscriptionsSparkline[] = HotspotUser::where('is_voucher', false)->whereDate('created_at', $day)->count()
                 + PppoeUser::whereDate('created_at', $day)->count();
         }
 

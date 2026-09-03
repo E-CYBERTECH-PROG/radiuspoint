@@ -21,6 +21,16 @@ class PppoeUser extends Model
         return $this->belongsTo(Router::class, 'current_router_id');
     }
 
+    /**
+     * The RADIUS username — always the username column for PPPoE (no receipt-based scheme
+     * here). Exists so callers shared with HotspotUser (whose RADIUS username isn't always
+     * phone_number — see HotspotUser::radiusUsername()) can treat both the same way.
+     */
+    public function radiusUsername(): string
+    {
+        return $this->username;
+    }
+
     protected $fillable = [
         'tenant_id',
         'username',

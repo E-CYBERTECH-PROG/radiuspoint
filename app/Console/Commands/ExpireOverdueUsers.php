@@ -24,11 +24,12 @@ class ExpireOverdueUsers extends Command
 
         foreach (HotspotUser::withoutGlobalScope('tenant')->where('status', 'active')->where('expires_at', '<', now())->get() as $user) {
             $user->update(['status' => 'expired']);
-            RadiusSyncService::remove($user->phone_number);
+            $radiusUsername = $user->radiusUsername();
+            RadiusSyncService::remove($radiusUsername);
 
             if ($user->router) {
-                $this->blockIfConnected($user->router, '/ip/hotspot/active/print', 'user', $user->phone_number);
-                SessionDisconnectService::disconnect($user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $user->phone_number);
+                $this->blockIfConnected($user->router, '/ip/hotspot/active/print', 'user', $radiusUsername);
+                SessionDisconnectService::disconnect($user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername);
             }
 
             $expiredCount++;

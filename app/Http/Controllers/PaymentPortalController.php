@@ -50,6 +50,7 @@ class PaymentPortalController extends Controller
             'tenant_id' => $router->tenant_id,
             'customer_name' => $phone,
             'phone_number' => $phone,
+            'mac_address' => $request->mac,
             'package_name' => $plan->name,
             'amount' => $plan->price,
             'payment_method' => 'M-Pesa STK',
@@ -149,21 +150,13 @@ class PaymentPortalController extends Controller
             ->where('tenant_id', $router->tenant_id)
             ->firstOrFail();
 
-        $hotspotUser = $transaction->hotspot_user_id
-            ? \App\Models\HotspotUser::withoutGlobalScope('tenant')->find($transaction->hotspot_user_id)
-            : null;
-
-        $password = $hotspotUser
-            ? \Illuminate\Support\Facades\DB::table('radcheck')
-                ->where('username', $hotspotUser->phone_number)
-                ->where('attribute', 'Cleartext-Password')
-                ->value('value')
-            : null;
-
+        // The RADIUS credential synced at activation is username=password=this transaction's
+        // own M-Pesa receipt (see BillingController::activateHotspotUser()) — no radcheck
+        // lookup needed, the receipt code already known here IS the credential.
         return response()->json([
             'status' => $transaction->status,
-            'username' => $hotspotUser?->phone_number,
-            'password' => $password,
+            'username' => $transaction->mpesa_receipt,
+            'password' => $transaction->mpesa_receipt,
         ]);
     }
 }

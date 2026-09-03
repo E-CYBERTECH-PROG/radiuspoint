@@ -28,16 +28,17 @@ class SyncHotspotConnectionInfo extends Command
 
         foreach ($candidates as $user) {
             $changes = [];
+            $radiusUsername = $user->radiusUsername();
 
             if (! $user->mac_address) {
-                $mac = RadiusSyncService::latestSessionMac($user->phone_number);
+                $mac = RadiusSyncService::latestSessionMac($radiusUsername);
                 if ($mac) {
                     $changes['mac_address'] = $mac;
                 }
             }
 
             if (! $user->current_router_id) {
-                $routerId = RadiusSyncService::latestSessionRouterId($user->phone_number);
+                $routerId = RadiusSyncService::latestSessionRouterId($radiusUsername);
                 if ($routerId) {
                     $changes['current_router_id'] = $routerId;
                 }

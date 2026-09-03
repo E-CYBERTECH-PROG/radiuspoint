@@ -12,7 +12,6 @@ use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Services\RadiusSyncService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -70,10 +69,8 @@ class CaptivePortalController extends Controller
                 ->first();
 
             if ($existing) {
-                $autoReconnect = [
-                    'username' => $existing->phone_number,
-                    'password' => $this->radiusPassword($existing->phone_number),
-                ];
+                $code = $existing->radiusUsername();
+                $autoReconnect = ['username' => $code, 'password' => $code];
             }
         }
 
@@ -143,7 +140,9 @@ class CaptivePortalController extends Controller
             ->latest()
             ->first();
 
-        if (! $hotspotUser) {
+        $code = $hotspotUser?->radiusUsername();
+
+        if (! $code) {
             return response()->json([
                 'found' => false,
                 'message' => 'No active plan found for this number. Buy a plan below to get connected.',
@@ -152,8 +151,8 @@ class CaptivePortalController extends Controller
 
         return response()->json([
             'found' => true,
-            'username' => $hotspotUser->phone_number,
-            'password' => $this->radiusPassword($hotspotUser->phone_number),
+            'username' => $code,
+            'password' => $code,
         ]);
     }
 
@@ -209,23 +208,13 @@ class CaptivePortalController extends Controller
             ]);
         }
 
+        // The receipt the customer just pasted IS the credential (see
+        // BillingController::activateHotspotUser()) — no further lookup needed.
         return response()->json([
             'found' => true,
-            'username' => $hotspotUser->phone_number,
-            'password' => $this->radiusPassword($hotspotUser->phone_number),
+            'username' => $code,
+            'password' => $code,
         ]);
-    }
-
-    /**
-     * Cleartext RADIUS password for a username — reused by lookup(), lookupReceipt(), and the
-     * MAC auto-reconnect check in show().
-     */
-    private function radiusPassword(string $username): ?string
-    {
-        return DB::table('radcheck')
-            ->where('username', $username)
-            ->where('attribute', 'Cleartext-Password')
-            ->value('value');
     }
 
     /**
