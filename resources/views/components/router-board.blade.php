@@ -14,12 +14,14 @@
 @endphp
 
 <div {{ $attributes->merge(['class' => 'd-inline-block']) }}>
-    {{-- Real product photo, hotlinked from MikroTik's official CDN. The uplink status LED
-         is overlaid on the photo itself rather than a separate port diagram — we don't have
-         per-model port coordinates to place it on the correct physical port precisely. --}}
+    {{-- Real product photo, downloaded from MikroTik's site into public/images/mikrotik/ (see
+         config/mikrotik_models.php) rather than hotlinked, so it doesn't disappear if that CDN
+         is slow/unreachable. The uplink status LED is overlaid on the photo itself rather than
+         a separate port diagram — we don't have per-model port coordinates to place it on the
+         correct physical port precisely. --}}
     <div class="router-board-photo {{ $compact ? 'router-board-photo-sm' : '' }} position-relative bg-white border rounded d-flex align-items-center justify-content-center overflow-hidden mx-auto">
         @if ($image)
-            <img src="{{ $image }}" loading="lazy" alt="MikroTik board photo" class="w-100 h-100 p-2" style="object-fit:contain">
+            <img src="{{ asset($image) }}" loading="lazy" alt="MikroTik board photo" class="w-100 h-100 p-2" style="object-fit:contain">
         @else
             <i class="ti ti-router text-muted {{ $compact ? 'fs-3' : '' }}" style="{{ $compact ? '' : 'font-size:3rem' }}"></i>
         @endif

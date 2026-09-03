@@ -43,9 +43,6 @@
             <a href="{{ route('routers.show', $router) }}" class="d-inline-flex align-items-center gap-2">
                 <i class="ti ti-arrow-left icon"></i> Back to {{ $router->name }}
             </a>
-            <a href="{{ route('routers.show', $router) }}#captive-portal" class="text-muted d-inline-flex align-items-center gap-2">
-                <i class="ti ti-world icon"></i> Captive Portal
-            </a>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span id="rp-monitor-dot" class="rounded-circle bg-secondary" style="width:.625rem;height:.625rem"></span>

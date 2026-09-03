@@ -109,9 +109,6 @@
                                     <a href="{{ route('routers.monitor', $router) }}" class="text-muted" title="Live Monitor">
                                         <i class="ti ti-activity"></i>
                                     </a>
-                                    <a href="{{ route('routers.show', $router) }}#captive-portal" class="text-muted" title="Captive Portal">
-                                        <i class="ti ti-world"></i>
-                                    </a>
                                 </div>
                             </td>
                             <td class="text-center">
