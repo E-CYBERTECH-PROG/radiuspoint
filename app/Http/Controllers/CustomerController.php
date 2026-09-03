@@ -14,17 +14,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Single "hub" listing that sits behind the sidebar's Customers link — PPPoE and Hotspot
- * customers are still separate tables/pages under the hood (pppoe-users.*, hotspot-users.*),
- * this just tabs between them from one screen instead of making that split a sidebar
- * dropdown. "Static" and "DHCP" tabs are shown inert — this app has no such connection type.
+ * PPPoE and Hotspot customers each get their own URL (/customers/pppoe, /customers/hotspot —
+ * see the sidebar's CRM > Customers submenu) but share this controller and the same
+ * customers.index/customers.show Blade views, since the two tables/pages are otherwise
+ * identical in layout. "Static" and "DHCP" tabs are shown inert — this app has no such
+ * connection type.
  */
 class CustomerController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, string $type)
     {
         $tenantId = Auth::user()->tenant_id;
-        $tab = $request->get('tab') === 'hotspot' ? 'hotspot' : 'pppoe';
+        $tab = $type;
         $search = $this->searchTerm($request);
 
         $plans = Plan::where('tenant_id', $tenantId)->where('type', $tab)->get();
@@ -65,26 +66,29 @@ class CustomerController extends Controller
         $pppoePlans = $allPlans->where('type', 'pppoe')->values();
         $hotspotPlans = $allPlans->where('type', 'hotspot')->values();
 
-        $pppoeCount = PppoeUser::where('tenant_id', $tenantId)->count();
-        // Vouchers are hotspot_users rows under the hood (is_voucher=true) but aren't real
-        // walk-up customers until redeemed, and even then belong on their own Vouchers page
-        // (vouchers.index) — excluded from every count/list here so they don't inflate or
-        // pollute the Customers hub.
-        $hotspotCount = HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->count();
-
-        $stats = [
-            'total' => $pppoeCount + $hotspotCount,
-            'active' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'active')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'active')->count(),
-            'expired' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'expired')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'expired')->count(),
-            'disabled' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'offline')->count()
-                + HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->whereIn('status', ['offline', 'unused'])->count(),
-        ];
+        // Scoped to this page's own type only — a PPPoE customer shouldn't inflate the KPI
+        // tiles on the Hotspot page or vice versa, now that they're separate pages rather than
+        // tabs on one shared total. Vouchers (is_voucher=true) are excluded from every hotspot
+        // count here — they aren't real walk-up customers until redeemed, and even then belong
+        // on their own Vouchers page (vouchers.index).
+        if ($tab === 'hotspot') {
+            $stats = [
+                'total' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->count(),
+                'active' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'active')->count(),
+                'expired' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'expired')->count(),
+                'disabled' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->whereIn('status', ['offline', 'unused'])->count(),
+            ];
+        } else {
+            $stats = [
+                'total' => PppoeUser::where('tenant_id', $tenantId)->count(),
+                'active' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'active')->count(),
+                'expired' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'expired')->count(),
+                'disabled' => PppoeUser::where('tenant_id', $tenantId)->where('status', 'offline')->count(),
+            ];
+        }
 
         return view('customers.index', compact(
-            'users', 'plans', 'allPlans', 'pppoePlans', 'hotspotPlans', 'routers', 'tab',
-            'stats', 'pppoeCount', 'hotspotCount'
+            'users', 'plans', 'allPlans', 'pppoePlans', 'hotspotPlans', 'routers', 'tab', 'stats'
         ));
     }
 
@@ -94,9 +98,16 @@ class CustomerController extends Controller
      * than the panel ever did: transaction history and the latest RADIUS session, on top of
      * the same status/plan/usage/expiry the panel already covered.
      */
-    public function show(string $token)
+    public function show(string $type, string $token)
     {
-        [$type, $id] = self::decodeToken($token);
+        [$decodedType, $id] = self::decodeToken($token);
+
+        // The route's {type} segment (customers/pppoe/view/... vs customers/hotspot/view/...)
+        // must agree with what the token itself encodes — guards against a stale/copy-pasted
+        // link from the other type resolving to the wrong model.
+        if ($decodedType !== $type) {
+            abort(404);
+        }
 
         $tenantId = Auth::user()->tenant_id;
 
@@ -135,6 +146,21 @@ class CustomerController extends Controller
             ? DB::table('radacct')->where('username', $radiusUsername)->orderByDesc('acctstarttime')->limit(10)->get()
             : collect();
 
+        // Device Session Data card (hotspot only) — built from the latest radacct row already
+        // fetched above rather than a live MikroTik call, so the page never waits on the
+        // router: a session with no acctstoptime yet is still open (currently online), and its
+        // nasipaddress resolves back to which of this tenant's routers ("site") it's on.
+        $liveSession = null;
+        if ($type === 'hotspot' && ($latest = $connectionLogs->first())) {
+            $liveSession = [
+                'online' => is_null($latest->acctstoptime),
+                'ip_address' => $latest->framedipaddress,
+                'mac_address' => $latest->callingstationid,
+                'site' => Router::where('tenant_id', $tenantId)->where('ip_address', $latest->nasipaddress)->value('name'),
+                'started_at' => Carbon::parse($latest->acctstarttime),
+            ];
+        }
+
         $plans = Plan::where('tenant_id', $tenantId)->where('type', $type)->get();
 
         return view('customers.show', [
@@ -144,6 +170,7 @@ class CustomerController extends Controller
             'transactions' => $transactions,
             'totalSpent' => $totalSpent,
             'connectionLogs' => $connectionLogs,
+            'liveSession' => $liveSession,
             'token' => $token,
             'plans' => $plans,
         ]);

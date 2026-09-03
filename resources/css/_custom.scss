@@ -228,6 +228,66 @@ html:not([data-bs-theme="dark"]) {
     font-size: 1.25rem;
 }
 
+// Active nav item — a bold gradient pill (same palette as .rp-avatar-gradient) instead of
+// Tabler's flat tint, so "where am I" is unmistakable at a glance. Applies uniformly to
+// top-level items and nested submenu entries (Platform/Reports/Customers > …).
+#rp-sidebar .nav-link.active,
+#rp-mobile-nav .nav-link.active {
+    background: linear-gradient(135deg, #8f7ffa, #6c5ce7) !important;
+    color: #fff !important;
+    border-radius: .75rem;
+    box-shadow: 0 .25rem .75rem rgba(108, 92, 231, .35);
+}
+#rp-sidebar .nav-link.active .nav-link-icon,
+#rp-mobile-nav .nav-link.active .nav-link-icon {
+    color: #fff;
+}
+
+// Collapsible group headers (Platform/Reports/Customers) — a chevron that rotates 90° open
+// instead of relying on the show/hide of the panel beneath as the only "expanded" cue.
+.rp-nav-chevron {
+    font-size: 1rem;
+    color: var(--tblr-body-color);
+    opacity: .5;
+    transition: transform .15s ease-in-out;
+    flex-shrink: 0;
+}
+#rp-sidebar .nav-link[aria-expanded="true"] .rp-nav-chevron,
+#rp-mobile-nav .nav-link[aria-expanded="true"] .rp-nav-chevron {
+    transform: rotate(90deg);
+}
+#rp-sidebar .nav-link.active .rp-nav-chevron,
+#rp-mobile-nav .nav-link.active .rp-nav-chevron {
+    color: #fff;
+    opacity: .85;
+}
+
+// Nested submenu entries get a small hollow-circle bullet instead of an icon — reads as "a
+// sub-page of the item above" at a glance, filled solid when that entry is the active one.
+#rp-sidebar .nav-pills.flex-column .nav-link,
+#rp-mobile-nav .nav-pills.flex-column .nav-link {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    border-radius: .625rem;
+}
+#rp-sidebar .nav-pills.flex-column .nav-link::before,
+#rp-mobile-nav .nav-pills.flex-column .nav-link::before {
+    content: '';
+    width: .375rem;
+    height: .375rem;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    opacity: .5;
+    flex-shrink: 0;
+}
+#rp-sidebar .nav-pills.flex-column .nav-link.active::before,
+#rp-mobile-nav .nav-pills.flex-column .nav-link.active::before {
+    background: #fff;
+    border-color: #fff;
+    opacity: 1;
+}
+
 @include media-breakpoint-up(lg) {
     #rp-sidebar.rp-collapsed {
         width: 4.5rem;

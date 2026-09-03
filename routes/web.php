@@ -198,9 +198,9 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::post('/plans/{plan}/duplicate', [PlanController::class, 'duplicate'])->name('plans.duplicate');
     Route::get('/plans/{plan}/sync-status', [PlanController::class, 'syncStatus'])->name('plans.sync-status');
 
-    // === CUSTOMERS (unified PPPoE/Hotspot hub behind the sidebar's single Customers link) ===
-    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
-    Route::get('/customers/view/{token}', [CustomerController::class, 'show'])->name('customers.show');
+    // === CUSTOMERS (split PPPoE/Hotspot pages behind the sidebar's CRM > Customers submenu) ===
+    Route::get('/customers/{type}', [CustomerController::class, 'index'])->whereIn('type', ['pppoe', 'hotspot'])->name('customers.index');
+    Route::get('/customers/{type}/view/{token}', [CustomerController::class, 'show'])->whereIn('type', ['pppoe', 'hotspot'])->name('customers.show');
 
     // === PPPoE / HOTSPOT CUSTOMER MANAGEMENT ===
     // Must be registered before the resource routes below, or /{pppoe_user} would swallow them.
@@ -222,6 +222,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::post('/hotspot-users/{hotspot_user}/disable', [HotspotUserController::class, 'disable'])->name('hotspot-users.disable');
     Route::post('/hotspot-users/{hotspot_user}/enable', [HotspotUserController::class, 'enable'])->name('hotspot-users.enable');
     Route::post('/hotspot-users/{hotspot_user}/reset-mac', [HotspotUserController::class, 'resetMac'])->name('hotspot-users.reset-mac');
+    Route::post('/hotspot-users/{hotspot_user}/purge', [HotspotUserController::class, 'purgeCustomer'])->name('hotspot-users.purge');
     Route::get('/hotspot-users/{hotspot_user}/panel', [HotspotUserController::class, 'panel'])->name('hotspot-users.panel');
 
     // === LEADS (CRM) ===

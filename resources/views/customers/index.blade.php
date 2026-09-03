@@ -1,7 +1,7 @@
 {{-- Expects $users (paginated PppoeUser|HotspotUser), $plans (current tab's Plan list, for
      the filter bar), $allPlans (all plans keyed by id, for row display), $pppoePlans/
      $hotspotPlans (for the Add Customer offcanvas' Package dropdown), $routers (keyed by id),
-     $tab ('pppoe'|'hotspot'), $stats, $pppoeCount, $hotspotCount in scope. --}}
+     $tab ('pppoe'|'hotspot'), $stats (scoped to $tab only) in scope. --}}
 <x-sidebar-layout title="Customers">
     {{-- === STAT TILES === --}}
     @php
@@ -28,23 +28,24 @@
         </div>
     </div>
 
-    {{-- === TABS === --}}
+    {{-- === LIVE ONLINE/OFFLINE FILTER — updated as the poll() below refreshes each row's
+         live status; purely client-side, doesn't touch the DB `status` column (that's the
+         billing status, filterable separately via the Filters offcanvas). === --}}
     <ul class="nav nav-pills mb-3">
         <li class="nav-item">
-            <a href="{{ route('customers.index', array_filter(['tab' => 'pppoe', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'pppoe' ? 'active' : '' }}">
-                PPPoE ({{ $pppoeCount }})
-            </a>
+            <button type="button" id="rp-live-filter-online" data-rp-live-filter="online" class="nav-link">
+                Online (<span id="rp-live-count-online">0</span>)
+            </button>
         </li>
         <li class="nav-item">
-            <a href="{{ route('customers.index', array_filter(['tab' => 'hotspot', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'hotspot' ? 'active' : '' }}">
-                Hotspot ({{ $hotspotCount }})
-            </a>
+            <button type="button" id="rp-live-filter-offline" data-rp-live-filter="offline" class="nav-link">
+                Offline (<span id="rp-live-count-offline">0</span>)
+            </button>
         </li>
     </ul>
 
     {{-- === TOOLBAR + FILTERS + TABLE (one card) === --}}
     <form method="GET">
-        <input type="hidden" name="tab" value="{{ $tab }}">
         <div class="card">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
@@ -84,9 +85,9 @@
                         @forelse($users as $user)
                             @php
                                 $oneispKey = $tab === 'hotspot' ? $user->phone_number : $user->username;
-                                $oneispDetailUrl = route('customers.show', ['token' => \App\Http\Controllers\CustomerController::tokenFor($tab, $user->id)]);
+                                $oneispDetailUrl = route('customers.show', ['type' => $tab, 'token' => \App\Http\Controllers\CustomerController::tokenFor($tab, $user->id)]);
                             @endphp
-                            <tr>
+                            <tr data-live-row="{{ $oneispKey }}">
                                 <td class="font-monospace">
                                     <a href="{{ $oneispDetailUrl }}" class="fw-bold">
                                         {{ $tab === 'hotspot' ? $user->phone_number : $user->username }}
@@ -125,7 +126,7 @@
             </div>
         </div>
 
-        <x-filter-modal name="customers" :clear-url="route('customers.index', ['tab' => $tab])">
+        <x-filter-modal name="customers" :clear-url="route('customers.index', ['type' => $tab])">
             <div class="col-12 col-sm-6">
                 <label class="form-label">Site</label>
                 <select name="router_id" class="form-select">
@@ -169,7 +170,7 @@
         <form method="POST" id="rp-add-customer-form" action="{{ $oneispConnType === 'hotspot' ? route('hotspot-users.store') : route('pppoe-users.store') }}" class="d-flex flex-column h-100">
             @csrf
             <input type="hidden" name="_connection_type" id="rp-conn-type-input" value="{{ $oneispConnType }}">
-            <input type="hidden" name="redirect_to" id="rp-conn-redirect-input" value="{{ route('customers.index') }}?tab={{ $oneispConnType }}">
+            <input type="hidden" name="redirect_to" id="rp-conn-redirect-input" value="{{ route('customers.index', ['type' => $oneispConnType]) }}">
 
             <div class="offcanvas-body">
                 <div class="row g-3">
@@ -268,13 +269,14 @@
                 var redirectInput = document.getElementById('rp-conn-redirect-input');
                 var hotspotStoreUrl = '{{ route('hotspot-users.store') }}';
                 var pppoeStoreUrl = '{{ route('pppoe-users.store') }}';
-                var customersIndexUrl = '{{ route('customers.index') }}';
+                var hotspotIndexUrl = '{{ route('customers.index', ['type' => 'hotspot']) }}';
+                var pppoeIndexUrl = '{{ route('customers.index', ['type' => 'pppoe']) }}';
 
                 function syncConnType() {
                     var type = document.getElementById('rp-conn-hotspot').checked ? 'hotspot' : 'pppoe';
                     form.action = type === 'hotspot' ? hotspotStoreUrl : pppoeStoreUrl;
                     typeInput.value = type;
-                    redirectInput.value = customersIndexUrl + '?tab=' + type;
+                    redirectInput.value = type === 'hotspot' ? hotspotIndexUrl : pppoeIndexUrl;
 
                     document.querySelectorAll('[data-rp-conn-fields]').forEach(function (el) {
                         var show = el.getAttribute('data-rp-conn-fields') === type;
@@ -293,9 +295,46 @@
                 syncConnType();
 
                 // Live online/offline polling — matches hotspot-users/pppoe-users index pages.
+                // Also drives the Online/Offline pill filter above the table: each row's
+                // resolved live status is stashed on its <tr data-live-row> as data-live-status
+                // ('online'|'offline'|'unknown' — unreachable router/no session data yet), and
+                // the filter buttons just show/hide rows by that attribute — no server round-trip.
                 var tab = '{{ $tab }}';
                 var keys = @json($tab === 'hotspot' ? $users->pluck('phone_number') : $users->pluck('username'));
-                if (keys.length === 0) return;
+
+                var liveFilter = null; // null | 'online' | 'offline'
+                var onlineBtn = document.getElementById('rp-live-filter-online');
+                var offlineBtn = document.getElementById('rp-live-filter-offline');
+                var onlineCountEl = document.getElementById('rp-live-count-online');
+                var offlineCountEl = document.getElementById('rp-live-count-offline');
+
+                function applyLiveFilter() {
+                    var onlineCount = 0, offlineCount = 0;
+                    document.querySelectorAll('tr[data-live-row]').forEach(function (row) {
+                        var status = row.getAttribute('data-live-status');
+                        if (status === 'online') onlineCount++;
+                        if (status === 'offline') offlineCount++;
+                        row.classList.toggle('d-none', !!liveFilter && status !== liveFilter);
+                    });
+                    onlineCountEl.textContent = onlineCount;
+                    offlineCountEl.textContent = offlineCount;
+                    onlineBtn.classList.toggle('active', liveFilter === 'online');
+                    offlineBtn.classList.toggle('active', liveFilter === 'offline');
+                }
+
+                onlineBtn.addEventListener('click', function () {
+                    liveFilter = liveFilter === 'online' ? null : 'online';
+                    applyLiveFilter();
+                });
+                offlineBtn.addEventListener('click', function () {
+                    liveFilter = liveFilter === 'offline' ? null : 'offline';
+                    applyLiveFilter();
+                });
+
+                if (keys.length === 0) {
+                    applyLiveFilter();
+                    return;
+                }
 
                 async function poll() {
                     try {
@@ -312,14 +351,20 @@
                         document.querySelectorAll('[data-live-cell]').forEach(function (cell) {
                             var key = cell.getAttribute('data-live-cell');
                             var session = live[key];
+                            var row = cell.closest('tr');
                             if (session && session.online) {
                                 cell.innerHTML = '<span class="text-success fw-semibold">Online</span>';
+                                row.setAttribute('data-live-status', 'online');
                             } else if (session) {
                                 cell.innerHTML = '<span class="text-warning fw-semibold">Offline</span>';
+                                row.setAttribute('data-live-status', 'offline');
                             } else {
                                 cell.innerHTML = '<span class="text-muted">·</span>';
+                                row.setAttribute('data-live-status', 'unknown');
                             }
                         });
+
+                        applyLiveFilter();
                     } catch (e) {
                         // Leave badges as-is on a transient failure.
                     }

@@ -207,7 +207,7 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         HotspotUser::factory()->active()->create(['tenant_id' => $tenant->id, 'phone_number' => '254700111222']);
         HotspotUser::factory()->active()->create(['tenant_id' => $tenant->id, 'phone_number' => 'VOUCHER99', 'is_voucher' => true]);
 
-        $response = $this->actingAs($admin)->get('/customers?tab=hotspot');
+        $response = $this->actingAs($admin)->get('/customers/hotspot');
 
         $response->assertOk();
         $response->assertSee('254700111222');

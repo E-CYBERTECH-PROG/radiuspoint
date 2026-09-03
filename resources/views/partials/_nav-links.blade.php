@@ -21,6 +21,7 @@
                 @if($pendingCount > 0)
                     <span class="badge bg-red text-white ms-auto rp-nav-badge">{{ $pendingCount }}</span>
                 @endif
+                <i class="ti ti-chevron-right rp-nav-chevron {{ $pendingCount > 0 ? '' : 'ms-auto' }}"></i>
             </a>
             <div class="collapse {{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'show' : '' }}" id="rp-nav-platform-{{ $navId }}">
                 <ul class="nav nav-pills flex-column ms-4">
@@ -64,11 +65,19 @@
 
         <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">CRM</span></li>
 
-        <li class="nav-item {{ request()->routeIs(['customers.*', 'pppoe-users.*', 'hotspot-users.*']) ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('customers.index') }}">
+        @php $customersActive = request()->routeIs(['customers.*', 'pppoe-users.*', 'hotspot-users.*']); @endphp
+        <li class="nav-item {{ $customersActive ? 'active' : '' }}">
+            <a class="nav-link" href="#rp-nav-customers-{{ $navId }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ $customersActive ? 'true' : 'false' }}" aria-controls="rp-nav-customers-{{ $navId }}">
                 <span class="nav-link-icon"><i class="ti ti-users"></i></span>
                 <span class="nav-link-title">Customers</span>
+                <i class="ti ti-chevron-right rp-nav-chevron ms-auto"></i>
             </a>
+            <div class="collapse {{ $customersActive ? 'show' : '' }}" id="rp-nav-customers-{{ $navId }}">
+                <ul class="nav nav-pills flex-column ms-4">
+                    <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('customers.*') && request()->route('type') === 'pppoe' ? 'active' : '' }}" href="{{ route('customers.index', ['type' => 'pppoe']) }}">PPPoE</a></li>
+                    <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('customers.*') && request()->route('type') === 'hotspot' ? 'active' : '' }}" href="{{ route('customers.index', ['type' => 'hotspot']) }}">Hotspot</a></li>
+                </ul>
+            </div>
         </li>
 
         <li class="nav-item {{ request()->routeIs('leads.*') ? 'active' : '' }}">
@@ -122,6 +131,7 @@
             <a class="nav-link" href="#rp-nav-reports-{{ $navId }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ $reportsActive ? 'true' : 'false' }}" aria-controls="rp-nav-reports-{{ $navId }}">
                 <span class="nav-link-icon"><i class="ti ti-report"></i></span>
                 <span class="nav-link-title">Reports</span>
+                <i class="ti ti-chevron-right rp-nav-chevron ms-auto"></i>
             </a>
             <div class="collapse {{ $reportsActive ? 'show' : '' }}" id="rp-nav-reports-{{ $navId }}">
                 <ul class="nav nav-pills flex-column ms-4">

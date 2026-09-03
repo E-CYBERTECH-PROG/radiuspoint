@@ -46,7 +46,7 @@ class PppoeUserController extends Controller
      */
     public function create()
     {
-        return redirect()->route('customers.index', ['tab' => 'pppoe', 'add' => 1]);
+        return redirect()->route('customers.index', ['type' => 'pppoe', 'add' => 1]);
     }
 
     public function store(Request $request)

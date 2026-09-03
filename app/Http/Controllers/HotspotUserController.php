@@ -13,6 +13,7 @@ use App\Services\UsageCycleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -48,7 +49,7 @@ class HotspotUserController extends Controller
      */
     public function create()
     {
-        return redirect()->route('customers.index', ['tab' => 'hotspot', 'add' => 1]);
+        return redirect()->route('customers.index', ['type' => 'hotspot', 'add' => 1]);
     }
 
     public function store(Request $request)
@@ -247,6 +248,34 @@ class HotspotUserController extends Controller
         $hotspot_user->delete();
 
         return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer removed.');
+    }
+
+    /**
+     * Wipes this customer back to a clean slate without deleting their record (unlike
+     * destroy()): force-disconnects any active session, removes the RADIUS credential, clears
+     * their radacct session/accounting history, and resets the bound MAC — so the next device
+     * to authenticate binds fresh. Plan/expiry/billing fields are left untouched; this is
+     * purely a RADIUS/session-level reset.
+     */
+    public function purgeCustomer(Request $request, HotspotUser $hotspot_user)
+    {
+        $radiusUsername = $hotspot_user->radiusUsername();
+
+        if ($hotspot_user->router) {
+            SessionDisconnectService::disconnect(
+                $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername
+            );
+        }
+
+        RadiusSyncService::remove($radiusUsername);
+        DB::table('radacct')->where('username', $radiusUsername)->delete();
+        $hotspot_user->update(['status' => 'offline', 'mac_address' => null]);
+
+        $message = 'Customer purged — RADIUS credential and session history cleared.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('success', $message);
     }
 
     /**

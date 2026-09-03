@@ -1,7 +1,7 @@
 {{-- Full customer profile page — replaces the old global slide-over panel for the Customers
-     hub. $user/$usage/$transactions/$totalSpent/$connectionLogs are all real, server-side
-     data (see CustomerController::show()). A few tiles here (Wallet, Deposit, Request
-     Payment, Adjust Balance, Resolve Payment, CPE Configuration, Update Group Policy,
+     hub. $user/$usage/$transactions/$totalSpent/$connectionLogs/$liveSession are all real,
+     server-side data (see CustomerController::show()). A few tiles here (Wallet, Deposit,
+     Request Payment, Adjust Balance, Resolve Payment, CPE Configuration, Update Group Policy,
      Override Package) have no backing feature in this app yet and are shown inert/disabled
      rather than faked — same honesty pattern as "Coming soon" in the sidebar. --}}
 @php
@@ -18,6 +18,8 @@
         : ($oneispIsHotspot ? route('hotspot-users.disable', $user) : route('pppoe-users.disable', $user));
     $oneispDestroyUrl = $oneispIsHotspot ? route('hotspot-users.destroy', $user) : route('pppoe-users.destroy', $user);
     $oneispExtendUrl = $oneispIsHotspot ? route('hotspot-users.extend', $user) : route('pppoe-users.extend', $user);
+    $oneispPurgeUrl = $oneispIsHotspot ? route('hotspot-users.purge', $user) : null;
+    $oneispMac = $user->mac_address ?: ($liveSession['mac_address'] ?? null);
 
     // "offline" is what the Disable button actually sets (see disable()) — that's this app's
     // closest equivalent to "disabled". "unused" (hotspot-only: a voucher not yet redeemed)
@@ -64,7 +66,136 @@
         </div>
     </div>
 
-    {{-- === IDENTITY + PLAN === --}}
+    @if($oneispIsHotspot)
+        {{-- === HOTSPOT KPI STRIP === --}}
+        @php
+            $oneispHotspotKpis = [
+                ['label' => 'Username', 'value' => $oneispIdentifier, 'color' => 'text-body'],
+                ['label' => 'Data Used', 'value' => ($usage ? number_format($usage['used_mb'], 2) : '0.00') . ' MB', 'color' => 'text-success'],
+                ['label' => 'Expiry Date', 'value' => $user->expires_at?->format('d M Y H:i A') ?? '—', 'color' => 'text-danger'],
+                ['label' => 'Mac Address', 'value' => $oneispMac ?: '—', 'color' => 'text-warning'],
+            ];
+        @endphp
+        <div class="card mb-3" style="border-radius:.5rem">
+            <div class="d-flex flex-column flex-sm-row rp-stat-strip">
+                @foreach($oneispHotspotKpis as $kpi)
+                    <div class="flex-fill p-3">
+                        <p class="fs-4 fw-bold text-truncate mb-0 {{ $kpi['color'] }}">{{ $kpi['value'] }}</p>
+                        <p class="text-muted text-uppercase small mt-1 mb-0">{{ $kpi['label'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- === STATUS/INFO + QUICK ACTIONS === --}}
+        <div class="row g-3 mb-3">
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span class="text-muted text-uppercase small fw-bold me-2">Status:</span>
+                            @if($liveSession && $liveSession['online'])
+                                <x-status-badge color="green">Online</x-status-badge>
+                            @else
+                                <x-status-badge color="orange">Offline</x-status-badge>
+                            @endif
+                        </div>
+                        @foreach([
+                            ['label' => 'Registered', 'value' => $user->created_at->format('d M Y h:i A')],
+                            ['label' => 'Accounting Start Time', 'value' => $liveSession ? $liveSession['started_at']->format('d M Y h:i A') : '—'],
+                            ['label' => 'Package', 'value' => $user->plan?->name ?? '—'],
+                            ['label' => 'Phone', 'value' => $user->phone_number ?: '—'],
+                        ] as $row)
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span class="text-muted text-uppercase small flex-shrink-0" style="width:11rem">{{ $row['label'] }}:</span>
+                                <span class="fw-bold text-truncate">{{ $row['value'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h3 class="card-title text-uppercase">Quick Action Buttons</h3>
+                        <div class="d-flex flex-wrap gap-2">
+                            <form action="{{ $oneispDestroyUrl }}" method="POST" onsubmit="return rpConfirm(event, 'Remove this customer permanently? This also removes their RADIUS credentials.')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn btn-danger rounded-pill">Delete User</button>
+                            </form>
+                            <form action="{{ route('hotspot-users.reset-mac', $user) }}" method="POST" onsubmit="return rpConfirm(event, 'Clear this customer\'s bound MAC address?')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-secondary rounded-pill">Reset Mac</button>
+                            </form>
+                            <form action="{{ $oneispPurgeUrl }}" method="POST" onsubmit="return rpConfirm(event, 'Purge this customer? This disconnects their session, removes their RADIUS credential, and clears their connection history. Their account record and plan stay intact.')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-danger rounded-pill">Purge</button>
+                            </form>
+                            <button type="button" class="btn btn-outline-success rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-sms-offcanvas">Send SMS</button>
+                            <button type="button" class="btn btn-outline-primary rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-edit-offcanvas">Change Package</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- === DEVICE SESSION DATA + CONNECTION LOGS === --}}
+        <div class="row g-3 mb-3">
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h3 class="card-title text-uppercase">Device Session Data</h3>
+                        @if($liveSession)
+                            @foreach([
+                                ['label' => 'IP Address', 'value' => $liveSession['ip_address'] ?: '—'],
+                                ['label' => 'Site', 'value' => $liveSession['site'] ?: '—'],
+                                ['label' => 'Uptime', 'value' => $liveSession['online'] ? $liveSession['started_at']->diffForHumans(null, true) . ' — online since ' . $liveSession['started_at']->format('d M Y h:i:s A') : 'Not currently connected'],
+                            ] as $row)
+                                <div class="d-flex align-items-start gap-3 mb-2">
+                                    <span class="text-muted text-uppercase small flex-shrink-0" style="width:7rem">{{ $row['label'] }}:</span>
+                                    <span class="fw-bold {{ $row['label'] === 'Uptime' && $liveSession['online'] ? 'text-success' : '' }}">{{ $row['value'] }}</span>
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="text-muted text-uppercase small py-3">No session data yet — this device hasn't connected.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h3 class="card-title text-uppercase">User Connection Logs</h3>
+
+                        @if($connectionLogs->isEmpty())
+                            <p class="text-muted text-uppercase small py-3">No connection logs yet.</p>
+                        @else
+                            <ul class="list-unstyled mb-0">
+                                @foreach($connectionLogs as $log)
+                                    <li class="d-flex gap-2 mb-3">
+                                        <span class="rounded-circle bg-primary flex-shrink-0 mt-1" style="width:.625rem;height:.625rem"></span>
+                                        <div class="flex-fill min-w-0">
+                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                <p class="fw-bold mb-0">Access-Accept</p>
+                                                <p class="text-muted small flex-shrink-0 mb-0">{{ \Carbon\Carbon::parse($log->acctstarttime)->format('H:i d/m/Y') }}</p>
+                                            </div>
+                                            <p class="text-muted small mb-0 text-truncate">IP: {{ $log->framedipaddress ?: '—' }} · MAC: {{ $log->callingstationid ?: '—' }}</p>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- === IDENTITY + PLAN (PPPoE only — hotspot gets its own KPI strip/status/session
+         cards above instead) === --}}
+    @unless($oneispIsHotspot)
     <div class="row g-3 mb-3">
         <div class="col-lg-9">
             <div class="card h-100">
@@ -163,8 +294,11 @@
             </div>
         </div>
     </div>
+    @endunless
 
-    {{-- === CHILD ACCOUNT + QUICK ACTIONS === --}}
+    {{-- === CHILD ACCOUNT + QUICK ACTIONS (PPPoE only — hotspot's quick actions/connection
+         logs are already covered above) === --}}
+    @unless($oneispIsHotspot)
     <div class="row g-3 mb-3">
         <div class="col-lg-5">
             <div class="card h-100">
@@ -240,6 +374,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
     {{-- === TRANSACTIONS === --}}
     <div class="card">
