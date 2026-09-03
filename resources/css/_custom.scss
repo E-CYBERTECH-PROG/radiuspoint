@@ -151,6 +151,17 @@ html:not([data-bs-theme="dark"]) {
 .offcanvas {
     height: 100dvh;
 }
+// Every offcanvas form in this app is `<form class="d-flex flex-column h-100">` wrapping
+// .offcanvas-body + .offcanvas-footer (Bootstrap's own documented pattern) — but flex items
+// default to min-height:auto, which refuses to shrink the form below its *content's* natural
+// height. On a long form (Add Customer, …) that natural height exceeds the visible offcanvas,
+// so the form (and the Save/Apply button in its footer) overflowed past the bottom of the
+// screen instead of the body scrolling internally — confirmed by reproducing it standalone at
+// a 375×667 viewport (button ended up 57px below the fold) before and after this fix.
+.offcanvas form,
+.offcanvas-body {
+    min-height: 0;
+}
 // Extra bottom padding for phones with a gesture nav bar / home indicator overlapping the
 // very bottom of the viewport — env() resolves to 0 on devices without one.
 .offcanvas-footer {

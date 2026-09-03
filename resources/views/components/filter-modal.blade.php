@@ -12,15 +12,15 @@
         <h3 class="offcanvas-title">{{ $title }}</h3>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <div class="offcanvas-body">
         <div class="row g-3">
             {{ $slot }}
         </div>
-        <div class="mt-auto pt-4 d-flex align-items-center gap-3">
-            @if($clearUrl)
-                <a href="{{ $clearUrl }}" class="btn w-100">Clear Filters</a>
-            @endif
-            <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
-        </div>
+    </div>
+    <div class="offcanvas-footer p-3 border-top d-flex align-items-center gap-3">
+        @if($clearUrl)
+            <a href="{{ $clearUrl }}" class="btn w-100">Clear Filters</a>
+        @endif
+        <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
     </div>
 </div>
