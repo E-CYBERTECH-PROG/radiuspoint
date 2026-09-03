@@ -146,7 +146,7 @@
             </table>
         </div>
 
-        <div class="card-footer">{{ $vouchers->links() }}</div>
+        <div class="card-footer">{{ $vouchers->links('vendor.pagination.rp-circles') }}</div>
     </div>
     </form>
 

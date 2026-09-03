@@ -173,7 +173,7 @@
         </x-filter-modal>
     </form>
 
-    <div class="mt-3">{{ $routers->links() }}</div>
+    <div class="mt-3">{{ $routers->links('vendor.pagination.rp-circles') }}</div>
 
     <x-slot name="scripts">
         <script>

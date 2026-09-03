@@ -156,7 +156,7 @@
         </x-filter-modal>
     </form>
 
-    <div class="mt-3">{{ $users->links() }}</div>
+    <div class="mt-3">{{ $users->links('vendor.pagination.rp-circles') }}</div>
 
     {{-- === ADD CUSTOMER OFFCANVAS === --}}
     @php $oneispConnType = old('_connection_type', $tab); @endphp

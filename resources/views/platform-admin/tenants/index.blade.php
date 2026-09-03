@@ -103,7 +103,7 @@
         </div>
         @if($tenants->hasPages())
             <div class="card-footer">
-                {{ $tenants->links() }}
+                {{ $tenants->links('vendor.pagination.rp-circles') }}
             </div>
         @endif
         </div>

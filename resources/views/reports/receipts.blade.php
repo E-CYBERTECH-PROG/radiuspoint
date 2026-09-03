@@ -81,7 +81,7 @@
         </x-filter-modal>
     </form>
 
-    <div class="mt-3">{{ $transactions->links() }}</div>
+    <div class="mt-3">{{ $transactions->links('vendor.pagination.rp-circles') }}</div>
 
     <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-record-payment" @if($errors->any()) data-rp-autoshow @endif>
         <div class="offcanvas-header border-bottom">

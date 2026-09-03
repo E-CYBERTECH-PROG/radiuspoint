@@ -81,7 +81,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer">{{ $messages->links() }}</div>
+                <div class="card-footer">{{ $messages->links('vendor.pagination.rp-circles') }}</div>
             </div>
 
             <x-filter-modal name="sms" :clear-url="route('sms.index', ['tab' => 'outbox'])">

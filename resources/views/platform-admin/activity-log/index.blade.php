@@ -52,7 +52,7 @@
         </div>
         @if($logs->hasPages())
             <div class="card-footer">
-                {{ $logs->links() }}
+                {{ $logs->links('vendor.pagination.rp-circles') }}
             </div>
         @endif
         </div>

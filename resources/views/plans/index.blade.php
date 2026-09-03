@@ -178,7 +178,7 @@
             </table>
         </div>
 
-        <div class="card-footer">{{ $plans->links() }}</div>
+        <div class="card-footer">{{ $plans->links('vendor.pagination.rp-circles') }}</div>
     </div>
     </form>
 

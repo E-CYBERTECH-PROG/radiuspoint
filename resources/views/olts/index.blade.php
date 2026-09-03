@@ -73,5 +73,5 @@
         </div>
     </form>
 
-    <div class="mt-3">{{ $olts->links() }}</div>
+    <div class="mt-3">{{ $olts->links('vendor.pagination.rp-circles') }}</div>
 </x-sidebar-layout>

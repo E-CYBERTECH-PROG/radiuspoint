@@ -130,7 +130,7 @@
         </x-filter-modal>
     </form>
 
-    <div class="mt-3">{{ $expenses->links() }}</div>
+    <div class="mt-3">{{ $expenses->links('vendor.pagination.rp-circles') }}</div>
 
     <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-add-expense" @if($errors->any()) data-rp-autoshow @endif>
         <div class="offcanvas-header border-bottom">

@@ -85,5 +85,5 @@
         </x-filter-modal>
     </form>
 
-    <div class="mt-3">{{ $transactions->links() }}</div>
+    <div class="mt-3">{{ $transactions->links('vendor.pagination.rp-circles') }}</div>
 </x-sidebar-layout>

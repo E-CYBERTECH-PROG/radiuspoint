@@ -88,7 +88,7 @@
         </div>
         @if($invoices->hasPages())
             <div class="card-footer">
-                {{ $invoices->links() }}
+                {{ $invoices->links('vendor.pagination.rp-circles') }}
             </div>
         @endif
         </div>

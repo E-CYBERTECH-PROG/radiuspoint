@@ -114,6 +114,6 @@
             </table>
         </div>
 
-        <div class="card-footer">{{ $invoices->links() }}</div>
+        <div class="card-footer">{{ $invoices->links('vendor.pagination.rp-circles') }}</div>
     </div>
 </x-sidebar-layout>

@@ -31,5 +31,5 @@
         @endforelse
     </div>
 
-    <div class="mt-3">{{ $notifications->links() }}</div>
+    <div class="mt-3">{{ $notifications->links('vendor.pagination.rp-circles') }}</div>
 </x-sidebar-layout>
