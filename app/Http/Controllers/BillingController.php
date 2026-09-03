@@ -11,6 +11,7 @@ use App\Services\RadiusSyncService;
 use App\Services\SmsTriggerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
@@ -79,20 +80,31 @@ class BillingController extends Controller
 
         $transaction->update(['hotspot_user_id' => $hotspotUser->id]);
 
-        // The RADIUS credential is the M-Pesa receipt itself — username=password=code, same
-        // scheme as vouchers (VoucherController::generate()) — rather than the phone number.
-        // The receipt is what's shown on the router's active-users list and what the customer
-        // re-enters to log back in (see CaptivePortalController's lookup()/lookupReceipt()).
-        // phone_number stays the app-level identity (SMS, records, dashboards) only.
+        // Two valid RADIUS credentials get synced for a fresh auto-purchase, both against the
+        // same plan/expiry (see HotspotUser::radiusUsernames()):
+        //  1. phone_number + a generated password — the standing credential this account is
+        //     created with, for the customer to log back in with later (self-service phone
+        //     lookup, or typed directly at the router). Same shape as a manually-created
+        //     account's credential.
+        //  2. The M-Pesa receipt itself, username=password=code — what the automatic
+        //     post-purchase reconnect uses (PaymentPortalController::status()) and what
+        //     shows on the router's active-users list, same scheme as vouchers
+        //     (VoucherController::generate()).
+        // phone_number is also the app-level identity (SMS, records, dashboards) regardless.
         $code = $transaction->mpesa_receipt;
-        RadiusSyncService::sync($code, $code, $plan->speed_limit);
-        RadiusSyncService::setExpiryWindow($code, $hotspotUser->expires_at);
-        ExpiredBlockService::clear(Router::withoutGlobalScope('tenant')->find($transaction->router_id), $code);
+        $password = Str::password(10);
+        $router = Router::withoutGlobalScope('tenant')->find($transaction->router_id);
+
+        foreach ([$hotspotUser->phone_number => $password, $code => $code] as $username => $pass) {
+            RadiusSyncService::sync($username, $pass, $plan->speed_limit);
+            RadiusSyncService::setExpiryWindow($username, $hotspotUser->expires_at);
+            ExpiredBlockService::clear($router, $username);
+        }
 
         SmsTriggerService::fire(
             $transaction->tenant_id, 'hotspot_purchase_confirmed', $hotspotUser->phone_number,
-            ['name' => $hotspotUser->phone_number, 'plan' => $plan->name, 'password' => $code, 'expires_at' => $hotspotUser->expires_at?->format('d M Y H:i')],
-            fallbackMessage: "Payment received for {$plan->name}. Login with code: {$code}"
+            ['name' => $hotspotUser->phone_number, 'plan' => $plan->name, 'password' => $password, 'code' => $code, 'expires_at' => $hotspotUser->expires_at?->format('d M Y H:i')],
+            fallbackMessage: "Payment received for {$plan->name}. Login with Username: {$hotspotUser->phone_number} Password: {$password} (or code: {$code})"
         );
 
         Log::info("HotspotUser {$hotspotUser->phone_number} provisioned successfully with {$plan->speed_limit} limits (code: {$code}).");

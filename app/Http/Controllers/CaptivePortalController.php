@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Services\RadiusSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -69,8 +70,7 @@ class CaptivePortalController extends Controller
                 ->first();
 
             if ($existing) {
-                $code = $existing->radiusUsername();
-                $autoReconnect = ['username' => $code, 'password' => $code];
+                $autoReconnect = $this->credentialFor($existing);
             }
         }
 
@@ -140,20 +140,16 @@ class CaptivePortalController extends Controller
             ->latest()
             ->first();
 
-        $code = $hotspotUser?->radiusUsername();
+        $credential = $hotspotUser ? $this->credentialFor($hotspotUser) : null;
 
-        if (! $code) {
+        if (! $credential) {
             return response()->json([
                 'found' => false,
                 'message' => 'No active plan found for this number. Buy a plan below to get connected.',
             ]);
         }
 
-        return response()->json([
-            'found' => true,
-            'username' => $code,
-            'password' => $code,
-        ]);
+        return response()->json(['found' => true] + $credential);
     }
 
     /**
@@ -208,13 +204,41 @@ class CaptivePortalController extends Controller
             ]);
         }
 
-        // The receipt the customer just pasted IS the credential (see
-        // BillingController::activateHotspotUser()) — no further lookup needed.
-        return response()->json([
-            'found' => true,
-            'username' => $code,
-            'password' => $code,
-        ]);
+        // Surfaces the standing phone_number+password credential this account was created
+        // with (see BillingController::activateHotspotUser()) rather than the receipt itself
+        // — same self-service credential lookup() returns, so it doesn't matter whether the
+        // customer looks themselves up by phone or by pasting their M-Pesa message. The
+        // receipt stays a separately-valid credential too, just not the one surfaced here —
+        // it's reserved for the automatic instant reconnect right after a purchase
+        // (PaymentPortalController::status()).
+        $credential = $this->credentialFor($hotspotUser);
+        if (! $credential) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Found that payment, but something went wrong loading your login. Contact support.',
+            ]);
+        }
+
+        return response()->json(['found' => true] + $credential);
+    }
+
+    /**
+     * The standing phone_number+password RADIUS credential for a HotspotUser — every account
+     * has one (see BillingController::activateHotspotUser(), VoucherController::generate(),
+     * HotspotUserController::store()), keyed by whatever's in the phone_number column (a real
+     * phone number, a voucher code, or a manually-typed username — the column is overloaded).
+     * Preferred over HotspotUser::radiusUsername() for self-service re-login: that method
+     * returns the M-Pesa receipt when one exists, which is reserved for the automatic
+     * post-purchase reconnect, not for a customer looking themselves up later.
+     */
+    private function credentialFor(HotspotUser $hotspotUser): ?array
+    {
+        $password = DB::table('radcheck')
+            ->where('username', $hotspotUser->phone_number)
+            ->where('attribute', 'Cleartext-Password')
+            ->value('value');
+
+        return $password ? ['username' => $hotspotUser->phone_number, 'password' => $password] : null;
     }
 
     /**

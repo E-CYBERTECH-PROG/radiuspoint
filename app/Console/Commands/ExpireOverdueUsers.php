@@ -24,12 +24,17 @@ class ExpireOverdueUsers extends Command
 
         foreach (HotspotUser::withoutGlobalScope('tenant')->where('status', 'active')->where('expires_at', '<', now())->get() as $user) {
             $user->update(['status' => 'expired']);
-            $radiusUsername = $user->radiusUsername();
-            RadiusSyncService::remove($radiusUsername);
 
-            if ($user->router) {
-                $this->blockIfConnected($user->router, '/ip/hotspot/active/print', 'user', $radiusUsername);
-                SessionDisconnectService::disconnect($user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername);
+            // An auto-purchased account can have two valid RADIUS credentials at once (see
+            // HotspotUser::radiusUsernames()) — both must be revoked, and the customer could
+            // be actively connected under either one.
+            foreach ($user->radiusUsernames() as $radiusUsername) {
+                RadiusSyncService::remove($radiusUsername);
+
+                if ($user->router) {
+                    $this->blockIfConnected($user->router, '/ip/hotspot/active/print', 'user', $radiusUsername);
+                    SessionDisconnectService::disconnect($user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername);
+                }
             }
 
             $expiredCount++;

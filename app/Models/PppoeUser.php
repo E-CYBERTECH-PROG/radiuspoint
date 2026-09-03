@@ -31,6 +31,16 @@ class PppoeUser extends Model
         return $this->username;
     }
 
+    /**
+     * Always just the one — PPPoE never has the auto-purchased hotspot account's second
+     * (M-Pesa receipt) credential. Exists so callers shared with HotspotUser (see
+     * HotspotUser::radiusUsernames()) can treat both the same way.
+     */
+    public function radiusUsernames(): array
+    {
+        return [$this->username];
+    }
+
     protected $fillable = [
         'tenant_id',
         'username',

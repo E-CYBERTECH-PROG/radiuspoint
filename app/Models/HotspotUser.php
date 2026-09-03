@@ -34,30 +34,48 @@ class HotspotUser extends Model
     }
 
     /**
-     * The actual RADIUS username synced to radcheck for this account — NOT always
-     * phone_number. Three schemes depending on how the row originated:
+     * Every RADIUS username that's actually valid for this account right now — there can be
+     * two for an auto-purchased account (see radiusUsername() below), otherwise just one.
+     * Used anywhere radacct/radcheck needs to be matched back to this row (dashboard/report
+     * "online now" counts, connection logs, live-status polling, usage/FUP accounting) or
+     * revoked in full (expiry, disable, destroy, purge) — checking/touching only one when two
+     * are valid would silently leave the other one working (or its usage uncounted).
+     */
+    public function radiusUsernames(): array
+    {
+        $receipt = $this->latestReceipt();
+
+        return $receipt ? [$this->phone_number, $receipt] : [$this->phone_number];
+    }
+
+    /**
+     * The single "primary" RADIUS username for this account — e.g. what's shown as "Username"
+     * in the UI. Three schemes depending on how the row originated:
      *   - Auto-purchased (BillingController::activateHotspotUser()): the M-Pesa receipt of
      *     the successful Transaction that created this row — shown on the router's own
-     *     active-users list, and what the customer re-enters at the captive portal.
+     *     active-users list, and what the automatic post-purchase reconnect uses. The account
+     *     ALSO gets a standing phone_number+password credential at creation for later
+     *     self-service logins (see radiusUsernames() above, and
+     *     CaptivePortalController::lookup()) — this method just doesn't prefer it for display.
      *   - Voucher (VoucherController::generate()): the voucher code, stored directly in
      *     phone_number — no linked Transaction, so this falls through to the phone_number
      *     branch below naturally.
      *   - Manually created (HotspotUserController::store()/update()): whatever was typed
      *     into the phone_number field, treated as a plain username — also no linked
      *     Transaction, same fallthrough.
-     * Used anywhere radacct/radcheck needs to be matched back to this row (dashboard/report
-     * "online now" counts, connection logs, self-service re-login) instead of assuming
-     * phone_number is the credential.
      */
     public function radiusUsername(): string
     {
-        $receipt = $this->transactions()
+        return $this->latestReceipt() ?: $this->phone_number;
+    }
+
+    private function latestReceipt(): ?string
+    {
+        return $this->transactions()
             ->withoutGlobalScope('tenant')
             ->where('status', 'success')
             ->latest()
             ->value('mpesa_receipt');
-
-        return $receipt ?: $this->phone_number;
     }
 
     protected $fillable = [

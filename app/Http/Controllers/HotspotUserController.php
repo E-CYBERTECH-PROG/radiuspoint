@@ -170,7 +170,7 @@ class HotspotUserController extends Controller
         }
 
         $cycleStart = UsageCycleService::cycleStart($plan, $hotspot_user->expires_at);
-        $usedBytes = UsageCycleService::bytesUsed($hotspot_user->radiusUsername(), $cycleStart);
+        $usedBytes = UsageCycleService::bytesUsed($hotspot_user->radiusUsernames(), $cycleStart);
 
         return [
             'cycle_start' => $cycleStart,
@@ -222,18 +222,23 @@ class HotspotUserController extends Controller
 
         if ($hotspot_user->status === 'active') {
             $plan = Plan::find($hotspot_user->current_plan_id);
-            $radiusUsername = $hotspot_user->radiusUsername();
-            if (RadiusSyncService::hasCredential($radiusUsername)) {
-                // Preserve the existing password — only refresh the bandwidth profile.
-                RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
-            } else {
-                RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
-            }
-            if ($hotspot_user->expires_at) {
-                RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
+            // An auto-purchased account can have two valid RADIUS credentials at once (see
+            // HotspotUser::radiusUsernames()) — both need to stay in sync with plan/expiry.
+            foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+                if (RadiusSyncService::hasCredential($radiusUsername)) {
+                    // Preserve the existing password — only refresh the bandwidth profile.
+                    RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
+                } else {
+                    RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
+                }
+                if ($hotspot_user->expires_at) {
+                    RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
+                }
             }
         } else {
-            RadiusSyncService::remove($hotspot_user->radiusUsername());
+            foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+                RadiusSyncService::remove($radiusUsername);
+            }
         }
 
         $redirectTo = $request->input('redirect_to');
@@ -244,7 +249,9 @@ class HotspotUserController extends Controller
 
     public function destroy(HotspotUser $hotspot_user)
     {
-        RadiusSyncService::remove($hotspot_user->radiusUsername());
+        foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+            RadiusSyncService::remove($radiusUsername);
+        }
         $hotspot_user->delete();
 
         return redirect()->route('hotspot-users.index')->with('success', 'Hotspot customer removed.');
@@ -259,16 +266,22 @@ class HotspotUserController extends Controller
      */
     public function purgeCustomer(Request $request, HotspotUser $hotspot_user)
     {
-        $radiusUsername = $hotspot_user->radiusUsername();
+        // An auto-purchased account can have two valid RADIUS credentials at once (see
+        // HotspotUser::radiusUsernames()) — a real purge has to clear both, or one would
+        // keep working after the "purge".
+        $radiusUsernames = $hotspot_user->radiusUsernames();
 
-        if ($hotspot_user->router) {
-            SessionDisconnectService::disconnect(
-                $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername
-            );
+        foreach ($radiusUsernames as $radiusUsername) {
+            if ($hotspot_user->router) {
+                SessionDisconnectService::disconnect(
+                    $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername
+                );
+            }
+
+            RadiusSyncService::remove($radiusUsername);
         }
 
-        RadiusSyncService::remove($radiusUsername);
-        DB::table('radacct')->where('username', $radiusUsername)->delete();
+        DB::table('radacct')->whereIn('username', $radiusUsernames)->delete();
         $hotspot_user->update(['status' => 'offline', 'mac_address' => null]);
 
         $message = 'Customer purged — RADIUS credential and session history cleared.';
@@ -304,13 +317,14 @@ class HotspotUserController extends Controller
         $hotspot_user->update(['status' => 'active', 'expires_at' => $newExpiry, 'fup_throttled_at' => null]);
 
         $plan = $hotspot_user->plan;
-        $radiusUsername = $hotspot_user->radiusUsername();
-        if (RadiusSyncService::hasCredential($radiusUsername)) {
-            RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
-        } else {
-            RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
+        foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+            if (RadiusSyncService::hasCredential($radiusUsername)) {
+                RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
+            } else {
+                RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
+            }
+            RadiusSyncService::setExpiryWindow($radiusUsername, $newExpiry);
         }
-        RadiusSyncService::setExpiryWindow($radiusUsername, $newExpiry);
 
         $message = "Extended to {$newExpiry->format('d M Y H:i')}.";
 
@@ -345,9 +359,14 @@ class HotspotUserController extends Controller
                 : back()->with('error', $message);
         }
 
-        $disconnected = SessionDisconnectService::disconnect(
-            $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $hotspot_user->radiusUsername()
-        );
+        // An auto-purchased account can have two valid RADIUS credentials at once (see
+        // HotspotUser::radiusUsernames()) — the active session could be under either.
+        $disconnected = false;
+        foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+            if (SessionDisconnectService::disconnect($hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername)) {
+                $disconnected = true;
+            }
+        }
         $message = $disconnected ? 'Session disconnected.' : 'No active session found (they may already be offline).';
 
         return $request->wantsJson()
@@ -379,14 +398,15 @@ class HotspotUserController extends Controller
     {
         $hotspot_user->update(['status' => 'active']);
 
-        $radiusUsername = $hotspot_user->radiusUsername();
-        if (RadiusSyncService::hasCredential($radiusUsername)) {
-            RadiusSyncService::updateRateLimit($radiusUsername, $hotspot_user->plan?->speed_limit);
-        } else {
-            RadiusSyncService::sync($radiusUsername, Str::password(10), $hotspot_user->plan?->speed_limit);
-        }
-        if ($hotspot_user->expires_at) {
-            RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
+        foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+            if (RadiusSyncService::hasCredential($radiusUsername)) {
+                RadiusSyncService::updateRateLimit($radiusUsername, $hotspot_user->plan?->speed_limit);
+            } else {
+                RadiusSyncService::sync($radiusUsername, Str::password(10), $hotspot_user->plan?->speed_limit);
+            }
+            if ($hotspot_user->expires_at) {
+                RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
+            }
         }
 
         $message = 'Customer enabled.';
@@ -415,7 +435,9 @@ class HotspotUserController extends Controller
         $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)->where('status', $status)->get();
 
         foreach ($users as $user) {
-            RadiusSyncService::remove($user->radiusUsername());
+            foreach ($user->radiusUsernames() as $radiusUsername) {
+                RadiusSyncService::remove($radiusUsername);
+            }
         }
         HotspotUser::where('tenant_id', Auth::user()->tenant_id)->where('status', $status)->delete();
 
@@ -423,11 +445,11 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * Same batched-per-router pattern as PppoeUserController::liveStatus(). Matched by each
-     * customer's actual RADIUS username (HotspotUser::radiusUsername()) — not always
-     * phone_number, since an auto-purchased account's real credential is its M-Pesa receipt —
-     * which is what RouterOS's active-session "user" field contains. Results stay keyed by
-     * phone_number in the response since that's what the frontend requested by and renders.
+     * Same batched-per-router pattern as PppoeUserController::liveStatus(). An auto-purchased
+     * account can have two valid RADIUS credentials at once (phone_number and its M-Pesa
+     * receipt — see HotspotUser::radiusUsernames()), and RouterOS's active-session "user"
+     * field could be either one, so both are checked. Results stay keyed by phone_number in
+     * the response since that's what the frontend requested by and renders.
      */
     public function liveStatus(Request $request)
     {
@@ -467,8 +489,8 @@ class HotspotUserController extends Controller
                 $activeByUser = collect($api->query('/ip/hotspot/active/print'))->keyBy('user');
 
                 foreach ($groupUsers as $user) {
-                    $radiusUsername = $receiptsByUserId->get($user->id) ?: $user->phone_number;
-                    $session = $activeByUser->get($radiusUsername);
+                    $receipt = $receiptsByUserId->get($user->id);
+                    $session = $activeByUser->get($user->phone_number) ?? ($receipt ? $activeByUser->get($receipt) : null);
                     $result[$user->phone_number] = $session
                         ? ['online' => true, 'uptime' => $session['uptime'] ?? null, 'address' => $session['address'] ?? null, 'id' => $session['.id'] ?? null, 'router_id' => $routerId]
                         : ['online' => false];

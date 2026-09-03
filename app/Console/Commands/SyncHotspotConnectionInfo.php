@@ -28,19 +28,25 @@ class SyncHotspotConnectionInfo extends Command
 
         foreach ($candidates as $user) {
             $changes = [];
-            $radiusUsername = $user->radiusUsername();
+            // An auto-purchased account can have two valid RADIUS credentials at once (see
+            // HotspotUser::radiusUsernames()) — their first real session could be under either.
+            $radiusUsernames = $user->radiusUsernames();
 
             if (! $user->mac_address) {
-                $mac = RadiusSyncService::latestSessionMac($radiusUsername);
-                if ($mac) {
-                    $changes['mac_address'] = $mac;
+                foreach ($radiusUsernames as $radiusUsername) {
+                    if ($mac = RadiusSyncService::latestSessionMac($radiusUsername)) {
+                        $changes['mac_address'] = $mac;
+                        break;
+                    }
                 }
             }
 
             if (! $user->current_router_id) {
-                $routerId = RadiusSyncService::latestSessionRouterId($radiusUsername);
-                if ($routerId) {
-                    $changes['current_router_id'] = $routerId;
+                foreach ($radiusUsernames as $radiusUsername) {
+                    if ($routerId = RadiusSyncService::latestSessionRouterId($radiusUsername)) {
+                        $changes['current_router_id'] = $routerId;
+                        break;
+                    }
                 }
             }
 

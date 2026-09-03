@@ -18,12 +18,15 @@ use Tests\TestCase;
  *  1. Vouchers (HotspotUser::is_voucher=true) are excluded from "hotspot customer"
  *     counts/lists app-wide — they aren't real walk-up customers until redeemed, and even
  *     then belong on their own Vouchers page.
- *  2. An auto-purchased hotspot account's RADIUS credential is its M-Pesa receipt
- *     (username=password=receipt), not phone_number+random password — mirroring how
- *     vouchers already work. HotspotUser::radiusUsername() resolves this, and every place
- *     that used to assume phone_number IS the RADIUS username had to be updated to use it,
- *     since that assumption silently breaks re-login, expiry enforcement, FUP throttling,
- *     and disable/delete for every auto-purchased account otherwise.
+ *  2. An auto-purchased hotspot account gets TWO valid RADIUS credentials at once (see
+ *     HotspotUser::radiusUsernames()): a standing phone_number+generated-password pair
+ *     (assigned at creation, same shape as a manually-created account's credential, meant
+ *     for later self-service re-login) and the M-Pesa receipt itself, username=password=
+ *     receipt (mirrors how vouchers work), reserved for the automatic instant reconnect
+ *     right after a purchase (PaymentPortalController::status()). Every place that used to
+ *     assume there's only ONE valid RADIUS username per hotspot account had to be updated to
+ *     check/revoke both, since that assumption would silently leave one of the two working
+ *     (or its usage uncounted) after expiry, disable, destroy, or purge.
  */
 class HotspotVoucherCredentialSchemeTest extends TestCase
 {
@@ -72,14 +75,19 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         // MAC captured straight from the transaction, not left for the async backfill job.
         $this->assertSame('AA:BB:CC:DD:EE:01', $hotspotUser->mac_address);
 
-        // RADIUS credential is the receipt — not the phone number.
+        // Both credentials are synced: the receipt (username=password=code, for the
+        // automatic post-purchase reconnect) and a standing phone_number+generated-password
+        // pair (for later self-service re-login).
         $this->assertSame('QGH7ABCDE1', DB::table('radcheck')
             ->where('username', 'QGH7ABCDE1')->where('attribute', 'Cleartext-Password')->value('value'));
-        $this->assertSame(0, DB::table('radcheck')->where('username', '254712345678')->count());
+        $phonePassword = DB::table('radcheck')->where('username', '254712345678')->where('attribute', 'Cleartext-Password')->value('value');
+        $this->assertNotNull($phonePassword);
+        $this->assertNotSame('QGH7ABCDE1', $phonePassword);
 
         // The app-level identity is still the real phone number.
         $this->assertSame('254712345678', $hotspotUser->phone_number);
         $this->assertSame('QGH7ABCDE1', $hotspotUser->radiusUsername());
+        $this->assertSame(['254712345678', 'QGH7ABCDE1'], $hotspotUser->radiusUsernames());
     }
 
     public function test_radius_username_falls_back_to_phone_number_when_no_purchase_is_linked(): void
@@ -92,7 +100,7 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $this->assertSame('staff-typed-username', $manual->radiusUsername());
     }
 
-    public function test_captive_portal_receipt_lookup_returns_receipt_as_credential(): void
+    public function test_captive_portal_receipt_lookup_returns_the_standing_phone_password_credential(): void
     {
         $tenant = Tenant::factory()->create();
         $plan = Plan::factory()->create(['tenant_id' => $tenant->id, 'type' => 'hotspot', 'duration_value' => 1, 'duration_unit' => 'days']);
@@ -112,14 +120,16 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
             'message' => "Confirmed. QGH7ABCDE1 sent to Acme Wifi. New M-PESA balance is Ksh100.00.",
         ]);
 
-        $response->assertOk()->assertJson([
-            'found' => true,
-            'username' => 'QGH7ABCDE1',
-            'password' => 'QGH7ABCDE1',
-        ]);
+        // Surfaces the standing phone+password credential (same one lookup() below returns),
+        // not the receipt itself — the receipt stays separately valid, just reserved for the
+        // automatic post-purchase reconnect (PaymentPortalController::status()).
+        $response->assertOk();
+        $response->assertJsonPath('found', true);
+        $response->assertJsonPath('username', '254711112222');
+        $this->assertNotSame('QGH7ABCDE1', $response->json('password'));
     }
 
-    public function test_captive_portal_phone_lookup_returns_receipt_as_credential(): void
+    public function test_captive_portal_phone_lookup_returns_the_standing_phone_password_credential(): void
     {
         $tenant = Tenant::factory()->create();
         $plan = Plan::factory()->create(['tenant_id' => $tenant->id, 'type' => 'hotspot', 'duration_value' => 1, 'duration_unit' => 'days']);
@@ -143,11 +153,10 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
             'phone' => '0722334455',
         ]);
 
-        $response->assertOk()->assertJson([
-            'found' => true,
-            'username' => 'QGH7ABCDE1',
-            'password' => 'QGH7ABCDE1',
-        ]);
+        $response->assertOk();
+        $response->assertJsonPath('found', true);
+        $response->assertJsonPath('username', '254722334455');
+        $this->assertNotSame('QGH7ABCDE1', $response->json('password'));
     }
 
     public function test_deleting_an_auto_purchased_customer_actually_revokes_their_real_radius_credential(): void
@@ -168,13 +177,14 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $hotspotUser = $this->activatePurchase($transaction, $plan);
 
         $this->assertSame(1, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->where('attribute', 'Cleartext-Password')->count());
+        $this->assertSame(1, DB::table('radcheck')->where('username', '254733445566')->where('attribute', 'Cleartext-Password')->count());
 
         $this->actingAs($admin)->delete(route('hotspot-users.destroy', $hotspotUser))->assertRedirect();
 
-        // The credential a customer would actually use is gone — destroy() didn't just
-        // no-op against a phone-number-keyed row that was never there, leaving a deleted
-        // customer's real login still valid.
+        // Both credentials a customer could actually use are gone — destroy() didn't just
+        // revoke one of the two, leaving a deleted customer's other real login still valid.
         $this->assertSame(0, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->count());
+        $this->assertSame(0, DB::table('radcheck')->where('username', '254733445566')->count());
     }
 
     public function test_expiring_an_auto_purchased_customer_revokes_their_real_radius_credential(): void
@@ -197,7 +207,32 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $this->artisan('users:expire-overdue')->assertSuccessful();
 
         $this->assertSame('expired', $hotspotUser->fresh()->status);
+        // Both credentials revoked — not just the receipt-based one.
         $this->assertSame(0, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->count());
+        $this->assertSame(0, DB::table('radcheck')->where('username', '254744556677')->count());
+    }
+
+    public function test_purging_an_auto_purchased_customer_clears_both_credentials(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $admin = User::factory()->create(['tenant_id' => $tenant->id]);
+        $plan = Plan::factory()->create(['tenant_id' => $tenant->id, 'type' => 'hotspot', 'duration_value' => 1, 'duration_unit' => 'days']);
+        $router = Router::factory()->create(['tenant_id' => $tenant->id]);
+
+        $transaction = Transaction::factory()->create(['tenant_id' => $tenant->id] + [
+            'status' => 'pending',
+            'mpesa_receipt' => null,
+            'checkout_request_id' => 'ws_CO_TEST006',
+            'plan_id' => $plan->id,
+            'router_id' => $router->id,
+            'phone_number' => '254755667788',
+        ]);
+        $hotspotUser = $this->activatePurchase($transaction, $plan);
+
+        $this->actingAs($admin)->post(route('hotspot-users.purge', $hotspotUser))->assertRedirect();
+
+        $this->assertSame(0, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->count());
+        $this->assertSame(0, DB::table('radcheck')->where('username', '254755667788')->count());
     }
 
     public function test_vouchers_are_excluded_from_customers_hub_and_its_stats(): void

@@ -141,10 +141,10 @@ class CustomerController extends Controller
         // row once a session actually starts), so these double as the "Access-Accept" log the
         // detail page's connection-log timeline shows — this app doesn't have a radpostauth
         // table logging raw auth accept/reject events.
-        $radiusUsername = $type === 'hotspot' ? $user->radiusUsername() : $user->username;
-        $connectionLogs = $radiusUsername
-            ? DB::table('radacct')->where('username', $radiusUsername)->orderByDesc('acctstarttime')->limit(10)->get()
-            : collect();
+        // An auto-purchased hotspot account can have two valid RADIUS usernames at once (see
+        // HotspotUser::radiusUsernames()) — sessions under either belong to this customer.
+        $radiusUsernames = $type === 'hotspot' ? $user->radiusUsernames() : [$user->username];
+        $connectionLogs = DB::table('radacct')->whereIn('username', array_filter($radiusUsernames))->orderByDesc('acctstarttime')->limit(10)->get();
 
         // Device Session Data card (hotspot only) — built from the latest radacct row already
         // fetched above rather than a live MikroTik call, so the page never waits on the
@@ -188,9 +188,9 @@ class CustomerController extends Controller
             return null;
         }
 
-        $username = $user instanceof HotspotUser ? $user->radiusUsername() : $user->username;
+        $usernames = $user instanceof HotspotUser ? $user->radiusUsernames() : [$user->username];
         $cycleStart = UsageCycleService::cycleStart($user->plan, $user->expires_at);
-        $usedBytes = UsageCycleService::bytesUsed($username, $cycleStart);
+        $usedBytes = UsageCycleService::bytesUsed($usernames, $cycleStart);
 
         return [
             'cycle_start' => $cycleStart,

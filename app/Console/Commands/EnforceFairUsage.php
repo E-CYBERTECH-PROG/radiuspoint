@@ -24,7 +24,7 @@ class EnforceFairUsage extends Command
     }
 
     /**
-     * @param  class-string<HotspotUser|PppoeUser>  $modelClass  both implement radiusUsername()
+     * @param  class-string<HotspotUser|PppoeUser>  $modelClass  both implement radiusUsernames()
      * @param  string  $activeEndpoint  RouterOS endpoint listing active sessions
      * @param  string  $activeUserField  which field on an active-session row holds the username
      * @param  string  $removeEndpoint  RouterOS endpoint to end a specific active session
@@ -40,12 +40,17 @@ class EnforceFairUsage extends Command
             ->filter(fn ($user) => $user->plan && $user->plan->data_cap_mb && $user->plan->fup_speed_limit);
 
         foreach ($users as $user) {
-            $radiusUsername = $user->radiusUsername();
+            // An auto-purchased hotspot account can have two valid RADIUS credentials at
+            // once (see HotspotUser::radiusUsernames()) — both need the rate-limit update,
+            // and the customer could be connected under either one.
+            $radiusUsernames = $user->radiusUsernames();
             $cycleStart = UsageCycleService::cycleStart($user->plan, $user->expires_at);
 
             // New cycle since last throttle — restore full speed before re-checking usage.
             if ($user->fup_throttled_at && $cycleStart->gt($user->fup_throttled_at)) {
-                RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->speed_limit);
+                foreach ($radiusUsernames as $radiusUsername) {
+                    RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->speed_limit);
+                }
                 $user->update(['fup_throttled_at' => null]);
             }
 
@@ -53,16 +58,18 @@ class EnforceFairUsage extends Command
                 continue;
             }
 
-            $usedBytes = UsageCycleService::bytesUsed($radiusUsername, $cycleStart);
+            $usedBytes = UsageCycleService::bytesUsed($radiusUsernames, $cycleStart);
 
             if ($usedBytes < $user->plan->data_cap_mb * 1024 * 1024) {
                 continue;
             }
 
-            RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->fup_speed_limit);
-            // radreply only applies on next re-auth (no CoA support), so force a disconnect
-            // to make the throttle take effect immediately. Best-effort either way.
-            SessionDisconnectService::disconnect($user->router, $activeEndpoint, $activeUserField, $removeEndpoint, $radiusUsername);
+            foreach ($radiusUsernames as $radiusUsername) {
+                RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->fup_speed_limit);
+                // radreply only applies on next re-auth (no CoA support), so force a disconnect
+                // to make the throttle take effect immediately. Best-effort either way.
+                SessionDisconnectService::disconnect($user->router, $activeEndpoint, $activeUserField, $removeEndpoint, $radiusUsername);
+            }
             $user->update(['fup_throttled_at' => now()]);
         }
     }

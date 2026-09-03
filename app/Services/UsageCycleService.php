@@ -30,14 +30,21 @@ class UsageCycleService
 
     /**
      * Bytes used (input + output combined) since the cycle started, summed from radacct.
+     * Accepts more than one username since an auto-purchased hotspot account can have two
+     * valid RADIUS credentials at once (see HotspotUser::radiusUsernames()) — usage under
+     * either one counts toward the same account's cap.
      *
      * FreeRADIUS writes acctstarttime in UTC regardless of the app/tenant timezone, so
      * $cycleStart must be normalized to UTC before comparing.
      */
-    public static function bytesUsed(string $username, Carbon $cycleStart): int
+    public static function bytesUsed(string|array $username, Carbon $cycleStart): int
     {
         return (int) DB::table('radacct')
-            ->where('username', $username)
+            ->when(
+                is_array($username),
+                fn ($q) => $q->whereIn('username', $username),
+                fn ($q) => $q->where('username', $username)
+            )
             ->where('acctstarttime', '>=', $cycleStart->clone()->setTimezone('UTC'))
             ->selectRaw('COALESCE(SUM(acctinputoctets + acctoutputoctets), 0) as total')
             ->value('total');
