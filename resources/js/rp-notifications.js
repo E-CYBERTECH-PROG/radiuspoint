@@ -1,20 +1,20 @@
-// Wires the notifications bell dropdown in layouts/sidebar.blade.php. The notification
-// list and unread count are server-seeded (see the #rp-notif-data JSON island in that
-// layout) — this module only renders them and preserves the same two server mutations
-// the old Alpine component made: mark one read, mark all read.
+// Wires the notifications bell dropdown in layouts/sidebar.blade.php. The list and unread
+// count are fetched async from NotificationController::recent (instead of being queried on
+// every single page navigation), then polled every 20s so the badge stays current.
 
 document.addEventListener('DOMContentLoaded', function () {
-    var dataEl = document.getElementById('rp-notif-data');
+    var root = document.getElementById('rp-notif-root');
     var listEl = document.getElementById('rp-notif-list');
     var badgeEl = document.getElementById('rp-notif-badge');
     var markAllBtn = document.getElementById('rp-notif-mark-all');
 
-    if (!dataEl || !listEl) return;
+    if (!root || !listEl) return;
 
+    var recentUrl = root.dataset.recentUrl;
+    var markAllUrl = root.dataset.markAllUrl;
     var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    var config = JSON.parse(dataEl.textContent);
-    var notifications = config.items || [];
-    var unread = config.unread || 0;
+    var notifications = [];
+    var unread = 0;
 
     function render() {
         badgeEl.style.display = unread > 0 ? '' : 'none';
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     markAllBtn.addEventListener('click', function () {
-        fetch(config.markAllUrl, {
+        fetch(markAllUrl, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
         }).then(function () {
@@ -68,5 +68,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    render();
+    function fetchRecent() {
+        fetch(recentUrl, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                notifications = data.notifications || [];
+                unread = data.unread_count || 0;
+                render();
+            });
+    }
+
+    fetchRecent();
+    setInterval(fetchRecent, 20000);
 });

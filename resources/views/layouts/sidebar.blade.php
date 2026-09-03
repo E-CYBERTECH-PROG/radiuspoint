@@ -12,6 +12,8 @@
         @vite(['resources/css/app.scss', 'resources/js/app.js'])
 
         <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
@@ -107,7 +109,7 @@
     </script>
 
     <div class="page">
-        <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark" id="rp-sidebar">
+        <aside class="navbar navbar-vertical navbar-expand-lg custom-scrollbar d-none d-lg-flex" id="rp-sidebar">
             <script>
                 // Applies the persisted collapsed state before the deferred module bundle
                 // loads, so a returning user doesn't see a flash of the wrong width first —
@@ -117,10 +119,6 @@
                 }
             </script>
             <div class="container-fluid">
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#rp-sidebar-menu" aria-controls="rp-sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
                 <h1 class="navbar-brand navbar-brand-autodark">
                     <a href="{{ Auth::user()->is_platform_admin ? route('platform-admin.dashboard') : route('dashboard') }}" class="d-flex align-items-center gap-2 text-decoration-none">
                         <span class="avatar avatar-sm bg-primary-lt"><i class="ti ti-topology-star-3"></i></span>
@@ -130,219 +128,60 @@
                     </a>
                 </h1>
 
-                <div class="navbar-nav flex-row d-lg-none">
-                    <button type="button" class="nav-link px-0 rp-theme-toggle">
-                        <i class="ti ti-moon icon"></i>
-                    </button>
-                </div>
-
                 <div class="collapse navbar-collapse" id="rp-sidebar-menu">
-                    <ul class="navbar-nav pt-lg-3">
-                        @if(Auth::user()->is_platform_admin)
-                            <li class="nav-item {{ request()->routeIs('platform-admin.dashboard') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('platform-admin.dashboard') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-layout-dashboard"></i></span>
-                                    <span class="nav-link-title">Dashboard</span>
-                                </a>
-                            </li>
-
-                            @php $pendingCount = \App\Models\Tenant::where('status', 'pending')->count(); @endphp
-                            <li class="nav-item {{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'active' : '' }}">
-                                <a class="nav-link" href="#rp-nav-platform" data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'true' : 'false' }}" aria-controls="rp-nav-platform">
-                                    <span class="nav-link-icon"><i class="ti ti-shield-lock"></i></span>
-                                    <span class="nav-link-title">Platform</span>
-                                    @if($pendingCount > 0)
-                                        <span class="badge bg-red text-white ms-auto rp-nav-badge">{{ $pendingCount }}</span>
-                                    @endif
-                                </a>
-                                <div class="collapse {{ request()->routeIs('platform-admin.*') && ! request()->routeIs('platform-admin.dashboard') ? 'show' : '' }}" id="rp-nav-platform">
-                                    <ul class="nav nav-pills flex-column ms-4">
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('platform-admin.tenants.index') ? 'active' : '' }}" href="{{ route('platform-admin.tenants.index') }}">Tenants</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('platform-admin.tenants.import-form') ? 'active' : '' }}" href="{{ route('platform-admin.tenants.import-form') }}">Import Tenants</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('platform-admin.invoices.index') ? 'active' : '' }}" href="{{ route('platform-admin.invoices.index') }}">Commission Invoices</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('platform-admin.activity-log.index') ? 'active' : '' }}" href="{{ route('platform-admin.activity-log.index') }}">Activity Log</a></li>
-                                    </ul>
-                                </div>
-                            </li>
-                        @else
-                            <li class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('dashboard') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-layout-dashboard"></i></span>
-                                    <span class="nav-link-title">Dashboard</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">Management</span></li>
-
-                            <li class="nav-item {{ request()->routeIs('routers.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('routers.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-world"></i></span>
-                                    <span class="nav-link-title">NAS</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vouchers.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-ticket"></i></span>
-                                    <span class="nav-link-title">Vouchers</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item {{ request()->routeIs('plans.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('plans.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-box"></i></span>
-                                    <span class="nav-link-title">Packages</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">CRM</span></li>
-
-                            <li class="nav-item {{ request()->routeIs(['customers.*', 'pppoe-users.*', 'hotspot-users.*']) ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('customers.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-users"></i></span>
-                                    <span class="nav-link-title">Customers</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item {{ request()->routeIs('leads.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('leads.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-user-plus"></i></span>
-                                    <span class="nav-link-title">Leads</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('tickets.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-headset"></i></span>
-                                    <span class="nav-link-title">Tickets</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">Revenue</span></li>
-
-                            <li class="nav-item {{ request()->routeIs('reports.receipts*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('reports.receipts') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-wallet"></i></span>
-                                    <span class="nav-link-title">Payments</span>
-                                </a>
-                            </li>
-
-                            <li class="nav-item {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('transactions.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-receipt"></i></span>
-                                    <span class="nav-link-title">Transactions</span>
-                                </a>
-                            </li>
-
-                            @if(Auth::user()->role !== 'Sales Agent')
-                                <li class="nav-item {{ request()->routeIs('billing.*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('billing.edit') }}">
-                                        <span class="nav-link-icon"><i class="ti ti-file-invoice"></i></span>
-                                        <span class="nav-link-title">Invoices</span>
-                                    </a>
-                                </li>
-                            @endif
-
-                            <li class="nav-item {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('expenses.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-cash-banknote"></i></span>
-                                    <span class="nav-link-title">Expenses</span>
-                                </a>
-                            </li>
-
-                            @php $reportsActive = request()->routeIs('reports.*') && ! request()->routeIs('reports.receipts*'); @endphp
-                            <li class="nav-item {{ $reportsActive ? 'active' : '' }}">
-                                <a class="nav-link" href="#rp-nav-reports" data-bs-toggle="collapse" role="button" aria-expanded="{{ $reportsActive ? 'true' : 'false' }}" aria-controls="rp-nav-reports">
-                                    <span class="nav-link-icon"><i class="ti ti-report"></i></span>
-                                    <span class="nav-link-title">Reports</span>
-                                </a>
-                                <div class="collapse {{ $reportsActive ? 'show' : '' }}" id="rp-nav-reports">
-                                    <ul class="nav nav-pills flex-column ms-4">
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.pppoe-balances') ? 'active' : '' }}" href="{{ route('reports.pppoe-balances') }}">Fixed User Balances</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.fixed-sales') ? 'active' : '' }}" href="{{ route('reports.fixed-sales') }}">Fixed Service Sales</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.hotspot-sales') ? 'active' : '' }}" href="{{ route('reports.hotspot-sales') }}">Hotspot Service Sales</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.access-log') ? 'active' : '' }}" href="{{ route('reports.access-log') }}">Access Requests</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.expired-users') ? 'active' : '' }}" href="{{ route('reports.expired-users') }}">Expired Users</a></li>
-                                        <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.analytics') ? 'active' : '' }}" href="{{ route('reports.analytics') }}">Analytics</a></li>
-                                    </ul>
-                                </div>
-                            </li>
-
-                            <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">Comms</span></li>
-
-                            <li class="nav-item {{ request()->routeIs('sms.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('sms.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-message-dots"></i></span>
-                                    <span class="nav-link-title">SMS</span>
-                                </a>
-                            </li>
-
-                            @if(Auth::user()->role !== 'Sales Agent')
-                                <li class="nav-item {{ request()->routeIs('captive-announcements.*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('captive-announcements.index') }}">
-                                        <span class="nav-link-icon"><i class="ti ti-bell"></i></span>
-                                        <span class="nav-link-title">Announcements</span>
-                                    </a>
-                                </li>
-                            @endif
-
-                            <li class="nav-item mt-3"><span class="nav-link-title px-2 text-uppercase small text-muted fw-bold">Settings</span></li>
-
-                            @if(Auth::user()->role === 'SuperAdmin')
-                                <li class="nav-item {{ request()->routeIs('team.*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('team.index') }}">
-                                        <span class="nav-link-icon"><i class="ti ti-lock"></i></span>
-                                        <span class="nav-link-title">Access Control</span>
-                                    </a>
-                                </li>
-                            @endif
-
-                            <li class="nav-item {{ request()->routeIs('account.*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('account.index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-user-circle"></i></span>
-                                    <span class="nav-link-title">Account</span>
-                                </a>
-                            </li>
-                        @endif
-                    </ul>
+                    @include('partials._nav-links', ['navId' => 'desktop'])
                 </div>
             </div>
         </aside>
 
+        {{-- === MOBILE NAV DRAWER === Below lg, the desktop rail above is hidden entirely (a
+             fixed-position aside with no visible content still occupies space — see the
+             earlier "empty navbar" bug) and this slides in from the left instead, opened by
+             the header's hamburger (rp-shell.js). Same offcanvas system as every other panel
+             in the app (Add Customer, filters, …), so it gets the same width/backdrop/full-
+             screen-on-phone treatment for free. --}}
+        <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="rp-mobile-nav" data-bs-scroll="false" aria-hidden="true">
+            <div class="offcanvas-header border-bottom">
+                <h1 class="navbar-brand mb-0">
+                    <a href="{{ Auth::user()->is_platform_admin ? route('platform-admin.dashboard') : route('dashboard') }}" class="d-flex align-items-center gap-2 text-decoration-none" data-bs-dismiss="offcanvas">
+                        <span class="avatar avatar-sm bg-primary-lt"><i class="ti ti-topology-star-3"></i></span>
+                        <span class="fw-bold text-truncate">
+                            {{ Auth::user()->is_platform_admin ? 'Platform Admin' : Auth::user()->tenant->company_name }}
+                        </span>
+                    </a>
+                </h1>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0 custom-scrollbar">
+                @include('partials._nav-links', ['navId' => 'mobile'])
+            </div>
+        </div>
+
         <div class="page-wrapper">
-            <header class="navbar navbar-expand-md navbar-light d-print-none">
+            <header class="navbar navbar-expand-md navbar-light d-print-none rp-header-float">
                 <div class="container-fluid">
-                    <button type="button" class="btn btn-icon d-none d-lg-inline-flex" id="rp-sidebar-toggle" title="Collapse sidebar">
-                        <i class="ti ti-layout-sidebar-left-collapse icon"></i>
+                    {{-- One control for both breakpoints — rp-shell.js checks the viewport at
+                         click time: below lg it opens #rp-mobile-nav, at lg+ it does the
+                         desktop rail-collapse instead. --}}
+                    <button type="button" class="btn btn-icon" id="rp-sidebar-toggle" title="Toggle sidebar">
+                        <i class="ti ti-menu-2 icon"></i>
                     </button>
 
                     @unless(Auth::user()->is_platform_admin)
-                        <a href="{{ route('search') }}" class="btn btn-icon" title="Search">
-                            <i class="ti ti-search icon"></i>
-                        </a>
+                        {{-- No visible search icon (matches the reference header) — Ctrl+K opens the
+                             same modal; see resources/js/rp-search.js. --}}
+                        <button type="button" class="visually-hidden" id="rp-search-trigger">Search</button>
                     @endunless
 
                     <div class="navbar-nav flex-row order-md-last align-items-center gap-2">
-                        <button type="button" class="nav-link px-2 d-none d-lg-inline-flex rp-theme-toggle" title="Toggle dark mode">
+                        <button type="button" class="nav-link px-2 rp-theme-toggle" title="Toggle dark mode">
                             <i class="ti ti-moon icon"></i>
                         </button>
 
-                        @php
-                            $rpNotifConfig = [
-                                'items' => Auth::user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
-                                    'id' => $n->id,
-                                    'message' => $n->data['message'] ?? 'Notification',
-                                    'url' => $n->data['url'] ?? null,
-                                    'read' => (bool) $n->read_at,
-                                    'created_at_human' => $n->created_at->diffForHumans(),
-                                ]),
-                                'unread' => Auth::user()->unreadNotifications->count(),
-                                'markAllUrl' => route('notifications.mark-all-read'),
-                            ];
-                        @endphp
-                        <script type="application/json" id="rp-notif-data">{{ Illuminate\Support\Js::from($rpNotifConfig) }}</script>
-
-                        <div class="nav-item dropdown">
+                        <div class="nav-item dropdown d-none d-md-block"
+                             id="rp-notif-root"
+                             data-recent-url="{{ route('notifications.recent') }}"
+                             data-mark-all-url="{{ route('notifications.mark-all-read') }}">
                             <a href="#" class="nav-link px-2 position-relative" data-bs-toggle="dropdown" aria-label="Notifications">
                                 <i class="ti ti-bell icon"></i>
                                 <span id="rp-notif-badge" class="badge bg-red position-absolute top-0 end-0" style="display:none;width:.5rem;height:.5rem;padding:0;border-radius:50%"></span>
@@ -364,9 +203,13 @@
 
                         <div class="nav-item dropdown">
                             <a href="#" class="nav-link d-flex lh-1 p-0 px-2 gap-2 align-items-center" data-bs-toggle="dropdown" aria-label="Open user menu">
-                                <span class="avatar avatar-sm bg-primary-lt">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</span>
-                                <div class="d-none d-xl-block ps-2">
+                                <span class="position-relative flex-shrink-0">
+                                    <span class="avatar avatar-sm rp-avatar-gradient fw-bold">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</span>
+                                    <span class="position-absolute rounded-circle bg-green rp-avatar-status" aria-hidden="true"></span>
+                                </span>
+                                <div class="d-none d-xl-flex align-items-center gap-1 ps-2">
                                     <div class="fw-bold">{{ Auth::user()->name }}</div>
+                                    <i class="ti ti-chevron-down text-muted" style="font-size:1rem"></i>
                                 </div>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -411,6 +254,9 @@
 
     @include('partials._user-detail-panel')
     @include('partials._confirm-dialog')
+    @unless(Auth::user()->is_platform_admin)
+        @include('partials._search-modal')
+    @endunless
 
     {{ $scripts ?? '' }}
     </body>

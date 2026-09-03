@@ -1,5 +1,78 @@
 // App-specific rules that don't belong in Tabler's own SCSS.
 
+// Flat, borderless card style (soft shadow + larger radius instead of Tabler's default
+// 1px border) — applied app-wide, not just the dashboard, so every page reads consistently.
+.card {
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 6px rgba(0, 0, 0, .04);
+}
+
+.btn:not(.btn-icon):not(.btn-link) {
+    border-radius: .75rem;
+}
+
+// Tabler halves --tblr-page-padding (the .container-xl side gutter every page's content,
+// including table cards, sits in) below lg — 0.5rem reads as edge-to-edge on a phone. Keep
+// it a comfortable, consistent width at every breakpoint instead of shrinking it further.
+:root {
+    --tblr-page-padding: 1.25rem;
+}
+@include media-breakpoint-down(lg) {
+    :root {
+        --tblr-page-padding: 1rem;
+    }
+}
+
+// Tabler's default light body bg (#f9fafb) sits too close to card bg (pure white) to read as
+// a surface change now that .card has no border — just a shadow. Scoped to light mode only;
+// dark mode already contrasts fine against its card surface.
+html:not([data-bs-theme="dark"]) {
+    --tblr-body-bg: #eef1f6;
+    --tblr-body-bg-rgb: 238, 241, 246;
+}
+
+// Table cards (customers, routers, receipts, …) read as sharper/denser data surfaces with
+// square corners instead of the app's usual 1rem card radius, and a darker header row than
+// Tabler's near-invisible default (gray-50) so it's clearly a distinct band above the rows.
+.card:has(.table-responsive) {
+    border-radius: 0;
+}
+.card-table thead th {
+    background: var(--tblr-gray-200);
+}
+[data-bs-theme="dark"] .card-table thead th {
+    background: var(--tblr-gray-700);
+}
+
+// layouts/sidebar.blade.php — the top header as a detached, rounded floating bar instead of
+// a full-bleed bar flush against the page edges. Tabler's own navbar background/text-color
+// vars still apply (light vs dark theme) — this only changes shape/spacing, not color.
+.rp-header-float {
+    margin: 1rem 1rem 0;
+    border-radius: 1rem;
+    border-bottom: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 6px rgba(0, 0, 0, .04);
+}
+
+// layouts/sidebar.blade.php — the user-menu avatar. A flat color chip reads as "disabled"
+// next to the rest of the redesigned header, so this is a gradient instead of bg-primary-lt.
+.rp-avatar-gradient {
+    background: linear-gradient(135deg, #8f7ffa, #6c5ce7);
+    color: #fff;
+}
+
+// Small circular presence dot anchored to the bottom-right of an avatar, ringed in the
+// surface color so it reads as "cut out" of the avatar rather than just stacked on top —
+// same trick as .router-board-led below, just sized for the header avatar.
+.rp-avatar-status {
+    width: .625rem;
+    height: .625rem;
+    right: -1px;
+    bottom: -1px;
+    border: 2px solid var(--tblr-bg-surface, #fff);
+}
+
 @keyframes rp-icon-spin {
     to { transform: rotate(360deg); }
 }
@@ -52,6 +125,101 @@
 // layouts/sidebar.blade.php — desktop-only "icon rail" collapse on top of Tabler's stock
 // navbar-vertical (which otherwise is full-width-or-offcanvas only), matching the app's
 // previous collapse/hover-peek sidebar behavior. rp-shell.js toggles .rp-collapsed.
+// Tabler's own .navbar-vertical.navbar-expand-lg rule sets overflow-y: scroll (not auto) on
+// this element — "scroll" always reserves/renders the scrollbar track even when there's
+// nothing to scroll, which is the classic always-visible bar the user saw. Override to auto
+// (only show it when content actually overflows), plus the app's usual auto-hide treatment
+// (.custom-scrollbar, added to #rp-sidebar in the layout) for when it does.
+#rp-sidebar {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+// Offcanvas panels (Add Customer, Compose SMS, filters, …) go full-screen below sm instead
+// of the fixed ~400px side panel, which is cramped for a multi-field form on a phone. `dvh`
+// (not vh/height:100%) keeps the footer's Save/Apply button above mobile browser chrome —
+// 100vh is sized for the *largest* possible viewport (address bar hidden), so on a shorter
+// visible viewport (address bar shown) a height:100vh panel overflows past what's actually
+// visible; dvh tracks the real visible height instead. The body itself already scrolls
+// (Tabler's own .offcanvas-body has overflow-y:auto), this only fixes the outer frame.
+@include media-breakpoint-down(sm) {
+    .offcanvas.offcanvas-end,
+    .offcanvas.offcanvas-start {
+        width: 100vw !important;
+    }
+}
+.offcanvas {
+    height: 100dvh;
+}
+// Extra bottom padding for phones with a gesture nav bar / home indicator overlapping the
+// very bottom of the viewport — env() resolves to 0 on devices without one.
+.offcanvas-footer {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
+// Table-toolbar search fields (customers/routers/expenses/… index pages) — a fixed min-width
+// here plus an adjacent action button overflowed a narrow viewport instead of wrapping, since
+// nothing could shrink below that width. Only apply the min-width once there's room for it.
+.input-icon {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+@include media-breakpoint-up(sm) {
+    .input-icon {
+        min-width: 16rem;
+    }
+}
+
+// Shared "KPI strip" pattern — one card, tiles laid out edge-to-edge with a divider between
+// them instead of gapped separate cards (customers/routers/expenses/… index pages). The
+// divider has to flip from a side border to a top border once .flex-sm-row stacks the tiles
+// into a column below sm, or adjacent tiles show no separator at all on small screens.
+.rp-stat-strip > div {
+    border-bottom: 1px solid var(--tblr-border-color);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+@include media-breakpoint-up(sm) {
+    .rp-stat-strip > div {
+        border-bottom: 0;
+        border-right: 1px solid var(--tblr-border-color);
+
+        &:last-child {
+            border-right: 0;
+        }
+    }
+}
+
+// Tabler's default backdrop (modals + offcanvas panels) is a fairly faint 24% tint —
+// bumped slightly so the dimmed body is clearly noticeable behind an open panel.
+.modal-backdrop.show {
+    opacity: .35;
+}
+.offcanvas-backdrop.show {
+    opacity: .35;
+}
+
+// Tighter vertical rhythm between top-level nav items — Tabler's own .nav-link padding
+// (0.5rem top/bottom) is what creates the gap between adjacent items, since there's no
+// separate margin between .nav-item elements. Also bumps the icon size (Tabler's default
+// 1.25rem/inherited font-size reads quite small next to the label) and left-indents the
+// whole row so icon+label aren't flush against the sidebar's edge — applied to both the
+// desktop rail and the mobile drawer, which share this markup via partials/_nav-links.
+#rp-sidebar .navbar-nav > .nav-item > .nav-link,
+#rp-mobile-nav .navbar-nav > .nav-item > .nav-link {
+    padding-top: .2rem;
+    padding-bottom: .2rem;
+    padding-left: 1.5rem;
+}
+#rp-sidebar .nav-link-icon,
+#rp-mobile-nav .nav-link-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1.25rem;
+}
+
 @include media-breakpoint-up(lg) {
     #rp-sidebar.rp-collapsed {
         width: 4.5rem;

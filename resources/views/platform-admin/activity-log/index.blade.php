@@ -4,32 +4,19 @@
         <p class="text-muted mb-0">Audit trail of platform admin actions on tenant accounts.</p>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <select name="tenant_id" class="form-select flex-fill">
-            <option value="">All Tenants</option>
-            @foreach($tenants as $tenant)
-                <option value="{{ $tenant->id }}" @selected(request('tenant_id') == $tenant->id)>{{ $tenant->company_name }}</option>
-            @endforeach
-        </select>
-        <select name="admin_user_id" class="form-select flex-fill">
-            <option value="">All Admins</option>
-            @foreach($admins as $admin)
-                <option value="{{ $admin->id }}" @selected(request('admin_user_id') == $admin->id)>{{ $admin->name }}</option>
-            @endforeach
-        </select>
-        <select name="action" class="form-select flex-fill">
-            <option value="">All Actions</option>
-            @foreach($actions as $action)
-                <option value="{{ $action }}" @selected(request('action') === $action)>{{ ucfirst(str_replace('_', ' ', $action)) }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['tenant_id', 'admin_user_id', 'action']))
-            <a href="{{ route('platform-admin.activity-log.index') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select :default="30" />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-activity-log" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -54,9 +41,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-5">
-                                <i class="ti ti-history icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No activity recorded yet.</p>
+                            <td colspan="5" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-history fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No activity recorded yet.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -68,5 +55,36 @@
                 {{ $logs->links() }}
             </div>
         @endif
-    </div>
+        </div>
+
+        <x-filter-modal name="activity-log" :clear-url="route('platform-admin.activity-log.index')">
+            <div class="col-12">
+                <label class="form-label">Tenant</label>
+                <select name="tenant_id" class="form-select">
+                    <option value="">All</option>
+                    @foreach($tenants as $tenant)
+                        <option value="{{ $tenant->id }}" @selected(request('tenant_id') == $tenant->id)>{{ $tenant->company_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Admin</label>
+                <select name="admin_user_id" class="form-select">
+                    <option value="">All</option>
+                    @foreach($admins as $admin)
+                        <option value="{{ $admin->id }}" @selected(request('admin_user_id') == $admin->id)>{{ $admin->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Action</label>
+                <select name="action" class="form-select">
+                    <option value="">All</option>
+                    @foreach($actions as $action)
+                        <option value="{{ $action }}" @selected(request('action') === $action)>{{ ucfirst(str_replace('_', ' ', $action)) }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+    </form>
 </x-sidebar-layout>

@@ -15,9 +15,14 @@ use Throwable;
  */
 class OltController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $olts = Olt::latest()->paginate(20);
+        $search = $this->searchTerm($request);
+
+        $olts = Olt::when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->latest()
+            ->paginate($this->perPage($request))
+            ->withQueryString();
 
         return view('olts.index', compact('olts'));
     }

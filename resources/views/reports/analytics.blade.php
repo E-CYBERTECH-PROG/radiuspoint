@@ -8,37 +8,23 @@
 
     <div class="mb-4">
         <h2 class="mb-2">Captive Portal Funnel <span class="text-muted fw-normal">— last 30 days</span></h2>
-        <div class="row row-cols-2 row-cols-lg-4 g-3">
-            <div class="col">
-                <div class="card card-sm">
-                    <div class="card-body">
-                        <p class="text-uppercase text-muted small fw-bold mb-1">Portal Visits</p>
-                        <h3 class="font-monospace fw-bold mb-0">{{ number_format($portalVisits) }}</h3>
-                    </div>
+        <div class="card" style="border-radius:.5rem">
+            <div class="d-flex flex-column flex-sm-row rp-stat-strip">
+                <div class="flex-fill p-3">
+                    <p class="text-uppercase text-muted small fw-bold mb-1">Portal Visits</p>
+                    <h3 class="font-monospace fw-bold mb-0">{{ number_format($portalVisits) }}</h3>
                 </div>
-            </div>
-            <div class="col">
-                <div class="card card-sm">
-                    <div class="card-body">
-                        <p class="text-uppercase text-muted small fw-bold mb-1">Paid Conversions</p>
-                        <h3 class="font-monospace fw-bold text-success mb-0">{{ number_format($portalConversions) }}</h3>
-                    </div>
+                <div class="flex-fill p-3">
+                    <p class="text-uppercase text-muted small fw-bold mb-1">Paid Conversions</p>
+                    <h3 class="font-monospace fw-bold text-success mb-0">{{ number_format($portalConversions) }}</h3>
                 </div>
-            </div>
-            <div class="col">
-                <div class="card card-sm">
-                    <div class="card-body">
-                        <p class="text-uppercase text-muted small fw-bold mb-1">Free Mode Sessions</p>
-                        <h3 class="font-monospace fw-bold text-primary mb-0">{{ number_format($freeModeSessions) }}</h3>
-                    </div>
+                <div class="flex-fill p-3">
+                    <p class="text-uppercase text-muted small fw-bold mb-1">Free Mode Sessions</p>
+                    <h3 class="font-monospace fw-bold text-primary mb-0">{{ number_format($freeModeSessions) }}</h3>
                 </div>
-            </div>
-            <div class="col">
-                <div class="card card-sm">
-                    <div class="card-body">
-                        <p class="text-uppercase text-muted small fw-bold mb-1">Conversion Rate</p>
-                        <h3 class="font-monospace fw-bold mb-0">{{ $conversionRate !== null ? $conversionRate.'%' : '—' }}</h3>
-                    </div>
+                <div class="flex-fill p-3">
+                    <p class="text-uppercase text-muted small fw-bold mb-1">Conversion Rate</p>
+                    <h3 class="font-monospace fw-bold mb-0">{{ $conversionRate !== null ? $conversionRate.'%' : '—' }}</h3>
                 </div>
             </div>
         </div>

@@ -7,10 +7,19 @@ document.addEventListener('DOMContentLoaded', function () {
     var sidebarToggle = document.getElementById('rp-sidebar-toggle');
     var sidebar = document.getElementById('rp-sidebar');
 
-    if (sidebarToggle && sidebar) {
+    if (sidebarToggle) {
         sidebarToggle.addEventListener('click', function () {
-            var collapsed = sidebar.classList.toggle('rp-collapsed');
-            localStorage.setItem('rp_sidebar_open', collapsed ? '0' : '1');
+            // Below lg the desktop rail is hidden entirely (see layouts/sidebar.blade.php) —
+            // this button opens the #rp-mobile-nav drawer instead of the rail-collapse below,
+            // which is a desktop-only concept.
+            if (window.matchMedia('(min-width: 992px)').matches) {
+                if (!sidebar) return;
+                var collapsed = sidebar.classList.toggle('rp-collapsed');
+                localStorage.setItem('rp_sidebar_open', collapsed ? '0' : '1');
+            } else {
+                var mobileNav = document.getElementById('rp-mobile-nav');
+                if (mobileNav) bootstrap.Offcanvas.getOrCreateInstance(mobileNav).toggle();
+            }
         });
     }
 

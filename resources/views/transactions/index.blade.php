@@ -4,40 +4,42 @@
         <p class="text-muted mb-0">Organization payments made into the system through M-Pesa/Kopokopo.</p>
     </div>
 
-    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
-        <ul class="nav nav-pills">
-            <li class="nav-item">
-                <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'success']))) }}" class="nav-link {{ request('status') === 'success' ? 'active' : '' }}">
-                    Success
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'failed']))) }}" class="nav-link {{ request('status') === 'failed' ? 'active' : '' }}">
-                    Failed
-                </a>
-            </li>
-        </ul>
-        <a href="{{ route('transactions.export', request()->query()) }}" class="btn">
-            <i class="ti ti-download icon"></i> Export CSV
-        </a>
-    </div>
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'success']))) }}" class="nav-link {{ request('status') === 'success' ? 'active' : '' }}">
+                Success
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('transactions.index', array_filter(array_merge(request()->except(['status', 'page']), ['status' => 'failed']))) }}" class="nav-link {{ request('status') === 'failed' ? 'active' : '' }}">
+                Failed
+            </a>
+        </li>
+    </ul>
 
-    <form method="GET" class="mb-4 d-flex flex-wrap gap-2">
+    <form method="GET">
         <input type="hidden" name="status" value="{{ request('status') }}">
-        <div class="input-icon" style="min-width:14rem;flex:1">
-            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, phone, or receipt..." class="form-control">
-        </div>
-        <input type="date" name="from" value="{{ request('from') }}" class="form-control w-auto">
-        <input type="date" name="to" value="{{ request('to') }}" class="form-control w-auto">
-        <x-per-page-select :default="25" />
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['search', 'status', 'from', 'to']))
-            <a href="{{ route('transactions.index') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select :default="25" />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-transactions" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, phone, or receipt…" class="form-control">
+                    </div>
+                    <a href="{{ route('transactions.export', request()->query()) }}" class="btn btn-primary">
+                        <i class="ti ti-download icon"></i> <span class="d-none d-sm-inline">Export CSV</span>
+                    </a>
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -75,9 +77,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <i class="ti ti-receipt icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No transactions recorded yet.</p>
+                            <td colspan="7" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-receipt fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No transactions recorded yet.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -89,7 +91,19 @@
                 {{ $transactions->links() }}
             </div>
         @endif
-    </div>
+        </div>
+
+        <x-filter-modal name="transactions" :clear-url="route('transactions.index')">
+            <div class="col-12 col-sm-6">
+                <label class="form-label">From</label>
+                <input type="date" name="from" value="{{ request('from') }}" class="form-control">
+            </div>
+            <div class="col-12 col-sm-6">
+                <label class="form-label">To</label>
+                <input type="date" name="to" value="{{ request('to') }}" class="form-control">
+            </div>
+        </x-filter-modal>
+    </form>
 
     <x-slot name="scripts">
         <script>

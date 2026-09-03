@@ -6,7 +6,7 @@
     a couple of extra queries that aren't worth re-running every few seconds.
 --}}
 <x-sidebar-layout title="Dashboard">
-    <div class="row row-cards g-3 mb-3">
+    <div class="row row-cards g-2 mb-2">
         <div class="col-lg-4">
             @include('dashboard.partials._oneisp-hero', ['delay' => 60])
         </div>
@@ -15,16 +15,22 @@
         </div>
     </div>
 
-    <div class="row row-cards g-3 mb-3">
+    <div class="row row-cards g-2 mb-2">
         <div class="col-lg-4">
-            <div class="row g-3">
-                <div class="col-6">
-                    @include('dashboard.partials._oneisp-subscriptions', ['delay' => 140])
+            {{-- Matches the Revenue Report card's height (via the parent row's default
+                 align-items:stretch) then splits it evenly: Subscriptions+Profit fill the
+                 upper half, Earnings the lower half — flex:1 1 0 on both rather than relying
+                 on Bootstrap's grid, since content height alone won't split 50/50. --}}
+            <div class="d-flex flex-column h-100 gap-2">
+                <div class="row g-2" style="flex:1 1 0">
+                    <div class="col-6">
+                        @include('dashboard.partials._oneisp-subscriptions', ['delay' => 140])
+                    </div>
+                    <div class="col-6">
+                        @include('dashboard.partials._oneisp-profit', ['delay' => 160])
+                    </div>
                 </div>
-                <div class="col-6">
-                    @include('dashboard.partials._oneisp-profit', ['delay' => 160])
-                </div>
-                <div class="col-12">
+                <div style="flex:1 1 0">
                     @include('dashboard.partials._oneisp-earnings', ['delay' => 180])
                 </div>
             </div>
@@ -43,7 +49,7 @@
         </div>
     </div>
 
-    <div class="row row-cards g-3">
+    <div class="row row-cards g-2">
         <div class="col-lg-8">
             @include('dashboard.partials._oneisp-packages-table', ['delay' => 300])
         </div>

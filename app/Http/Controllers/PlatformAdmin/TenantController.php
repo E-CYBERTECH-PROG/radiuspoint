@@ -30,7 +30,7 @@ class TenantController extends Controller
             ->when($request->filled('tier'), fn ($q) => $q->where('subscription_tier', $request->tier))
             ->with('users')
             ->latest()
-            ->paginate(20)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return view('platform-admin.tenants.index', compact('tenants'));

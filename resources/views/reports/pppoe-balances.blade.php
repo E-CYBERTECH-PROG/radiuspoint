@@ -4,19 +4,20 @@
         <p class="text-muted mb-0">No prepaid wallet balance is tracked — this is account status, not a monetary figure.</p>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <div class="input-icon flex-fill">
-            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username..." class="form-control">
-        </div>
-        <x-per-page-select />
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['search']))
-            <a href="{{ route('reports.pppoe-balances') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                </div>
+                <div class="input-icon">
+                    <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search username…" class="form-control">
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -49,16 +50,17 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
-                                <i class="ti ti-user icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No PPPoE accounts yet.</p>
+                            <td colspan="6" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-user fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No PPPoE accounts yet.</p>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
+    </form>
 
     <div class="mt-3">{{ $users->links() }}</div>
 </x-sidebar-layout>

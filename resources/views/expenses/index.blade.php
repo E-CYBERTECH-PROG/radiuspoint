@@ -2,62 +2,50 @@
 <x-sidebar-layout title="Expenses">
     @php $currency = Auth::user()->tenant->currency_symbol ?? 'KES'; @endphp
 
-    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
-        <div>
-            <h1 class="mb-1">Expenses</h1>
-            <p class="text-muted mb-0">Track what it costs to run your ISP.</p>
-        </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-expense">
-            <i class="ti ti-plus icon"></i> Log Expense
-        </button>
+    <div class="mb-4">
+        <h1 class="mb-1">Expenses</h1>
+        <p class="text-muted mb-0">Track what it costs to run your ISP.</p>
     </div>
 
-    <div class="row row-cols-1 row-cols-sm-3 g-3 mb-4">
-        <div class="col">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <p class="text-uppercase text-muted small fw-bold mb-1">This Month</p>
-                    <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['this_month'], 2) }}</p>
-                </div>
+    <div class="card mb-4" style="border-radius:.5rem">
+        <div class="d-flex flex-column flex-sm-row rp-stat-strip">
+            <div class="flex-fill p-3">
+                <p class="text-uppercase text-muted small fw-bold mb-1">This Month</p>
+                <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['this_month'], 2) }}</p>
             </div>
-        </div>
-        <div class="col">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <p class="text-uppercase text-muted small fw-bold mb-1">This Year</p>
-                    <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['this_year'], 2) }}</p>
-                </div>
+            <div class="flex-fill p-3">
+                <p class="text-uppercase text-muted small fw-bold mb-1">This Year</p>
+                <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['this_year'], 2) }}</p>
             </div>
-        </div>
-        <div class="col">
-            <div class="card card-sm">
-                <div class="card-body">
-                    <p class="text-uppercase text-muted small fw-bold mb-1">All Time</p>
-                    <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['all_time'], 2) }}</p>
-                </div>
+            <div class="flex-fill p-3">
+                <p class="text-uppercase text-muted small fw-bold mb-1">All Time</p>
+                <p class="fs-3 fw-bold font-monospace mb-0">{{ $currency }} {{ number_format($stats['all_time'], 2) }}</p>
             </div>
         </div>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <div class="input-icon flex-fill">
-            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search category or notes..." class="form-control">
-        </div>
-        <select name="category" class="form-select w-auto">
-            <option value="">All Categories</option>
-            @foreach(\App\Http\Controllers\ExpenseController::CATEGORIES as $cat)
-                <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
-            @endforeach
-        </select>
-        <x-per-page-select />
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['search', 'category']))
-            <a href="{{ route('expenses.index') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-expenses" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search category or notes…" class="form-control">
+                    </div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-expense">
+                        <i class="ti ti-plus icon"></i> <span class="d-none d-sm-inline">Log Expense</span>
+                    </button>
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -118,16 +106,29 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
-                                <i class="ti ti-cash-banknote icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No expenses logged yet.</p>
+                            <td colspan="6" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-cash-banknote fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No expenses logged yet.</p>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
+
+        <x-filter-modal name="expenses" :clear-url="route('expenses.index')">
+            <div class="col-12">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All</option>
+                    @foreach(\App\Http\Controllers\ExpenseController::CATEGORIES as $cat)
+                        <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+    </form>
 
     <div class="mt-3">{{ $expenses->links() }}</div>
 

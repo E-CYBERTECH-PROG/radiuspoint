@@ -7,6 +7,9 @@
 
 $primary: #7367f0;
 
+// Tabler's default (15rem) reads a bit cramped with this app's nav-item badges/labels.
+$sidebar-width: 16.5rem;
+
 $font-family-sans-serif: 'Montserrat', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 $font-family-monospace: 'Fira Code', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 

@@ -29,7 +29,7 @@ class AdminActivityLogController extends Controller
             ->when($request->filled('admin_user_id'), fn ($q) => $q->where('admin_user_id', $request->admin_user_id))
             ->when($request->filled('action'), fn ($q) => $q->where('action', $request->action))
             ->latest()
-            ->paginate(30)
+            ->paginate($this->perPage($request, 30))
             ->withQueryString();
 
         $tenants = Tenant::orderBy('company_name')->get(['id', 'company_name']);

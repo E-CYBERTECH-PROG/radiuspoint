@@ -18,29 +18,19 @@
         </a>
     </div>
 
-    <div class="row row-cols-3 g-3 mb-4">
-        <div class="col">
-            <div class="card card-sm text-center">
-                <div class="card-body">
-                    <p class="fs-2 font-monospace fw-bold text-success mb-0">{{ $counts['active'] }}</p>
-                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Online</p>
-                </div>
+    <div class="card mb-4" style="border-radius:.5rem">
+        <div class="d-flex flex-column flex-sm-row rp-stat-strip">
+            <div class="flex-fill p-3 text-center">
+                <p class="fs-2 font-monospace fw-bold text-success mb-0">{{ $counts['active'] }}</p>
+                <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Online</p>
             </div>
-        </div>
-        <div class="col">
-            <div class="card card-sm text-center">
-                <div class="card-body">
-                    <p class="fs-2 font-monospace fw-bold text-danger mb-0">{{ $counts['offline'] }}</p>
-                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Offline</p>
-                </div>
+            <div class="flex-fill p-3 text-center">
+                <p class="fs-2 font-monospace fw-bold text-danger mb-0">{{ $counts['offline'] }}</p>
+                <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Offline</p>
             </div>
-        </div>
-        <div class="col">
-            <div class="card card-sm text-center">
-                <div class="card-body">
-                    <p class="fs-2 font-monospace fw-bold text-warning mb-0">{{ $counts['other'] }}</p>
-                    <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Awaiting Uplink</p>
-                </div>
+            <div class="flex-fill p-3 text-center">
+                <p class="fs-2 font-monospace fw-bold text-warning mb-0">{{ $counts['other'] }}</p>
+                <p class="text-muted text-uppercase mb-0" style="font-size:.625rem">Awaiting Uplink</p>
             </div>
         </div>
     </div>

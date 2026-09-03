@@ -15,16 +15,16 @@
                     <h3 class="mb-0">Auto-Provisioning</h3>
                 </div>
                 <ul class="list-unstyled d-flex flex-column gap-3">
-                    <li class="d-flex align-items-start gap-2">
-                        <i class="ti ti-wand text-primary mt-1"></i>
+                    <li class="d-flex align-items-center gap-3">
+                        <span class="avatar avatar-sm bg-primary-lt flex-shrink-0"><i class="ti ti-wand"></i></span>
                         <span><strong>IP:</strong> Allocated automatically.</span>
                     </li>
-                    <li class="d-flex align-items-start gap-2">
-                        <i class="ti ti-shield-check text-success mt-1"></i>
+                    <li class="d-flex align-items-center gap-3">
+                        <span class="avatar avatar-sm bg-green-lt flex-shrink-0"><i class="ti ti-shield-check"></i></span>
                         <span><strong>Credentials:</strong> Generated automatically.</span>
                     </li>
-                    <li class="d-flex align-items-start gap-2">
-                        <i class="ti ti-terminal-2 mt-1"></i>
+                    <li class="d-flex align-items-center gap-3">
+                        <span class="avatar avatar-sm bg-azure-lt flex-shrink-0"><i class="ti ti-terminal-2"></i></span>
                         <span><strong>Setup:</strong> One script to paste into the terminal.</span>
                     </li>
                 </ul>

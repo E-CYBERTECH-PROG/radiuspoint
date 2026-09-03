@@ -4,16 +4,6 @@
         <p class="text-muted mb-0">Successful transactions matched to your PPPoE packages by name.</p>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <input type="date" name="from" value="{{ request('from') }}" class="form-control w-auto">
-        <input type="date" name="to" value="{{ request('to') }}" class="form-control w-auto">
-        <x-per-page-select />
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['from', 'to']))
-            <a href="{{ route('reports.fixed-sales') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
-
     <div class="row row-cols-1 row-cols-sm-2 g-3 mb-4">
         <div class="col">
             <div class="card card-sm">
@@ -33,7 +23,19 @@
         </div>
     </div>
 
-    <div class="card">
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-fixed-sales" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+            </div>
+
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -59,9 +61,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-5">
-                                <i class="ti ti-chart-line icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-1">No fixed service sales matched yet.</p>
+                            <td colspan="5" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-chart-line fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-1">No fixed service sales matched yet.</p>
                                 <p class="text-muted small mb-0">Only transactions whose package name exactly matches a current PPPoE plan name are shown.</p>
                             </td>
                         </tr>
@@ -69,7 +71,19 @@
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
+
+        <x-filter-modal name="fixed-sales" :clear-url="route('reports.fixed-sales')">
+            <div class="col-12 col-sm-6">
+                <label class="form-label">From</label>
+                <input type="date" name="from" value="{{ request('from') }}" class="form-control">
+            </div>
+            <div class="col-12 col-sm-6">
+                <label class="form-label">To</label>
+                <input type="date" name="to" value="{{ request('to') }}" class="form-control">
+            </div>
+        </x-filter-modal>
+    </form>
 
     <div class="mt-3">{{ $transactions->links() }}</div>
 </x-sidebar-layout>

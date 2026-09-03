@@ -27,8 +27,9 @@ class RouterController extends Controller
     public function index(Request $request)
     {
         $search = $this->searchTerm($request);
+        $tenantId = Auth::user()->tenant_id;
 
-        $routers = Router::where('tenant_id', Auth::user()->tenant_id)
+        $routers = Router::where('tenant_id', $tenantId)
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")->orWhere('ip_address', 'like', "%{$search}%");
             }))
@@ -38,7 +39,14 @@ class RouterController extends Controller
             ->withQueryString();
         $models = config('mikrotik_models');
 
-        return view('routers.index', compact('routers', 'models'));
+        $stats = [
+            'total' => Router::where('tenant_id', $tenantId)->count(),
+            'online' => Router::where('tenant_id', $tenantId)->where('status', 'active')->count(),
+            'awaiting' => Router::where('tenant_id', $tenantId)->whereIn('status', ['pending', 'provisioning'])->count(),
+            'offline' => Router::where('tenant_id', $tenantId)->where('status', 'offline')->count(),
+        ];
+
+        return view('routers.index', compact('routers', 'models', 'stats'));
     }
 
     /**

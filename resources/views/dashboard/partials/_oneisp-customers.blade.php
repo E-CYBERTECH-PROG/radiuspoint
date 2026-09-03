@@ -16,7 +16,7 @@
             @foreach($oneispCustomerTiles as $tile)
                 <div class="col-6 col-sm-4 col-lg-2">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="avatar avatar-sm {{ $tile['bg'] }} flex-shrink-0"><i class="ti {{ $tile['icon'] }}"></i></span>
+                        <span class="avatar {{ $tile['bg'] }} flex-shrink-0"><i class="ti {{ $tile['icon'] }} fs-3"></i></span>
                         <div class="min-w-0">
                             <p class="font-monospace fw-bold mb-0 lh-sm">{{ number_format($tile['value']) }}</p>
                             <p class="text-muted text-truncate mb-0" style="font-size:.6875rem">{{ $tile['label'] }}</p>

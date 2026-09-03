@@ -343,7 +343,7 @@
          offcanvas, pre-filled and editable. Status/expiry/router are preserved server-side
          (see PppoeUserController::update()/HotspotUserController::update()) since those
          are changed via their own dedicated actions above, not this form. === --}}
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-edit-offcanvas" style="--tblr-offcanvas-width:42rem" @if($errors->any()) data-rp-autoshow @endif>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-edit-offcanvas" @if($errors->any()) data-rp-autoshow @endif>
         <div class="offcanvas-header border-bottom">
             <h3 class="offcanvas-title">Customer Info</h3>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>

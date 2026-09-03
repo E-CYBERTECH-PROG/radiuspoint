@@ -4,40 +4,33 @@
             <h1 class="mb-1">Tenant Accounts</h1>
             <p class="text-muted mb-0">Manage ISP companies using RadiusPoint.</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('platform-admin.tenants.export', request()->query()) }}" class="btn">
-                <i class="ti ti-download icon"></i> Export CSV
-            </a>
-            <a href="{{ route('platform-admin.tenants.import-form') }}" class="btn btn-primary">
-                <i class="ti ti-upload icon"></i> Import Tenants
-            </a>
-        </div>
+        <a href="{{ route('platform-admin.tenants.import-form') }}" class="btn btn-primary">
+            <i class="ti ti-upload icon"></i> <span class="d-none d-sm-inline">Import Tenants</span>
+        </a>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <div class="input-icon flex-fill">
-            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search company name..." class="form-control">
-        </div>
-        <select name="status" class="form-select w-auto">
-            <option value="">All Statuses</option>
-            @foreach(['pending', 'active', 'suspended', 'rejected'] as $status)
-                <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-            @endforeach
-        </select>
-        <select name="tier" class="form-select w-auto">
-            <option value="">All Tiers</option>
-            @foreach(['free', 'starter', 'pro'] as $tier)
-                <option value="{{ $tier }}" @selected(request('tier') === $tier)>{{ ucfirst($tier) }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['search', 'status', 'tier']))
-            <a href="{{ route('platform-admin.tenants.index') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-tenants" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search company name…" class="form-control">
+                    </div>
+                    <a href="{{ route('platform-admin.tenants.export', request()->query()) }}" class="btn">
+                        <i class="ti ti-download icon"></i> <span class="d-none d-sm-inline">Export CSV</span>
+                    </a>
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -99,9 +92,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
-                                <i class="ti ti-building icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No tenants match these filters.</p>
+                            <td colspan="6" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-building fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No tenants match these filters.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -113,5 +106,27 @@
                 {{ $tenants->links() }}
             </div>
         @endif
-    </div>
+        </div>
+
+        <x-filter-modal name="tenants" :clear-url="route('platform-admin.tenants.index')">
+            <div class="col-12">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['pending', 'active', 'suspended', 'rejected'] as $status)
+                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Tier</label>
+                <select name="tier" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['free', 'starter', 'pro'] as $tier)
+                        <option value="{{ $tier }}" @selected(request('tier') === $tier)>{{ ucfirst($tier) }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+    </form>
 </x-sidebar-layout>

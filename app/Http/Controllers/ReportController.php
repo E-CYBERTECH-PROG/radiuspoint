@@ -69,6 +69,36 @@ class ReportController extends Controller
     }
 
     /**
+     * Manually record a payment that didn't come through M-Pesa STK (cash, bank transfer,
+     * etc.) — created straight to status=success since it's already been received by the
+     * time staff are logging it here.
+     */
+    public function recordPayment(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'package_name' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|string|max:50',
+            'mpesa_receipt' => 'nullable|string|max:255|unique:transactions,mpesa_receipt',
+        ]);
+
+        Transaction::create([
+            'tenant_id' => Auth::user()->tenant_id,
+            'customer_name' => $validated['customer_name'],
+            'phone_number' => $validated['phone_number'],
+            'package_name' => $validated['package_name'],
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['payment_method'],
+            'mpesa_receipt' => $validated['mpesa_receipt'] ?? null,
+            'status' => 'success',
+        ]);
+
+        return redirect()->route('reports.receipts')->with('success', 'Payment recorded.');
+    }
+
+    /**
      * Standalone printable receipt — bare <html>, no sidebar chrome.
      */
     public function receiptPrint(Transaction $transaction)

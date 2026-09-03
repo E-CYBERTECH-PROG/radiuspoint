@@ -1,15 +1,28 @@
 <x-sidebar-layout title="OLT Devices">
-    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
-        <div>
-            <h1 class="mb-1">OLT Devices</h1>
-            <p class="text-muted mb-0">Remote access to your GPON/EPON OLTs (VSOL, Hioso, and similar).</p>
-        </div>
-        <a href="{{ route('olts.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus icon"></i> Add OLT
-        </a>
+    <div class="mb-4">
+        <h1 class="mb-1">OLT Devices</h1>
+        <p class="text-muted mb-0">Remote access to your GPON/EPON OLTs (VSOL, Hioso, and similar).</p>
     </div>
 
-    <div class="card">
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name…" class="form-control">
+                    </div>
+                    <a href="{{ route('olts.create') }}" class="btn btn-primary">
+                        <i class="ti ti-plus icon"></i> <span class="d-none d-sm-inline">Add OLT</span>
+                    </a>
+                </div>
+            </div>
+
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -48,16 +61,17 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <i class="ti ti-affiliate icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No OLTs added yet.</p>
+                            <td colspan="7" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-affiliate fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No OLTs added yet.</p>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
+    </form>
 
     <div class="mt-3">{{ $olts->links() }}</div>
 </x-sidebar-layout>

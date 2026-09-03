@@ -12,11 +12,11 @@
             ['label' => 'Disabled Users', 'value' => $stats['disabled'], 'icon' => 'ti-user-minus', 'bg' => 'bg-secondary-lt'],
         ];
     @endphp
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-3">
-        @foreach($oneispCustomerStatTiles as $tile)
-            <div class="col">
-                <div class="card card-sm">
-                    <div class="card-body d-flex align-items-center justify-content-between">
+    <div class="card mb-3" style="border-radius:.5rem">
+        <div class="d-flex flex-column flex-sm-row rp-stat-strip">
+            @foreach($oneispCustomerStatTiles as $tile)
+                <div class="flex-fill p-3">
+                    <div class="d-flex align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fs-2 font-monospace fw-bold mb-0">{{ number_format($tile['value']) }}</p>
                             <p class="text-muted small mt-1 mb-0">{{ $tile['label'] }}</p>
@@ -24,96 +24,143 @@
                         <span class="avatar {{ $tile['bg'] }} flex-shrink-0"><i class="ti {{ $tile['icon'] }} fs-3"></i></span>
                     </div>
                 </div>
-            </div>
-        @endforeach
+            @endforeach
+        </div>
     </div>
 
-    {{-- === FILTERS === --}}
-    <form method="GET" class="card mb-3">
-        <div class="card-body">
-            <h3 class="card-title">Filters</h3>
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
-                <div class="col">
-                    <label class="form-label">Site</label>
-                    <select name="router_id" onchange="this.form.submit()" class="form-select">
-                        <option value="">All</option>
-                        @foreach($routers as $router)
-                            <option value="{{ $router->id }}" @selected(request('router_id') == $router->id)>{{ $router->name }}</option>
-                        @endforeach
-                    </select>
+    {{-- === TABS === --}}
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a href="{{ route('customers.index', array_filter(['tab' => 'pppoe', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'pppoe' ? 'active' : '' }}">
+                PPPoE ({{ $pppoeCount }})
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('customers.index', array_filter(['tab' => 'hotspot', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'hotspot' ? 'active' : '' }}">
+                Hotspot ({{ $hotspotCount }})
+            </a>
+        </li>
+    </ul>
+
+    {{-- === TOOLBAR + FILTERS + TABLE (one card) === --}}
+    <form method="GET">
+        <input type="hidden" name="tab" value="{{ $tab }}">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-customers" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
                 </div>
-                <div class="col">
-                    <label class="form-label">Status</label>
-                    <select name="status" onchange="this.form.submit()" class="form-select">
-                        <option value="">All</option>
-                        @foreach(($tab === 'hotspot' ? ['active', 'expired', 'offline', 'unused'] : ['active', 'expired', 'offline']) as $status)
-                            <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col">
-                    <label class="form-label">Connection</label>
-                    <select name="tab" onchange="this.form.submit()" class="form-select">
-                        <option value="pppoe" @selected($tab === 'pppoe')>PPPoE</option>
-                        <option value="hotspot" @selected($tab === 'hotspot')>Hotspot</option>
-                    </select>
-                </div>
-                <div class="col">
-                    <label class="form-label">Package</label>
-                    <select name="plan_id" onchange="this.form.submit()" class="form-select">
-                        <option value="">All</option>
-                        @foreach($plans as $plan)
-                            <option value="{{ $plan->id }}" @selected(request('plan_id') == $plan->id)>{{ $plan->name }}</option>
-                        @endforeach
-                    </select>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by username, name, or phone…" class="form-control">
+                    </div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-customer">
+                        <i class="ti ti-user-plus icon"></i> <span class="d-none d-sm-inline">New Customer</span>
+                    </button>
                 </div>
             </div>
-            <div class="mt-3">
-                <label class="form-label">Search</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="ti ti-search"></i></span>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by username, name, or phone…" class="form-control">
-                    @if(request('search'))
-                        <a href="{{ route('customers.index', array_filter(array_merge(request()->except(['search', 'page']), ['tab' => $tab]))) }}" class="input-group-text" title="Clear search">
-                            <i class="ti ti-x"></i>
-                        </a>
-                    @endif
-                </div>
+
+            <div class="table-responsive">
+                <table class="table card-table table-vcenter text-nowrap">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Name</th>
+                            <th>Phone Number</th>
+                            <th>Plan</th>
+                            <th>Online</th>
+                            <th>Status</th>
+                            <th>Expiry</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($users as $user)
+                            @php
+                                $oneispKey = $tab === 'hotspot' ? $user->phone_number : $user->username;
+                                $oneispDetailUrl = route('customers.show', ['token' => \App\Http\Controllers\CustomerController::tokenFor($tab, $user->id)]);
+                            @endphp
+                            <tr>
+                                <td class="font-monospace">
+                                    <a href="{{ $oneispDetailUrl }}" class="fw-bold">
+                                        {{ $tab === 'hotspot' ? $user->phone_number : $user->username }}
+                                    </a>
+                                </td>
+                                <td class="text-muted">{{ $user->name ?: '—' }}</td>
+                                <td class="text-muted">{{ $user->phone_number ?: '—' }}</td>
+                                <td class="text-muted">{{ $allPlans[$user->current_plan_id]->name ?? '—' }}</td>
+                                <td data-live-cell="{{ $oneispKey }}">
+                                    <span class="text-muted">·</span>
+                                </td>
+                                <td>
+                                    @if($user->status === 'active')
+                                        <x-status-badge color="green">active</x-status-badge>
+                                    @elseif($user->status === 'expired')
+                                        <x-status-badge color="red">expired</x-status-badge>
+                                    @elseif($user->status === 'unused')
+                                        <x-status-badge color="gray">unused</x-status-badge>
+                                    @else
+                                        <x-status-badge color="orange">offline</x-status-badge>
+                                    @endif
+                                </td>
+                                <td class="text-muted">{{ $user->expires_at?->format('H:i M d, Y') ?? '—' }}</td>
+                                <td class="text-muted">{{ $user->created_at->format('d M Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-user fs-1"></i></span>
+                                    <p class="text-uppercase text-muted small mb-0">No {{ $tab === 'hotspot' ? 'hotspot' : 'PPPoE' }} customers found.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-            @if(request()->hasAny(['search', 'status', 'plan_id', 'router_id']))
-                <div class="mt-2">
-                    <a href="{{ route('customers.index', ['tab' => $tab]) }}" class="small fw-bold">Clear filters</a>
-                </div>
-            @endif
         </div>
+
+        <x-filter-modal name="customers" :clear-url="route('customers.index', ['tab' => $tab])">
+            <div class="col-12 col-sm-6">
+                <label class="form-label">Site</label>
+                <select name="router_id" class="form-select">
+                    <option value="">All</option>
+                    @foreach($routers as $router)
+                        <option value="{{ $router->id }}" @selected(request('router_id') == $router->id)>{{ $router->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach(($tab === 'hotspot' ? ['active', 'expired', 'offline', 'unused'] : ['active', 'expired', 'offline']) as $status)
+                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Package</label>
+                <select name="plan_id" class="form-select">
+                    <option value="">All</option>
+                    @foreach($plans as $plan)
+                        <option value="{{ $plan->id }}" @selected(request('plan_id') == $plan->id)>{{ $plan->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
     </form>
 
-    {{-- === TABS + ACTIONS === --}}
-    <div class="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <ul class="nav nav-pills">
-            <li class="nav-item">
-                <a href="{{ route('customers.index', array_filter(['tab' => 'pppoe', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'pppoe' ? 'active' : '' }}">
-                    PPPoE ({{ $pppoeCount }})
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('customers.index', array_filter(['tab' => 'hotspot', 'status' => request('status'), 'search' => request('search')])) }}" class="nav-link {{ $tab === 'hotspot' ? 'active' : '' }}">
-                    Hotspot ({{ $hotspotCount }})
-                </a>
-            </li>
-        </ul>
-
-        <div class="d-flex align-items-center gap-2">
-            <x-per-page-select />
-            <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-customer">
-                <i class="ti ti-user-plus icon"></i> New Customer
-            </button>
-        </div>
-    </div>
+    <div class="mt-3">{{ $users->links() }}</div>
 
     {{-- === ADD CUSTOMER OFFCANVAS === --}}
     @php $oneispConnType = old('_connection_type', $tab); @endphp
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-add-customer" style="--tblr-offcanvas-width:42rem" @if($errors->any() || request('add')) data-rp-autoshow @endif>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-add-customer" @if($errors->any() || request('add')) data-rp-autoshow @endif>
         <div class="offcanvas-header border-bottom">
             <h3 class="offcanvas-title">Add Customer</h3>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
@@ -206,68 +253,6 @@
         </form>
     </div>
 
-    {{-- === TABLE === --}}
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table card-table table-vcenter text-nowrap">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Name</th>
-                        <th>Phone Number</th>
-                        <th>Plan</th>
-                        <th>Online</th>
-                        <th>Status</th>
-                        <th>Expiry</th>
-                        <th>Registered</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($users as $user)
-                        @php
-                            $oneispKey = $tab === 'hotspot' ? $user->phone_number : $user->username;
-                            $oneispDetailUrl = route('customers.show', ['token' => \App\Http\Controllers\CustomerController::tokenFor($tab, $user->id)]);
-                        @endphp
-                        <tr>
-                            <td class="font-monospace">
-                                <a href="{{ $oneispDetailUrl }}" class="fw-bold">
-                                    {{ $tab === 'hotspot' ? $user->phone_number : $user->username }}
-                                </a>
-                            </td>
-                            <td class="text-muted">{{ $user->name ?: '—' }}</td>
-                            <td class="text-muted">{{ $user->phone_number ?: '—' }}</td>
-                            <td class="text-muted">{{ $allPlans[$user->current_plan_id]->name ?? '—' }}</td>
-                            <td data-live-cell="{{ $oneispKey }}">
-                                <span class="text-muted">·</span>
-                            </td>
-                            <td>
-                                @if($user->status === 'active')
-                                    <x-status-badge color="green">active</x-status-badge>
-                                @elseif($user->status === 'expired')
-                                    <x-status-badge color="red">expired</x-status-badge>
-                                @elseif($user->status === 'unused')
-                                    <x-status-badge color="gray">unused</x-status-badge>
-                                @else
-                                    <x-status-badge color="orange">offline</x-status-badge>
-                                @endif
-                            </td>
-                            <td class="text-muted">{{ $user->expires_at?->format('H:i M d, Y') ?? '—' }}</td>
-                            <td class="text-muted">{{ $user->created_at->format('d M Y') }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-5">
-                                <i class="ti ti-user icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No {{ $tab === 'hotspot' ? 'hotspot' : 'PPPoE' }} customers found.</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="mt-3">{{ $users->links() }}</div>
 
     <x-slot name="scripts">
         <script>

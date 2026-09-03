@@ -1,33 +1,31 @@
 <x-sidebar-layout title="Leads">
-    <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3">
-        <div>
-            <h1 class="mb-1">Leads</h1>
-            <p class="text-muted mb-0">Prospective customers captured from field agents and campaigns.</p>
-        </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-lead">
-            <i class="ti ti-plus icon"></i> New Lead
-        </button>
+    <div class="mb-4">
+        <h1 class="mb-1">Leads</h1>
+        <p class="text-muted mb-0">Prospective customers captured from field agents and campaigns.</p>
     </div>
 
-    <form method="GET" class="mb-4 d-flex flex-column flex-sm-row gap-2">
-        <div class="input-icon flex-fill">
-            <span class="input-icon-addon"><i class="ti ti-search"></i></span>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or phone..." class="form-control">
-        </div>
-        <select name="status" class="form-select w-auto">
-            <option value="">All Statuses</option>
-            @foreach(['new', 'contacted', 'converted', 'lost'] as $status)
-                <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-            @endforeach
-        </select>
-        <x-per-page-select />
-        <button type="submit" class="btn btn-dark">Filter</button>
-        @if(request()->hasAny(['search', 'status']))
-            <a href="{{ route('leads.index') }}" class="btn btn-link align-self-center">Clear</a>
-        @endif
-    </form>
+    <form method="GET">
+        <div class="card">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <x-per-page-select />
+                    <span class="text-muted small">Entries</span>
+                    <button type="button" class="btn btn-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvas-filters-leads" title="Filters">
+                        <i class="ti ti-filter icon"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-icon">
+                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or phone…" class="form-control">
+                    </div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-lead">
+                        <i class="ti ti-plus icon"></i> <span class="d-none d-sm-inline">New Lead</span>
+                    </button>
+                </div>
+            </div>
 
-    <div class="card">
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
@@ -114,16 +112,29 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <i class="ti ti-user-plus icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No leads captured yet.</p>
+                            <td colspan="7" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-user-plus fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No leads captured yet.</p>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
+
+        <x-filter-modal name="leads" :clear-url="route('leads.index')">
+            <div class="col-12">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['new', 'contacted', 'converted', 'lost'] as $status)
+                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+    </form>
 
     <div class="mt-3">{{ $leads->links() }}</div>
 

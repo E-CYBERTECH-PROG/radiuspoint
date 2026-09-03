@@ -78,26 +78,23 @@
     </div>
 
     {{-- === TABLE CARD === --}}
+    <form method="GET">
+    <input type="hidden" name="tab" value="{{ $tab }}">
     <div class="card">
-        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <form method="GET" class="d-flex align-items-center gap-2 text-muted small">
-                <input type="hidden" name="tab" value="{{ $tab }}">
-                <span>Show</span>
-                <select name="per_page" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-                    @foreach([10, 25, 50, 100] as $n)
-                        <option value="{{ $n }}" @selected((int) request('per_page', 10) === $n)>{{ $n }}</option>
-                    @endforeach
-                </select>
-                <span>Entries</span>
-            </form>
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small">Show</span>
+                <x-per-page-select :default="10" />
+                <span class="text-muted small">Entries</span>
+            </div>
 
             <div class="d-flex align-items-center gap-2">
-                <form method="GET" class="d-flex align-items-center gap-2">
-                    <input type="hidden" name="tab" value="{{ $tab }}">
-                    <input id="voucher-search" type="text" name="search" value="{{ request('search') }}" onchange="this.form.submit()" placeholder="Voucher code…" class="form-control form-control-sm">
-                </form>
-                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#rp-add-voucher">
-                    New Voucher
+                <div class="input-icon">
+                    <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Voucher code…" class="form-control">
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-voucher">
+                    <i class="ti ti-plus icon"></i> <span class="d-none d-sm-inline">New Voucher</span>
                 </button>
             </div>
         </div>
@@ -139,9 +136,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
-                                <i class="ti ti-ticket icon icon-lg mb-2 d-block"></i>
-                                <p class="text-uppercase small mb-0">No {{ $tab }} vouchers.</p>
+                            <td colspan="6" class="text-center py-5">
+                                <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-ticket fs-1"></i></span>
+                                <p class="text-uppercase text-muted small mb-0">No {{ $tab }} vouchers.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -151,6 +148,7 @@
 
         <div class="card-footer">{{ $vouchers->links() }}</div>
     </div>
+    </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
