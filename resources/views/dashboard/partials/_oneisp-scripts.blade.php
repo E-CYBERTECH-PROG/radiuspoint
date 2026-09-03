@@ -55,15 +55,23 @@
                         label: 'Earning',
                         data: @json($chartData ?? []),
                         backgroundColor: '#6366f1',
-                        borderRadius: 4,
-                        barPercentage: 0.5,
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        barPercentage: 0.9,
+                        categoryPercentage: 0.5,
                     },
                     {
+                        // Always 0 today (no expense tracking yet). When that lands, this
+                        // dataset should carry negative values so it floats below the zero
+                        // line instead of stacking on top of Earning (see the JS-side .map()
+                        // negation in fetchRevenueRange() below for the same reasoning).
                         label: 'Expense',
                         data: @json(array_fill(0, count($chartData ?? []), 0)),
-                        backgroundColor: '#fbbf24',
-                        borderRadius: 4,
-                        barPercentage: 0.5,
+                        backgroundColor: '#f97316',
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        barPercentage: 0.9,
+                        categoryPercentage: 0.5,
                     },
                 ],
             },
@@ -72,8 +80,8 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { drawBorder: false }, border: { display: false } },
-                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { drawBorder: false }, border: { display: false }, ticks: { font: { weight: '600' } } },
+                    x: { grid: { display: false }, border: { display: false }, ticks: { font: { weight: '600' } } },
                 },
             },
         });
@@ -104,6 +112,29 @@
         });
 
         const oneispCharts = [oneispSubscriptionsChart, oneispProfitChart, oneispRevenueChart, oneispSideChart];
+
+        // Revenue Report's time-range filter — fetches fresh labels/data from
+        // DashboardController::revenueChartData() and swaps them into the existing chart in
+        // place, no page reload. Runs once immediately on load too, since the chart's initial
+        // server-rendered data is a 6-month window that doesn't match any one dropdown option
+        // (that window still backs the New Customers chart alongside it, so it's left alone
+        // there) — this brings Revenue Report in sync with whatever the dropdown shows first.
+        const oneispRevenueRangeSelect = document.getElementById('oneispRevenueRange');
+        if (oneispRevenueRangeSelect) {
+            function fetchRevenueRange(range) {
+                fetch(`{{ route('dashboard.revenue-chart') }}?range=${range}`, { headers: { Accept: 'application/json' } })
+                    .then((r) => r.json())
+                    .then((json) => {
+                        oneispRevenueChart.data.labels = json.labels;
+                        oneispRevenueChart.data.datasets[0].data = json.earning;
+                        oneispRevenueChart.data.datasets[1].data = json.expense.map((v) => -Math.abs(v));
+                        oneispRevenueChart.update();
+                    });
+            }
+
+            oneispRevenueRangeSelect.addEventListener('change', () => fetchRevenueRange(oneispRevenueRangeSelect.value));
+            fetchRevenueRange(oneispRevenueRangeSelect.value);
+        }
 
         @if($packageBreakdown->isNotEmpty())
         const oneispPackagePerformanceChart = new Chart(document.getElementById('oneispPackagePerformanceChart').getContext('2d'), {

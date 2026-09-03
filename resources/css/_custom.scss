@@ -4,7 +4,7 @@
 // 1px border) — applied app-wide, not just the dashboard, so every page reads consistently.
 .card {
     border: 0;
-    border-radius: 1rem;
+    border-radius: .5rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 6px rgba(0, 0, 0, .04);
 }
 
@@ -32,12 +32,9 @@ html:not([data-bs-theme="dark"]) {
     --tblr-body-bg-rgb: 238, 241, 246;
 }
 
-// Table cards (customers, routers, receipts, …) read as sharper/denser data surfaces with
-// square corners instead of the app's usual 1rem card radius, and a darker header row than
-// Tabler's near-invisible default (gray-50) so it's clearly a distinct band above the rows.
-.card:has(.table-responsive) {
-    border-radius: 0;
-}
+// Table cards (customers, routers, receipts, …) get a darker header row than Tabler's
+// near-invisible default (gray-50) so it reads as a clearly distinct band above the rows.
+// Corner radius matches every other card in the app — no square-corner exception.
 .card-table thead th {
     background: var(--tblr-gray-200);
 }

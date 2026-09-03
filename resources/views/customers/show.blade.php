@@ -68,47 +68,47 @@
     <div class="row g-3 mb-3">
         <div class="col-lg-9">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body p-4">
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="d-flex align-items-start gap-3 mb-4">
-                                <span class="avatar avatar-xl bg-orange-lt font-monospace fw-bold flex-shrink-0">{{ $oneispInitials }}</span>
+                                <span class="avatar avatar-xl rounded-3 bg-orange-lt fw-bold flex-shrink-0" style="font-size:1.75rem">{{ $oneispInitials }}</span>
                                 <div class="flex-fill min-w-0">
-                                    <p class="fw-bold text-uppercase mb-2 text-truncate">{{ $user->name ?: '—' }}</p>
+                                    <p class="fw-bold text-uppercase fs-3 mb-3 text-truncate">{{ $user->name ?: '—' }}</p>
                                     <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#rp-edit-offcanvas">View Info</button>
+                                        <button type="button" class="btn btn-primary rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-edit-offcanvas">View Info</button>
                                         <form action="{{ $oneispDisableUrl }}" method="POST" class="flex-fill" onsubmit="return rpConfirm(event, '{{ $oneispIsDisabled ? 'Enable' : 'Disable' }} this customer?')">
                                             @csrf
                                             @if($oneispIsDisabled)
-                                                <button type="submit" class="btn btn-outline-success btn-sm w-100">Enable</button>
+                                                <button type="submit" class="btn btn-outline-success rounded-pill w-100">Enable</button>
                                             @else
-                                                <button type="submit" class="btn btn-outline-danger btn-sm w-100">Disable</button>
+                                                <button type="submit" class="btn btn-outline-danger rounded-pill w-100">Disable</button>
                                             @endif
                                         </form>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex align-items-center gap-4 mb-3">
+                            <div class="d-flex align-items-center gap-4 mb-4">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="avatar bg-primary-lt"><i class="ti ti-wallet"></i></span>
+                                    <span class="avatar rounded-3 bg-primary-lt"><i class="ti ti-currency-dollar"></i></span>
                                     <div>
                                         <p class="font-monospace fw-bold mb-0">KES 0</p>
-                                        <p class="text-muted mb-0" style="font-size:.625rem">Wallet Balance</p>
+                                        <p class="text-muted mb-0" style="font-size:.6875rem">Wallet Balance</p>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="avatar bg-green-lt"><i class="ti ti-trending-up"></i></span>
+                                    <span class="avatar rounded-3 bg-green-lt"><i class="ti ti-trending-up"></i></span>
                                     <div>
                                         <p class="font-monospace fw-bold mb-0">KES {{ number_format($totalSpent) }}</p>
-                                        <p class="text-muted mb-0" style="font-size:.625rem">Total Spent</p>
+                                        <p class="text-muted mb-0" style="font-size:.6875rem">Total Spent</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="d-flex flex-wrap gap-2">
-                                <button type="button" disabled title="No payment-request feature yet" class="btn btn-outline-success btn-sm">Request Payment</button>
-                                <button type="button" disabled title="No wallet feature yet" class="btn btn-warning btn-sm">Adjust Balance</button>
+                                <button type="button" disabled title="No payment-request feature yet" class="btn btn-outline-success rounded-pill">Request Payment</button>
+                                <button type="button" disabled title="No wallet feature yet" class="btn btn-orange rounded-pill">Adjust Balance</button>
                             </div>
                         </div>
 
@@ -121,7 +121,7 @@
                                 ['icon' => 'ti-map-pin', 'label' => 'Location', 'value' => $user->address ?: '—'],
                                 ['icon' => 'ti-phone', 'label' => 'Contact', 'value' => $user->phone_number ?: '—'],
                             ] as $row)
-                                <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="d-flex align-items-center gap-3 mb-3">
                                     <span class="d-flex align-items-center gap-2 text-muted flex-shrink-0" style="width:7rem">
                                         <i class="ti {{ $row['icon'] }}"></i>
                                         <span class="small">{{ $row['label'] }}</span>
@@ -130,7 +130,7 @@
                                 </div>
                             @endforeach
 
-                            <button type="button" disabled title="No group policy feature yet" class="btn w-100 mt-2">
+                            <button type="button" disabled title="No group policy feature yet" class="btn rounded-pill w-100 mt-3">
                                 Update Group Policy
                             </button>
                         </div>
@@ -220,9 +220,9 @@
                     @endif
                 </div>
                 <div class="col">
-                    <a href="{{ route('sms.index') }}" class="btn btn-orange w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4">
+                    <button type="button" class="btn btn-orange w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4" data-bs-toggle="offcanvas" data-bs-target="#rp-sms-offcanvas">
                         <i class="ti ti-message-dots fs-3"></i> <span class="small">Send SMS</span>
-                    </a>
+                    </button>
                 </div>
                 <div class="col">
                     <button type="button" disabled title="No wallet feature yet" class="btn btn-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4">
@@ -230,9 +230,12 @@
                     </button>
                 </div>
                 <div class="col">
-                    <button type="button" disabled title="No payment-resolution feature yet" class="btn btn-success w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4">
-                        <i class="ti ti-checks fs-3"></i> <span class="small">Resolve Payment</span>
-                    </button>
+                    <form action="{{ $oneispDestroyUrl }}" method="POST" class="h-100" onsubmit="return rpConfirm(event, 'Remove this customer permanently? This also removes their RADIUS credentials.')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-danger w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4">
+                            <i class="ti ti-trash fs-3"></i> <span class="small">Delete User</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -315,6 +318,33 @@
             </div>
             <div class="offcanvas-footer p-3 border-top">
                 <button type="submit" class="btn btn-danger w-100">Save</button>
+            </div>
+        </form>
+    </div>
+
+    {{-- === SEND SMS OFFCANVAS === --}}
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-sms-offcanvas" @if($errors->sms->any()) data-rp-autoshow @endif>
+        <div class="offcanvas-header border-bottom">
+            <h3 class="offcanvas-title">Send SMS</h3>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <form action="{{ route('sms.store') }}" method="POST" class="d-flex flex-column h-100">
+            @csrf
+            <input type="hidden" name="redirect_to" value="/{{ ltrim(request()->path(), '/') }}">
+            <div class="offcanvas-body">
+                <div class="mb-3">
+                    <label class="form-label">Phone <span class="text-danger">*</span></label>
+                    <input type="tel" name="phone_number" required value="{{ old('phone_number', $user->phone_number) }}" placeholder="0712345678" class="form-control">
+                    @error('phone_number', 'sms') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Message <span class="text-danger">*</span></label>
+                    <textarea name="message" required rows="5" class="form-control">{{ old('message') }}</textarea>
+                    @error('message', 'sms') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                </div>
+            </div>
+            <div class="offcanvas-footer p-3 border-top">
+                <button type="submit" class="btn btn-primary w-100">Queue Message</button>
             </div>
         </form>
     </div>

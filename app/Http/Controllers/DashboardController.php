@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\Router;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -35,9 +36,8 @@ class DashboardController extends Controller
             'income_last_month' => (float) Transaction::whereMonth('created_at', $now->copy()->subMonth()->month)->whereYear('created_at', $now->copy()->subMonth()->year)->where('status', 'success')->sum('amount'),
             'hotspot_active' => HotspotUser::where('status', 'active')->count(),
             'pppoe_active' => PppoeUser::where('status', 'active')->count(),
-            'online_now' => $onlinePpp + $onlineHotspot,
             'customers_total' => HotspotUser::count() + PppoeUser::count(),
-            'customers_expired' => HotspotUser::where('status', 'expired')->count() + PppoeUser::where('status', 'expired')->count(),
+            'pppoe_expired' => PppoeUser::where('status', 'expired')->count(),
             'online_ppp' => $onlinePpp,
             'online_hotspot' => $onlineHotspot,
         ];
@@ -103,5 +103,66 @@ class DashboardController extends Controller
             'incomeMonthDelta', 'subscriptionsThisMonth', 'subscriptionsSparkline',
             'packageBreakdown', 'packagePlanTypes'
         ));
+    }
+
+    /**
+     * Revenue Report's time-range filter (dashboard/partials/_oneisp-revenue-chart.blade.php) —
+     * fetched by JS and swapped into the existing Chart.js instance, not a page reload.
+     * "Expense" is always 0 (see the chart partial's own comment on why), but returned as a
+     * same-length array so the chart's second dataset doesn't need special-casing client-side.
+     */
+    public function revenueChartData(Request $request)
+    {
+        $range = in_array($request->get('range'), ['today', 'this_week', 'this_month', 'this_year', 'last_year'], true)
+            ? $request->get('range')
+            : 'this_month';
+
+        $now = Carbon::now();
+        $labels = [];
+        $data = [];
+
+        switch ($range) {
+            case 'today':
+                for ($h = 0; $h < 24; $h++) {
+                    $start = $now->copy()->startOfDay()->addHours($h);
+                    $labels[] = $start->format('ga');
+                    $data[] = (float) Transaction::whereBetween('created_at', [$start, $start->copy()->addHour()])
+                        ->where('status', 'success')->sum('amount');
+                }
+                break;
+
+            case 'this_week':
+                $start = $now->copy()->startOfWeek();
+                for ($i = 0; $i < 7; $i++) {
+                    $day = $start->copy()->addDays($i);
+                    $labels[] = $day->format('D');
+                    $data[] = (float) Transaction::whereDate('created_at', $day)->where('status', 'success')->sum('amount');
+                }
+                break;
+
+            case 'this_month':
+                for ($d = 1; $d <= $now->daysInMonth; $d++) {
+                    $day = $now->copy()->startOfMonth()->addDays($d - 1);
+                    $labels[] = (string) $d;
+                    $data[] = (float) Transaction::whereDate('created_at', $day)->where('status', 'success')->sum('amount');
+                }
+                break;
+
+            case 'this_year':
+            case 'last_year':
+                $year = $range === 'last_year' ? $now->year - 1 : $now->year;
+                for ($m = 1; $m <= 12; $m++) {
+                    $labels[] = Carbon::create($year, $m, 1)->format('M');
+                    $data[] = (float) Transaction::whereMonth('created_at', $m)->whereYear('created_at', $year)
+                        ->where('status', 'success')->sum('amount');
+                }
+                break;
+        }
+
+        return response()->json([
+            'labels' => $labels,
+            'earning' => $data,
+            'expense' => array_fill(0, count($data), 0),
+        ]);
     }
 }

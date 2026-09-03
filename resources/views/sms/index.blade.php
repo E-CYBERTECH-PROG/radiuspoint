@@ -230,7 +230,7 @@
         </div>
     </div>
 
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-compose-sms" @if($errors->any()) data-rp-autoshow @endif>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-compose-sms" @if($errors->sms->any()) data-rp-autoshow @endif>
         <div class="offcanvas-header border-bottom">
             <h3 class="offcanvas-title">Compose SMS</h3>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
@@ -241,7 +241,7 @@
                 <div class="mb-3">
                     <label class="form-label">Phone <span class="text-danger">*</span></label>
                     <input type="tel" name="phone_number" required value="{{ old('phone_number') }}" placeholder="0712345678" class="form-control">
-                    @error('phone_number') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    @error('phone_number', 'sms') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                 </div>
                 @if($templates->count())
                     <div class="mb-3">
@@ -257,7 +257,7 @@
                 <div class="mb-3">
                     <label class="form-label">Message <span class="text-danger">*</span></label>
                     <textarea name="message" id="rp-sms-message" required rows="5" class="form-control"></textarea>
-                    @error('message') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    @error('message', 'sms') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                 </div>
             </div>
             <div class="offcanvas-footer p-3 border-top">

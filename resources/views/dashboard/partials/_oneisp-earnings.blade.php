@@ -8,25 +8,28 @@
     $oneispRingOffset = $oneispRingCircumference - ($oneispRingPct / 100 * $oneispRingCircumference);
 @endphp
 <div class="card h-100 rp-rise" style="--rp-delay: {{ $delay ?? 0 }}ms">
-    <div class="card-body p-3 d-flex align-items-center justify-content-between gap-3">
+    <div class="card-body d-flex align-items-center justify-content-between gap-3">
         <div class="min-w-0">
-            <p class="text-uppercase text-muted small fw-bold mb-0">Earnings</p>
-            <p class="text-muted mt-2 mb-0" style="font-size:.6875rem">This Month</p>
-            <p class="fs-5 font-monospace fw-bold text-truncate mb-0">{{ $currency }} {{ number_format($stats['income_month'] ?? 0) }}</p>
+            <p class="mb-0">Earnings</p>
+            <p class="text-muted mt-3 mb-0" style="font-size:.75rem">This Month</p>
+            <p class="fs-2 font-monospace fw-bold text-truncate mb-2">{{ $currency }} {{ number_format($stats['income_month'] ?? 0) }}</p>
+            <p class="text-muted mb-0" style="font-size:.75rem">
+                {{ number_format(abs($oneispDelta), 1) }}% {{ $oneispIsUp ? 'more' : 'less' }} earnings than last month.
+            </p>
         </div>
 
-        <div class="position-relative flex-shrink-0" style="width:4rem;height:4rem">
-            <svg viewBox="0 0 36 36" style="width:4rem;height:4rem;transform:rotate(-90deg)">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--tblr-border-color)" stroke-width="3"></circle>
+        <div class="position-relative flex-shrink-0" style="width:6rem;height:6rem">
+            <svg viewBox="0 0 36 36" style="width:6rem;height:6rem;transform:rotate(-90deg)">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--tblr-border-color)" stroke-width="3.5"></circle>
                 <circle cx="18" cy="18" r="15.5" fill="none"
                         stroke="{{ $oneispIsUp ? 'var(--tblr-green)' : 'var(--tblr-red)' }}"
-                        stroke-width="3" stroke-linecap="round"
+                        stroke-width="3.5" stroke-linecap="round"
                         stroke-dasharray="{{ $oneispRingCircumference }}"
                         stroke-dashoffset="{{ $oneispRingOffset }}"></circle>
             </svg>
             <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center">
-                <span class="font-monospace fw-bold {{ $oneispIsUp ? 'text-success' : 'text-danger' }}" style="font-size:.6875rem">{{ $oneispIsUp ? '+' : '-' }}{{ number_format(abs($oneispDelta), 1) }}%</span>
-                <span class="text-muted text-uppercase" style="font-size:.5rem">Profit</span>
+                <span class="fw-bold {{ $oneispIsUp ? 'text-success' : 'text-danger' }}" style="font-size:1rem">{{ $oneispIsUp ? '+' : '-' }}{{ number_format(abs($oneispDelta), 1) }}%</span>
+                <span class="text-muted" style="font-size:.625rem">Profit</span>
             </div>
         </div>
     </div>

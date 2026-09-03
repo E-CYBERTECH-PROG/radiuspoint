@@ -112,6 +112,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
     // The Command Center Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/revenue-chart', [DashboardController::class, 'revenueChartData'])->name('dashboard.revenue-chart');
     Route::get('/search', [SearchController::class, 'index'])->name('search');
 
     // === NOTIFICATIONS ===
