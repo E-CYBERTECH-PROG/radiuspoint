@@ -90,6 +90,16 @@
 
             tick();
             var interval = setInterval(tick, 1000);
+
+            // If the browser restores this exact page from back/forward cache (hitting Back,
+            // or returning to a stale tab) instead of doing a real reload, this script doesn't
+            // re-run — the banner would stay frozen showing whatever it last rendered, even
+            // long after the real lockout expired. `pageshow` fires on both a fresh load and a
+            // bfcache restore (event.persisted is true only for the latter), so re-running tick()
+            // there keeps the countdown honest either way.
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) tick();
+            });
         })();
     </script>
 </x-guest-layout>
