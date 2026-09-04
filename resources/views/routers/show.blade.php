@@ -61,8 +61,8 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-start justify-content-center gap-4 flex-shrink-0">
-                            <x-gauge-ring id="rp-gauge-cpu" color="var(--tblr-primary)" label="CPU Load" :size="84" />
-                            <x-gauge-ring id="rp-gauge-mem" color="var(--tblr-success)" label="Memory Used" :size="84" detail="—" />
+                            <x-gauge-ring id="rp-gauge-cpu" color="var(--tblr-primary)" label="CPU Load" icon="ti-cpu" :size="88" />
+                            <x-gauge-ring id="rp-gauge-mem" color="var(--tblr-success)" label="Memory Used" icon="ti-database" :size="88" detail="—" />
                         </div>
                     </div>
 
@@ -300,6 +300,14 @@
                 var loadingEl = document.getElementById('rp-live-loading');
                 var infoEl = document.getElementById('rp-live-info');
 
+                function setGaugeArc(id, percent) {
+                    var arc = document.getElementById(id + '-arc');
+                    if (!arc) return;
+                    var circumference = parseFloat(arc.dataset.circumference);
+                    var clamped = Math.max(0, Math.min(100, percent));
+                    arc.style.strokeDashoffset = circumference - (clamped / 100) * circumference;
+                }
+
                 async function testConnection() {
                     testBtn.disabled = true;
                     testIcon.className = 'ti ti-loader-2 icon-spin';
@@ -319,13 +327,13 @@
                         document.getElementById('rp-live-uptime').textContent = data.uptime ?? '—';
 
                         var cpuLoad = data.cpu_load ?? null;
-                        document.getElementById('rp-gauge-cpu').style.background = 'conic-gradient(var(--tblr-primary) ' + ((cpuLoad ?? 0) * 3.6) + 'deg, var(--tblr-border-color) 0deg)';
+                        setGaugeArc('rp-gauge-cpu', cpuLoad ?? 0);
                         document.getElementById('rp-gauge-cpu-value').textContent = cpuLoad !== null ? cpuLoad + '%' : '—';
 
                         var freeMemory = data.free_memory ?? null;
                         var totalMemory = data.total_memory ?? null;
                         var memPercent = freeMemory && totalMemory ? Math.round(((totalMemory - freeMemory) / totalMemory) * 100) : 0;
-                        document.getElementById('rp-gauge-mem').style.background = 'conic-gradient(var(--tblr-success) ' + (memPercent * 3.6) + 'deg, var(--tblr-border-color) 0deg)';
+                        setGaugeArc('rp-gauge-mem', memPercent);
                         document.getElementById('rp-gauge-mem-value').textContent = freeMemory && totalMemory ? memPercent + '%' : '—';
                         document.getElementById('rp-gauge-mem-detail').textContent = freeMemory && totalMemory
                             ? Math.round(freeMemory / 1048576) + ' MB / ' + Math.round(totalMemory / 1048576) + ' MB'
