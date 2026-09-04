@@ -373,37 +373,46 @@
                 }
 
                 // === Push captive portal to router ===
+                // Guarded like copyBtn above — the Captive Portal card (and this button with
+                // it) is currently commented out of this template (hidden per request), so
+                // pushBtn is null on every render right now. An unguarded addEventListener()
+                // on null throws, which — since this whole block is one synchronous IIFE —
+                // silently aborted every listener registered *after* this point, including
+                // the Decommission flow below. That's why Decommission looked like it did
+                // nothing: it never had a click handler attached at all.
                 var pushBtn = document.getElementById('rp-push-portal-btn');
-                var pushIcon = document.getElementById('rp-push-portal-icon');
-                var pushLabel = document.getElementById('rp-push-portal-label');
-                var pushResult = document.getElementById('rp-push-portal-result');
+                if (pushBtn) {
+                    var pushIcon = document.getElementById('rp-push-portal-icon');
+                    var pushLabel = document.getElementById('rp-push-portal-label');
+                    var pushResult = document.getElementById('rp-push-portal-result');
 
-                pushBtn.addEventListener('click', async function () {
-                    pushBtn.disabled = true;
-                    pushIcon.className = 'ti ti-loader-2 icon-spin';
-                    pushLabel.textContent = 'Pushing...';
-                    pushResult.classList.add('d-none');
+                    pushBtn.addEventListener('click', async function () {
+                        pushBtn.disabled = true;
+                        pushIcon.className = 'ti ti-loader-2 icon-spin';
+                        pushLabel.textContent = 'Pushing...';
+                        pushResult.classList.add('d-none');
 
-                    try {
-                        var res = await fetch(pushBtn.getAttribute('data-rp-push-url'), {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
-                        });
-                        var data = await res.json();
-                        var ok = res.ok;
-                        pushResult.textContent = ok
-                            ? 'Walled garden: ' + data.walled_garden + '. Hotspot files pushed: ' + data.hotspot_files_pushed + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).'
-                            : data.message;
-                        pushResult.className = 'small fw-bold mt-2 mb-0 ' + (ok ? 'text-success' : 'text-danger');
-                    } catch (e) {
-                        pushResult.textContent = 'Network error — could not reach the router.';
-                        pushResult.className = 'small fw-bold mt-2 mb-0 text-danger';
-                    } finally {
-                        pushBtn.disabled = false;
-                        pushIcon.className = 'ti ti-upload';
-                        pushLabel.textContent = 'Push Files to Router';
-                    }
-                });
+                        try {
+                            var res = await fetch(pushBtn.getAttribute('data-rp-push-url'), {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                            });
+                            var data = await res.json();
+                            var ok = res.ok;
+                            pushResult.textContent = ok
+                                ? 'Walled garden: ' + data.walled_garden + '. Hotspot files pushed: ' + data.hotspot_files_pushed + '. Login method fixed on ' + data.login_by_fixed + ' profile(s). RADIUS address fixed on ' + data.radius_address_fixed + ' entr(ies). One-session-per-host fixed on ' + data.one_session_per_host_fixed + ' PPPoE server(s).'
+                                : data.message;
+                            pushResult.className = 'small fw-bold mt-2 mb-0 ' + (ok ? 'text-success' : 'text-danger');
+                        } catch (e) {
+                            pushResult.textContent = 'Network error — could not reach the router.';
+                            pushResult.className = 'small fw-bold mt-2 mb-0 text-danger';
+                        } finally {
+                            pushBtn.disabled = false;
+                            pushIcon.className = 'ti ti-upload';
+                            pushLabel.textContent = 'Push Files to Router';
+                        }
+                    });
+                }
 
                 // === Decommission flow ===
                 var idleWrap = document.getElementById('rp-decommission-idle');
