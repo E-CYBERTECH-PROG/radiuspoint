@@ -45,7 +45,18 @@ html:not([data-bs-theme="dark"]) {
 // layouts/sidebar.blade.php — the top header as a detached, rounded floating bar instead of
 // a full-bleed bar flush against the page edges. Tabler's own navbar background/text-color
 // vars still apply (light vs dark theme) — this only changes shape/spacing, not color.
+//
+// Sticky, matching #rp-sidebar's own position:fixed — without this the header (search,
+// notifications, theme toggle, user menu) scrolled away with page content on any page long
+// enough to scroll, while the sidebar stayed put; the two felt like they belonged to different
+// layouts. Needs no left/right offset of its own: it lives inside .page-wrapper, which already
+// carries the margin-left that clears the sidebar (264px expanded, 4.5rem collapsed, 0 on
+// mobile where the sidebar is an offcanvas instead) — sticky respects that automatically, so
+// this stays correctly "left to right" of the sidebar at every width without extra rules.
 .rp-header-float {
+    position: sticky;
+    top: 1rem;
+    z-index: 1029;
     margin: 1rem 1rem 0;
     border-radius: 1rem;
     border-bottom: 0;
