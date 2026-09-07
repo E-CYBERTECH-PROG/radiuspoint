@@ -15,12 +15,14 @@
 // Tabler halves --tblr-page-padding (the .container-xl side gutter every page's content,
 // including table cards, sits in) below lg — 0.5rem reads as edge-to-edge on a phone. Keep
 // it a comfortable, consistent width at every breakpoint instead of shrinking it further.
+// Trimmed down from Tabler's stock 1.5rem/0.75rem either way — a flush, edge-to-edge header
+// and sidebar next to a wide gray gutter around the cards read as mismatched.
 :root {
-    --tblr-page-padding: 1.25rem;
+    --tblr-page-padding: .75rem;
 }
 @include media-breakpoint-down(lg) {
     :root {
-        --tblr-page-padding: 1rem;
+        --tblr-page-padding: .5rem;
     }
 }
 
@@ -42,24 +44,22 @@ html:not([data-bs-theme="dark"]) {
     background: var(--tblr-gray-700);
 }
 
-// layouts/sidebar.blade.php — the top header as a detached, rounded floating bar instead of
-// a full-bleed bar flush against the page edges. Tabler's own navbar background/text-color
-// vars still apply (light vs dark theme) — this only changes shape/spacing, not color.
+// layouts/sidebar.blade.php — the top header, flush against the page edges (no margin or
+// border-radius) so it reads as one continuous frame with #rp-sidebar rather than a separate
+// floating pill sitting on top of it — the sidebar is already a flush, square-edged rail, and
+// a rounded, inset header next to it looked like two different layouts stitched together.
 //
 // Sticky, matching #rp-sidebar's own position:fixed — without this the header (search,
 // notifications, theme toggle, user menu) scrolled away with page content on any page long
-// enough to scroll, while the sidebar stayed put; the two felt like they belonged to different
-// layouts. Needs no left/right offset of its own: it lives inside .page-wrapper, which already
-// carries the margin-left that clears the sidebar (264px expanded, 4.5rem collapsed, 0 on
-// mobile where the sidebar is an offcanvas instead) — sticky respects that automatically, so
-// this stays correctly "left to right" of the sidebar at every width without extra rules.
+// enough to scroll while the sidebar stayed put. Needs no left/right offset of its own: it
+// lives inside .page-wrapper, which already carries the margin-left that clears the sidebar
+// (264px expanded, 4.5rem collapsed, 0 on mobile where the sidebar is an offcanvas instead) —
+// sticky respects that automatically, so this stays correctly aligned with the sidebar at
+// every width without extra rules.
 .rp-header-float {
     position: sticky;
-    top: 1rem;
+    top: 0;
     z-index: 1029;
-    margin: 1rem 1rem 0;
-    border-radius: 1rem;
-    border-bottom: 0;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 6px rgba(0, 0, 0, .04);
 }
 
