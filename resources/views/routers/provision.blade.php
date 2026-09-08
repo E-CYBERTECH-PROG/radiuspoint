@@ -29,6 +29,23 @@
                     <p class="text-muted small mb-3 text-uppercase border-bottom pb-2 d-flex align-items-center gap-2">
                         <i class="ti ti-terminal-2"></i> Paste this sequence into MikroTik Terminal
                     </p>
+                    {{-- The fetch URL embedded in this script carries a one-time setup token —
+                         if it's ever pasted or screenshotted somewhere it shouldn't be, this
+                         kills it immediately rather than waiting out the 7-day expiry. Doesn't
+                         touch the router's live captive/payment portal, which use a separate,
+                         permanent token. --}}
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-3 text-muted small">
+                        <span>
+                            <i class="ti ti-clock-hour-4"></i>
+                            Link expires {{ $router->setup_token_expires_at?->diffForHumans() }}
+                        </span>
+                        <form action="{{ route('routers.regenerate-setup-link', $router) }}" method="POST" onsubmit="return confirm('Regenerate the setup link? The one shown now will stop working immediately.')">
+                            @csrf
+                            <button type="submit" class="btn btn-link btn-sm p-0">
+                                <i class="ti ti-refresh"></i> Regenerate link
+                            </button>
+                        </form>
+                    </div>
                     <div class="bg-dark rounded p-3 custom-scrollbar" style="max-height:20rem;overflow-y:auto">
                         <pre id="payloadText" class="text-success font-monospace mb-0" style="font-size:.75rem;line-height:1.8;white-space:pre-wrap">{{ trim($script) }}</pre>
                     </div>

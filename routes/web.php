@@ -60,8 +60,10 @@ Route::get('/portal/{router:public_token}', [PaymentPortalController::class, 'sh
 Route::post('/portal/{router:public_token}/pay', [PaymentPortalController::class, 'pay'])->name('portal.pay');
 Route::get('/portal/{router:public_token}/status/{transaction}', [PaymentPortalController::class, 'status'])->name('portal.status');
 
-// Public ZTP bootstrap fetch — a router's own script calls this to pull its config
-Route::get('/nas/startup/{router:public_token}', [NasProvisioningController::class, 'startup'])->name('nas.startup');
+// Public ZTP bootstrap fetch — a router's own script calls this to pull its config. Keyed by
+// setup_token (a one-time credential, expires and can be regenerated independently), not
+// public_token (permanent — baked into every router's live captive/payment portal config below).
+Route::get('/nas/startup/{router:setup_token}', [NasProvisioningController::class, 'startup'])->name('nas.startup');
 
 // Router-specific hotspot skin pages — the only files in public/hotspot/* that need this
 // tenant's business name/support number/API base baked in rather than served as-is.
@@ -142,6 +144,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
         // Custom ZTP Step 2: Copy Script & Check Status
         Route::get('/routers/{router}/provision', [RouterController::class, 'provision'])->name('routers.provision');
+        Route::post('/routers/{router}/regenerate-setup-link', [RouterController::class, 'regenerateSetupLink'])->name('routers.regenerate-setup-link');
         Route::post('/routers/{router}/check-status', [RouterController::class, 'checkStatus'])->name('routers.check-status');
 
         // Custom ZTP Step 3 & 4: Select and Save Ports

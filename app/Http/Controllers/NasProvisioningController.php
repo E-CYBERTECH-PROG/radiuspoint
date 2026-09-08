@@ -41,9 +41,13 @@ class NasProvisioningController extends Controller
     }
 
     /**
-     * Public, public_token-scoped endpoint that a router's bootstrap script fetches and imports
+     * Public, setup_token-scoped endpoint that a router's bootstrap script fetches and imports
      * (see RouterController::provision()). Generated fresh on every request so it always
      * reflects current credentials.
+     *
+     * setup_token expiring doesn't itself invalidate the URL at the routing layer — route-model
+     * binding only checks the column still matches *some* router, which an expired-but-not-yet-
+     * rotated token still does — so the expiry itself has to be checked explicitly here.
      *
      * Always includes the tunnel/API-user/RADIUS bootstrap (Router::buildProvisioningScript()).
      * If this router has already had its interfaces assigned roles (port_configuration is set —
@@ -57,6 +61,13 @@ class NasProvisioningController extends Controller
      */
     public function startup(Router $router): Response
     {
+        if ($router->setup_token_expires_at && $router->setup_token_expires_at->isPast()) {
+            return response(
+                ":put \"RadiusPoint: this setup link has expired. Generate a new one from the router's Provision page and paste that instead.\";",
+                410
+            )->header('Content-Type', 'text/plain');
+        }
+
         $script = $router->buildProvisioningScript();
 
         if (! empty($router->port_configuration)) {

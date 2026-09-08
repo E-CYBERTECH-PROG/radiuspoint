@@ -110,6 +110,12 @@ class RouterController extends Controller
             'api_password' => Str::random(16),
             'status' => 'pending',
             'public_token' => Str::random(24),
+            // Separate from public_token (permanent — baked into every router's live
+            // walled-garden/login.html config) — this one is a one-time setup credential the
+            // bootstrap script fetches with, safe to expire and regenerate independently. See
+            // Router::regenerateSetupToken().
+            'setup_token' => Str::random(40),
+            'setup_token_expires_at' => now()->addDays(7),
             'routeros_version' => $request->routeros_version,
             'board_model' => 'other',
             'secret_key' => $secretKey,
@@ -158,7 +164,15 @@ class RouterController extends Controller
      */
     public function provision(Router $router)
     {
-        $startupUrl = route('nas.startup', $router->public_token);
+        // Auto-refresh rather than showing a dead link — an admin revisiting this page after
+        // the 7-day window (a delayed install, troubleshooting a stuck router weeks later, …)
+        // should always see a script that actually works, not one that 410s the moment they
+        // paste it.
+        if (! $router->setup_token || ! $router->setup_token_expires_at || $router->setup_token_expires_at->isPast()) {
+            $router->regenerateSetupToken();
+        }
+
+        $startupUrl = route('nas.startup', $router->setup_token);
         $fetchMode = str_starts_with($startupUrl, 'https://') ? 'https' : 'http';
 
         // Pings a raw IP, not a hostname — RouterOS's :ping throws a hard "resolve failed"
@@ -176,12 +190,33 @@ class RouterController extends Controller
                   // actually authenticates the router going forward.
                   "  /tool fetch url=\"{$startupUrl}\" mode={$fetchMode} check-certificate=no keep-result=yes dst-path=startup.rsc http-method=get;\n" .
                   "  :import startup.rsc;\n" .
+                  // The fetched file is the router's own credentials in plaintext (API
+                  // password, RADIUS secret, WireGuard private key) — RouterOS's :import
+                  // doesn't delete its source, so without this it would otherwise sit on the
+                  // router's own storage indefinitely, readable by anyone with terminal access.
+                  // Everything in it is already applied to the live config by the :import above.
+                  "  /file remove startup.rsc;\n" .
                   "} else={\n" .
                   "  :put \$rpDiag;\n" .
                   "}";
 
         return view('routers.provision', compact('router', 'script'));
     }
+
+    /**
+     * Invalidates the current setup_token immediately and issues a fresh one — e.g. if the
+     * bootstrap script (which embeds it in a fetch URL) was ever pasted or screenshotted
+     * somewhere it shouldn't have been. Doesn't touch public_token, so the router's already-
+     * live captive portal / payment portal keep working untouched.
+     */
+    public function regenerateSetupLink(Router $router)
+    {
+        $router->regenerateSetupToken();
+
+        return redirect()->route('routers.provision', $router->id)
+            ->with('success', 'Setup link regenerated — the old one no longer works. Paste the new script below.');
+    }
+
     /**
      * Step 2 Logic: Ajax Handshake Verification with Error Catching.
      */

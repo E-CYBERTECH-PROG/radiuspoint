@@ -34,14 +34,29 @@ class Router extends Model {
         'tenant_id', 'name', 'ip_address', 'api_username', 'api_password',
         'status', 'port_configuration', 'last_seen', 'last_log_alert_at', 'public_token', 'routeros_version', 'board_model',
         'secret_key', 'wg_public_key', 'wg_private_key', 'wg_synced_at',
-        'web_proxy_port', 'winbox_proxy_port',
+        'web_proxy_port', 'winbox_proxy_port', 'setup_token', 'setup_token_expires_at',
     ];
 
     protected $casts = [
         'port_configuration' => 'array',
         'last_seen' => 'datetime',
         'last_log_alert_at' => 'datetime',
+        'setup_token_expires_at' => 'datetime',
     ];
+
+    /**
+     * setup_token is a one-time bootstrap credential, unlike public_token (permanent, baked
+     * into every router's live walled-garden/login.html config) — safe to expire and regenerate
+     * on demand, e.g. if a script containing it was ever pasted/shared somewhere it shouldn't
+     * have been.
+     */
+    public function regenerateSetupToken(): void
+    {
+        $this->update([
+            'setup_token' => \Illuminate\Support\Str::random(40),
+            'setup_token_expires_at' => now()->addDays(7),
+        ]);
+    }
 
     /**
      * Builds the RouterOS provisioning script for this router: tunnel setup, API user,
