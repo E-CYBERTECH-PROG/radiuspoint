@@ -245,7 +245,12 @@
             @endif
 
             <div class="page-body">
-                <div class="container-xl">
+                {{-- container-fluid, not container-xl — Bootstrap's container-xl caps to a
+                     fixed max-width (not just a padding gutter) once the viewport passes the xl
+                     breakpoint, so on any wide monitor the cards stopped growing well short of
+                     the browser edge, leaving a dead gray strip on the right. The header above
+                     and the sidebar's own brand row already use container-fluid; this matches. --}}
+                <div class="container-fluid">
                     {{ $slot }}
                 </div>
             </div>
