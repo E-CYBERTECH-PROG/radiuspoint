@@ -178,7 +178,7 @@
                             <i class="ti ti-moon icon"></i>
                         </button>
 
-                        <div class="nav-item dropdown d-none d-md-block"
+                        <div class="nav-item dropdown"
                              id="rp-notif-root"
                              data-recent-url="{{ route('notifications.recent') }}"
                              data-mark-all-url="{{ route('notifications.mark-all-read') }}">
