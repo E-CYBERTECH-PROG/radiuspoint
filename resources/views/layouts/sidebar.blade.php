@@ -30,9 +30,9 @@
                     : stored === '1';
                 document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
                 document.documentElement.setAttribute('data-accent-theme', localStorage.getItem('rp_accent_theme') || 'blue');
-                // Hidden by default: only an explicit past "reveal" choice (stored '0') skips
-                // masking money values. An unset value (never chosen) or '1' both stay hidden.
-                document.documentElement.classList.toggle('rp-money-revealed', localStorage.getItem('rp_hide_money') === '0');
+                // Money values are never pre-revealed here — .rp-money-revealed is only ever
+                // added by a click in rp-privacy.js, deliberately not persisted, so every fresh
+                // page load starts hidden regardless of any earlier choice.
             })();
         </script>
 

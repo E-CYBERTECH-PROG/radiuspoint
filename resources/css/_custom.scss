@@ -390,13 +390,14 @@ html:not([data-bs-theme="dark"]) {
     }
 }
 
-// Money privacy toggle — hidden by default (not just on request), no separate eye icon: the
-// masked figure itself is the tap target (dashboard/partials/_oneisp-hero.blade.php), closer to
-// tapping a balance on a banking app's card than a settings-style show/hide control. Every
-// .rp-money-masked/.rp-money-value pair on the page (Profit, Earnings, …) shares the same
-// <html> class, so revealing the hero card's figure reveals the rest too. The class lives on
-// <html> (not <body>, which doesn't exist yet when the anti-flash script in <head> runs) so a
-// returning user who chose to reveal amounts doesn't see a flash of masked ones first.
+// Money privacy toggle — always starts hidden, every page load, with no persisted "leave it
+// revealed" choice (a screen someone glances over your shoulder at shouldn't depend on
+// remembering to hide it again). No separate eye icon either: the masked figure itself is the
+// tap target (dashboard/partials/_oneisp-hero.blade.php), closer to tapping a balance on a
+// banking app's card than a settings-style show/hide control. Every .rp-money-masked/
+// .rp-money-value pair on the page (Profit, Earnings, …) shares the same <html> class, so
+// revealing the hero card's figure reveals the rest too.
+//
 // Own display outright rather than pairing with a Bootstrap d-block/d-none utility class on
 // the same element — those compile with !important by default, which silently beat an earlier
 // version of this same rule (confirmed live: the "Tap to reveal" hint stayed visible after
@@ -419,6 +420,52 @@ html.rp-money-revealed .rp-money-hint-on {
 }
 html.rp-money-revealed .rp-money-hint-on {
     display: block;
+}
+
+// The masked placeholder itself — a shimmering redacted bar instead of a row of literal bullet
+// characters, which read as dated next to the rest of this card-face treatment. Sized in em so
+// it scales with whatever font-size context it's dropped into (fs-4 Profit, fs-2 Earnings, the
+// hero's own 1.5rem figure) without a separate size variant for each, aside from the two
+// explicit width tweaks below for the two places that needed a visibly different bar length.
+.rp-money-masked {
+    display: inline-block;
+    width: 5.5em;
+    height: .8em;
+    border-radius: .25em;
+    // currentColor picks up whatever text color already applies in context (adapts to light/
+    // dark mode with no separate override needed), mixed down to a faint bar rather than full
+    // opacity text.
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, currentColor 12%, transparent) 25%,
+        color-mix(in srgb, currentColor 22%, transparent) 37%,
+        color-mix(in srgb, currentColor 12%, transparent) 63%
+    );
+    background-size: 400% 100%;
+    animation: rp-money-shimmer 2.2s ease-in-out infinite;
+}
+// Hero card's bar sits on a solid purple gradient, not a neutral card surface — a light,
+// semi-transparent shimmer reads correctly there instead of the darker default above.
+.rp-money-masked-light {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, .35) 25%,
+        rgba(255, 255, 255, .6) 37%,
+        rgba(255, 255, 255, .35) 63%
+    );
+    background-size: 400% 100%;
+}
+.rp-money-masked-lg {
+    width: 7em;
+}
+@keyframes rp-money-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rp-money-masked {
+        animation: none;
+    }
 }
 .rp-money-toggle {
     cursor: pointer;

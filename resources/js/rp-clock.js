@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function tick() {
         var now = new Date();
         clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        dateEl.textContent = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        // Short form (weekday + month + day) — this sits in a compact status chip now, not a
+        // full headline, so "Tue, Sep 8" rather than "Tuesday, September 8, 2026".
+        dateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
     }
 
     tick();
