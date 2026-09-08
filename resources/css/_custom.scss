@@ -168,8 +168,7 @@ html:not([data-bs-theme="dark"]) {
 // this applies through the same below-lg range the drawer itself is used in (d-lg-none).
 @include media-breakpoint-down(lg) {
     #rp-mobile-nav {
-        width: 40% !important;
-        min-width: 17rem !important;
+        width: clamp(12.5rem, 40%, 15rem) !important;
     }
 }
 
@@ -391,25 +390,41 @@ html:not([data-bs-theme="dark"]) {
     }
 }
 
-// Money privacy toggle (dashboard/partials/_oneisp-hero.blade.php's eye button, rp-privacy.js)
-// — a soft blur reads as "hidden but recoverable" rather than a hard swap to dots/asterisks,
-// and keeps the digit count/layout intact so the card doesn't jump when toggled. The class
-// lives on <html> (not <body>, which doesn't exist yet at the point the anti-flash script in
-// <head> runs) so a returning user with amounts hidden never sees a flash of the real number.
-html.rp-money-hidden .rp-money {
-    filter: blur(.4rem);
-    user-select: none;
-    transition: filter .2s ease;
-}
-.rp-money {
-    transition: filter .2s ease;
-}
-html.rp-money-hidden .rp-money-toggle .ti-eye {
+// Money privacy toggle — hidden by default (not just on request), no separate eye icon: the
+// masked figure itself is the tap target (dashboard/partials/_oneisp-hero.blade.php), closer to
+// tapping a balance on a banking app's card than a settings-style show/hide control. Every
+// .rp-money-masked/.rp-money-value pair on the page (Profit, Earnings, …) shares the same
+// <html> class, so revealing the hero card's figure reveals the rest too. The class lives on
+// <html> (not <body>, which doesn't exist yet when the anti-flash script in <head> runs) so a
+// returning user who chose to reveal amounts doesn't see a flash of masked ones first.
+// Own display outright rather than pairing with a Bootstrap d-block/d-none utility class on
+// the same element — those compile with !important by default, which silently beat an earlier
+// version of this same rule (confirmed live: the "Tap to reveal" hint stayed visible after
+// revealing, despite .rp-money-hint correctly getting the expected computed display from here —
+// .d-block !important on the same span was still winning).
+.rp-money-value,
+.rp-money-hint-on {
     display: none;
 }
-.rp-money-toggle .ti-eye-off {
+.rp-money-hint-off {
+    display: block;
+}
+html.rp-money-revealed .rp-money-masked,
+html.rp-money-revealed .rp-money-hint-off {
     display: none;
 }
-html.rp-money-hidden .rp-money-toggle .ti-eye-off {
+html.rp-money-revealed .rp-money-value,
+html.rp-money-revealed .rp-money-hint-on {
     display: inline;
+}
+html.rp-money-revealed .rp-money-hint-on {
+    display: block;
+}
+.rp-money-toggle {
+    cursor: pointer;
+    transition: transform .15s ease;
+
+    &:active {
+        transform: scale(.97);
+    }
 }

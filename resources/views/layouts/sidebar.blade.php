@@ -30,7 +30,9 @@
                     : stored === '1';
                 document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
                 document.documentElement.setAttribute('data-accent-theme', localStorage.getItem('rp_accent_theme') || 'blue');
-                document.documentElement.classList.toggle('rp-money-hidden', localStorage.getItem('rp_hide_money') === '1');
+                // Hidden by default: only an explicit past "reveal" choice (stored '0') skips
+                // masking money values. An unset value (never chosen) or '1' both stay hidden.
+                document.documentElement.classList.toggle('rp-money-revealed', localStorage.getItem('rp_hide_money') === '0');
             })();
         </script>
 

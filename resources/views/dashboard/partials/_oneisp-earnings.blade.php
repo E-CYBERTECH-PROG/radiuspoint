@@ -12,7 +12,10 @@
         <div class="min-w-0">
             <p class="mb-0">Earnings</p>
             <p class="text-muted mt-3 mb-0" style="font-size:.75rem">This Month</p>
-            <p class="fs-2 font-monospace fw-bold text-truncate mb-2 rp-money">{{ $currency }} {{ number_format($stats['income_month'] ?? 0) }}</p>
+            <p class="fs-2 font-monospace fw-bold text-truncate mb-2">
+                <span class="rp-money-masked">{{ $currency }} •••••</span>
+                <span class="rp-money-value">{{ $currency }} {{ number_format($stats['income_month'] ?? 0) }}</span>
+            </p>
             <p class="text-muted mb-0" style="font-size:.75rem">
                 {{ number_format(abs($oneispDelta), 1) }}% {{ $oneispIsUp ? 'more' : 'less' }} earnings than last month.
             </p>
