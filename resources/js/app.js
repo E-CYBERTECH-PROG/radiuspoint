@@ -16,3 +16,5 @@ import './rp-shell';
 import './rp-toasts';
 import './rp-notifications';
 import './rp-search';
+import './rp-clock';
+import './rp-privacy';

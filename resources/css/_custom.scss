@@ -159,6 +159,41 @@ html:not([data-bs-theme="dark"]) {
 .offcanvas {
     height: 100dvh;
 }
+// layouts/sidebar.blade.php — the mobile nav drawer is navigation, not a form, so it doesn't
+// need the full-screen treatment above (and shouldn't: covering the whole screen hides the
+// page the admin is trying to get back to). A narrower panel with the dimmed page still
+// visible behind it reads more like a drawer than a takeover — closes on backdrop tap too,
+// Bootstrap's Offcanvas default (rp-shell.js doesn't override it). #rp-mobile-nav's id
+// selector outranks the .offcanvas.offcanvas-start rule above regardless of source order, and
+// this applies through the same below-lg range the drawer itself is used in (d-lg-none).
+@include media-breakpoint-down(lg) {
+    #rp-mobile-nav {
+        width: 40% !important;
+        min-width: 17rem !important;
+    }
+}
+
+// Notifications dropdown (layouts/sidebar.blade.php #rp-notif-root) — Tabler's
+// .dropdown-menu-card has a flat min-width:20rem (320px), wider than the viewport itself on
+// most phones, and Bootstrap positions it via Popper relative to the bell trigger
+// (dropdown-menu-end), which sits close to the header's own right edge — so a merely narrower
+// menu still overflowed past the *left* edge instead of centering under the trigger. Confirmed
+// live at 375px (menu at x:-40 to 311, 40px off-screen) even after capping the width alone.
+// Pinning it to fixed viewport margins sidesteps Popper's trigger-relative math entirely —
+// transform:none cancels the inline translate3d() Popper sets for that positioning, which
+// would otherwise still shove it back off-screen on top of the fixed left/right here.
+@include media-breakpoint-down(sm) {
+    #rp-notif-root .dropdown-menu-card {
+        position: fixed !important;
+        top: 4rem !important;
+        left: .75rem !important;
+        right: .75rem !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        transform: none !important;
+    }
+}
 // Every offcanvas form in this app is `<form class="d-flex flex-column h-100">` wrapping
 // .offcanvas-body + .offcanvas-footer (Bootstrap's own documented pattern) — but flex items
 // default to min-height:auto, which refuses to shrink the form below its *content's* natural
@@ -354,4 +389,27 @@ html:not([data-bs-theme="dark"]) {
     &:hover::-webkit-scrollbar-thumb {
         background-color: var(--tblr-border-color);
     }
+}
+
+// Money privacy toggle (dashboard/partials/_oneisp-hero.blade.php's eye button, rp-privacy.js)
+// — a soft blur reads as "hidden but recoverable" rather than a hard swap to dots/asterisks,
+// and keeps the digit count/layout intact so the card doesn't jump when toggled. The class
+// lives on <html> (not <body>, which doesn't exist yet at the point the anti-flash script in
+// <head> runs) so a returning user with amounts hidden never sees a flash of the real number.
+html.rp-money-hidden .rp-money {
+    filter: blur(.4rem);
+    user-select: none;
+    transition: filter .2s ease;
+}
+.rp-money {
+    transition: filter .2s ease;
+}
+html.rp-money-hidden .rp-money-toggle .ti-eye {
+    display: none;
+}
+.rp-money-toggle .ti-eye-off {
+    display: none;
+}
+html.rp-money-hidden .rp-money-toggle .ti-eye-off {
+    display: inline;
 }

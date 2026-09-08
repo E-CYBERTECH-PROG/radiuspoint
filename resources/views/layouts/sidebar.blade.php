@@ -30,6 +30,7 @@
                     : stored === '1';
                 document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
                 document.documentElement.setAttribute('data-accent-theme', localStorage.getItem('rp_accent_theme') || 'blue');
+                document.documentElement.classList.toggle('rp-money-hidden', localStorage.getItem('rp_hide_money') === '1');
             })();
         </script>
 
@@ -163,7 +164,7 @@
                     {{-- One control for both breakpoints — rp-shell.js checks the viewport at
                          click time: below lg it opens #rp-mobile-nav, at lg+ it does the
                          desktop rail-collapse instead. --}}
-                    <button type="button" class="btn btn-icon" id="rp-sidebar-toggle" title="Toggle sidebar">
+                    <button type="button" class="nav-link px-2" id="rp-sidebar-toggle" title="Toggle sidebar">
                         <i class="ti ti-menu-2 icon"></i>
                     </button>
 
@@ -202,15 +203,11 @@
                         </div>
 
                         <div class="nav-item dropdown">
-                            <a href="#" class="nav-link d-flex lh-1 p-0 px-2 gap-2 align-items-center" data-bs-toggle="dropdown" aria-label="Open user menu">
+                            <a href="#" class="nav-link d-flex lh-1 p-0 px-2 align-items-center" data-bs-toggle="dropdown" aria-label="Open user menu">
                                 <span class="position-relative flex-shrink-0">
-                                    <span class="avatar avatar-sm rp-avatar-gradient fw-bold">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</span>
+                                    <span class="avatar avatar-sm avatar-rounded rp-avatar-gradient fw-bold">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</span>
                                     <span class="position-absolute rounded-circle bg-green rp-avatar-status" aria-hidden="true"></span>
                                 </span>
-                                <div class="d-none d-xl-flex align-items-center gap-1 ps-2">
-                                    <div class="fw-bold">{{ Auth::user()->name }}</div>
-                                    <i class="ti ti-chevron-down text-muted" style="font-size:1rem"></i>
-                                </div>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                                 @if(Auth::user()->is_platform_admin)
