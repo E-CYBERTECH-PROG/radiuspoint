@@ -295,6 +295,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::get('/reports/access-log', [ReportController::class, 'accessLog'])->name('reports.access-log');
     Route::get('/reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
     Route::get('/reports/expired-users', [ReportController::class, 'expiredUsers'])->name('reports.expired-users');
+    Route::get('/reports/manual-recharges', [ReportController::class, 'manualRecharges'])->name('reports.manual-recharges');
     Route::get('/reports/receipts', [ReportController::class, 'receipts'])->name('reports.receipts');
     Route::post('/reports/receipts/record-payment', [ReportController::class, 'recordPayment'])->name('reports.receipts.record-payment');
     Route::get('/reports/receipts/{transaction}/print', [ReportController::class, 'receiptPrint'])->name('reports.receipts.print');

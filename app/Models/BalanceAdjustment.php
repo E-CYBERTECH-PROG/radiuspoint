@@ -13,13 +13,18 @@ class BalanceAdjustment extends Model
         'tenant_id',
         'hotspot_user_id',
         'pppoe_user_id',
+        'kind',
         'amount',
+        'previous_expires_at',
+        'new_expires_at',
         'reason',
         'created_by',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'previous_expires_at' => 'datetime',
+        'new_expires_at' => 'datetime',
     ];
 
     public function hotspotUser()

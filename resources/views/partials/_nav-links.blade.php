@@ -134,6 +134,7 @@
                     <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.hotspot-sales') ? 'active' : '' }}" href="{{ route('reports.hotspot-sales') }}">Hotspot Service Sales</a></li>
                     <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.access-log') ? 'active' : '' }}" href="{{ route('reports.access-log') }}">Access Requests</a></li>
                     <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.expired-users') ? 'active' : '' }}" href="{{ route('reports.expired-users') }}">Expired Users</a></li>
+                    <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.manual-recharges') ? 'active' : '' }}" href="{{ route('reports.manual-recharges') }}">Manual Recharges</a></li>
                     <li class="nav-item"><a class="nav-link py-1 {{ request()->routeIs('reports.analytics') ? 'active' : '' }}" href="{{ route('reports.analytics') }}">Analytics</a></li>
                 </ul>
             </div>

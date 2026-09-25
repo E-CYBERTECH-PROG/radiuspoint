@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BalanceAdjustment;
 use App\Models\CaptivePortalVisit;
 use Carbon\Carbon;
 use App\Models\PppoeUser;
@@ -18,6 +19,32 @@ class ReportController extends Controller
      * Union of expired Hotspot + PPPoE accounts, built as a union subquery so filters and
      * pagination apply to the combined set.
      */
+    public function manualRecharges(Request $request)
+    {
+        $search = $this->searchTerm($request);
+        $tz = config('app.timezone');
+
+        $entries = BalanceAdjustment::with(['hotspotUser:id,phone_number,username,is_voucher', 'pppoeUser:id,username,name', 'createdBy:id,name'])
+            ->when(in_array($request->kind, ['balance', 'extension'], true), fn ($q) => $q->where('kind', $request->kind))
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->whereHas('hotspotUser', fn ($h) => $h->where('phone_number', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%"))
+                    ->orWhereHas('pppoeUser', fn ($p) => $p->where('username', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
+            }))
+            ->when($request->filled('from'), fn ($q) => $q->where('created_at', '>=', Carbon::parse($request->from, $tz)->startOfDay()))
+            ->when($request->filled('to'), fn ($q) => $q->where('created_at', '<=', Carbon::parse($request->to, $tz)->endOfDay()))
+            ->latest()
+            ->paginate($this->perPage($request))
+            ->withQueryString();
+
+        $totals = BalanceAdjustment::selectRaw("
+                SUM(CASE WHEN kind = 'balance' AND amount > 0 THEN amount ELSE 0 END) as credited,
+                SUM(CASE WHEN kind = 'balance' AND amount < 0 THEN -amount ELSE 0 END) as debited,
+                SUM(CASE WHEN kind = 'extension' THEN 1 ELSE 0 END) as extensions
+            ")->first();
+
+        return view('reports.manual-recharges', compact('entries', 'totals'));
+    }
+
     public function expiredUsers(Request $request)
     {
         $tenantId = Auth::user()->tenant_id;

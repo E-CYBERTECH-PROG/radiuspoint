@@ -315,6 +315,17 @@ class HotspotUserController extends Controller
                 : back()->with('error', 'Choose a number of days or a specific date.');
         }
 
+        BalanceAdjustment::create([
+            'hotspot_user_id' => $hotspot_user->id,
+            'kind' => 'extension',
+            'previous_expires_at' => $hotspot_user->expires_at,
+            'new_expires_at' => $newExpiry,
+            'reason' => $request->filled('days') && ! $request->filled('expires_at')
+                ? "Extended by {$request->days} day(s)"
+                : 'Expiry set manually',
+            'created_by' => Auth::id(),
+        ]);
+
         $hotspot_user->update(['status' => 'active', 'expires_at' => $newExpiry, 'fup_throttled_at' => null]);
 
         $plan = $hotspot_user->plan;

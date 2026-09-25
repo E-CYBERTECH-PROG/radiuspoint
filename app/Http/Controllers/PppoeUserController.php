@@ -283,6 +283,17 @@ class PppoeUserController extends Controller
                 : back()->with('error', 'Choose a number of days or a specific date.');
         }
 
+        BalanceAdjustment::create([
+            'pppoe_user_id' => $pppoe_user->id,
+            'kind' => 'extension',
+            'previous_expires_at' => $pppoe_user->expires_at,
+            'new_expires_at' => $newExpiry,
+            'reason' => $request->filled('days') && ! $request->filled('expires_at')
+                ? "Extended by {$request->days} day(s)"
+                : 'Expiry set manually',
+            'created_by' => Auth::id(),
+        ]);
+
         $pppoe_user->update([
             'status' => 'active',
             'expires_at' => $newExpiry,
