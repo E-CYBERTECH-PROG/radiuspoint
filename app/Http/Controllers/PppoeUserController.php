@@ -101,7 +101,7 @@ class PppoeUserController extends Controller
         if ($user->status === 'active') {
             // Admin-supplied password from the modal when present, otherwise the same
             // random-password fallback the standalone form always used.
-            RadiusSyncService::sync($user->username, $request->input('password') ?: Str::password(10), $plan?->speed_limit);
+            RadiusSyncService::sync($user->username, $request->input('password') ?: Str::password(10), $plan?->rate_limit);
             if ($user->expires_at) {
                 RadiusSyncService::setExpiryWindow($user->username, $user->expires_at);
             }
@@ -233,9 +233,9 @@ class PppoeUserController extends Controller
         if ($pppoe_user->status === 'active') {
             $plan = Plan::find($pppoe_user->current_plan_id);
             if (RadiusSyncService::hasCredential($pppoe_user->username)) {
-                RadiusSyncService::updateRateLimit($pppoe_user->username, $plan?->speed_limit);
+                RadiusSyncService::updateRateLimit($pppoe_user->username, $plan?->rate_limit);
             } else {
-                RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
+                RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->rate_limit);
             }
             if ($pppoe_user->expires_at) {
                 RadiusSyncService::setExpiryWindow($pppoe_user->username, $pppoe_user->expires_at);
@@ -303,9 +303,9 @@ class PppoeUserController extends Controller
 
         $plan = $pppoe_user->plan;
         if (RadiusSyncService::hasCredential($pppoe_user->username)) {
-            RadiusSyncService::updateRateLimit($pppoe_user->username, $plan?->speed_limit);
+            RadiusSyncService::updateRateLimit($pppoe_user->username, $plan?->rate_limit);
         } else {
-            RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->speed_limit);
+            RadiusSyncService::sync($pppoe_user->username, Str::password(10), $plan?->rate_limit);
         }
         RadiusSyncService::setExpiryWindow($pppoe_user->username, $newExpiry);
         ExpiredBlockService::clear($pppoe_user->router, $pppoe_user->username);
@@ -399,9 +399,9 @@ class PppoeUserController extends Controller
         $pppoe_user->update(['status' => 'active']);
 
         if (RadiusSyncService::hasCredential($pppoe_user->username)) {
-            RadiusSyncService::updateRateLimit($pppoe_user->username, $pppoe_user->plan?->speed_limit);
+            RadiusSyncService::updateRateLimit($pppoe_user->username, $pppoe_user->plan?->rate_limit);
         } else {
-            RadiusSyncService::sync($pppoe_user->username, Str::password(10), $pppoe_user->plan?->speed_limit);
+            RadiusSyncService::sync($pppoe_user->username, Str::password(10), $pppoe_user->plan?->rate_limit);
         }
         if ($pppoe_user->expires_at) {
             RadiusSyncService::setExpiryWindow($pppoe_user->username, $pppoe_user->expires_at);
@@ -422,7 +422,7 @@ class PppoeUserController extends Controller
     {
         $request->validate(['password' => 'required|string|min:4']);
 
-        RadiusSyncService::sync($pppoe_user->username, $request->password, $pppoe_user->plan?->speed_limit);
+        RadiusSyncService::sync($pppoe_user->username, $request->password, $pppoe_user->plan?->rate_limit);
 
         $message = 'Password updated.';
 

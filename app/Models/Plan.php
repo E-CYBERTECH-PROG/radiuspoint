@@ -28,9 +28,39 @@ class Plan extends Model
     'duration_unit',
     'data_cap_mb',
     'speed_limit',
+    'burst_limit',
+    'burst_time',
     'caption',
     'fup_speed_limit',
 ];
+
+    /**
+     * The full Mikrotik rate-limit string sent to RADIUS and router profiles. Without burst
+     * this is exactly speed_limit. With burst it becomes
+     * "rate burst-rate burst-threshold burst-time", the threshold set at 75% of the normal
+     * rate — a customer idle long enough for their average to drop below it gets the burst
+     * speed for burst_time seconds, which is what makes a slow package feel quick to browse.
+     */
+    public function getRateLimitAttribute(): ?string
+    {
+        if (! $this->speed_limit || ! $this->burst_limit || ! $this->burst_time) {
+            return $this->speed_limit;
+        }
+
+        [$up, $down] = array_pad(explode('/', $this->speed_limit), 2, null);
+        $threshold = self::scaleRate($up, 0.75).'/'.self::scaleRate($down ?? $up, 0.75);
+
+        return "{$this->speed_limit} {$this->burst_limit} {$threshold} {$this->burst_time}/{$this->burst_time}";
+    }
+
+    /** "5M" × 0.75 → "3750k" (RouterOS units are decimal: 1M = 1000k). */
+    public static function scaleRate(string $rate, float $factor): string
+    {
+        preg_match('/^(\d+)([kKmM])$/', $rate, $m);
+        $kbps = (int) $m[1] * (strtolower($m[2]) === 'm' ? 1000 : 1);
+
+        return max(1, (int) round($kbps * $factor)).'k';
+    }
 
     /**
      * Routers this plan is restricted to. Empty means "applies to every active router" — see

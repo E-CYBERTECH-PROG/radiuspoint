@@ -49,7 +49,7 @@ class EnforceFairUsage extends Command
             // New cycle since last throttle — restore full speed before re-checking usage.
             if ($user->fup_throttled_at && $cycleStart->gt($user->fup_throttled_at)) {
                 foreach ($radiusUsernames as $radiusUsername) {
-                    RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->speed_limit);
+                    RadiusSyncService::updateRateLimit($radiusUsername, $user->plan->rate_limit);
                 }
                 $user->update(['fup_throttled_at' => null]);
             }

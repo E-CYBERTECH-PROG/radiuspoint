@@ -76,7 +76,7 @@ class VoucherController extends Controller
 
             // RADIUS credentials must exist now to authenticate on the captive portal,
             // but no expiration is set until the validity window starts.
-            RadiusSyncService::sync($code, $code, $plan->speed_limit);
+            RadiusSyncService::sync($code, $code, $plan->rate_limit);
 
             $vouchers[] = [
                 'code' => $code,

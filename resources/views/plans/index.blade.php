@@ -65,6 +65,17 @@
                         @error('download_speed') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
+                    <div class="col-12">
+                        <label class="form-label mb-1">Burst <span class="text-muted fw-normal small">(optional — short speed boost that makes browsing feel faster)</span></label>
+                        <div class="row g-2">
+                            <div class="col-4"><div class="text-muted small mb-1">Upload</div><input type="text" name="burst_upload" pattern="\d+[kKmM]" title="Number followed by K or M — e.g. 10M." value="{{ old('burst_upload') }}" placeholder="10M" class="form-control"></div>
+                            <div class="col-4"><div class="text-muted small mb-1">Download</div><input type="text" name="burst_download" pattern="\d+[kKmM]" title="Number followed by K or M — e.g. 10M." value="{{ old('burst_download') }}" placeholder="10M" class="form-control"></div>
+                            <div class="col-4"><div class="text-muted small mb-1">For</div><div class="input-group"><input type="number" name="burst_time" min="1" max="60" value="{{ old('burst_time') }}" placeholder="8" class="form-control"><span class="input-group-text">sec</span></div></div>
+                        </div>
+                        @error('burst_upload') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        @error('burst_download') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    </div>
+
                     <div class="col-6">
                         <label class="form-label">Period <span class="text-danger">*</span></label>
                         <div class="input-group">
@@ -253,6 +264,17 @@
                             <label class="form-label">Download Speed <span class="text-danger">*</span></label>
                             <input type="text" name="download_speed" required pattern="\d+[kKmM]" title="Number followed by K or M — e.g. 5M." value="{{ $oneispEditingThis ? old('download_speed') : $oneispDownload }}" placeholder="5M" class="form-control">
                             @if($oneispEditingThis) @error('download_speed') <div class="text-danger small mt-1">{{ $message }}</div> @enderror @endif
+                        </div>
+
+                        @php [$oneispBurstUp, $oneispBurstDown] = array_pad(explode('/', $plan->burst_limit ?? ''), 2, ''); @endphp
+                        <div class="col-12">
+                            <label class="form-label mb-1">Burst <span class="text-muted fw-normal small">(optional — leave empty for none)</span></label>
+                            <div class="row g-2">
+                                <div class="col-4"><div class="text-muted small mb-1">Upload</div><input type="text" name="burst_upload" pattern="\d+[kKmM]" title="Number followed by K or M — e.g. 10M." value="{{ $oneispEditingThis ? old('burst_upload') : $oneispBurstUp }}" placeholder="10M" class="form-control"></div>
+                                <div class="col-4"><div class="text-muted small mb-1">Download</div><input type="text" name="burst_download" pattern="\d+[kKmM]" title="Number followed by K or M — e.g. 10M." value="{{ $oneispEditingThis ? old('burst_download') : $oneispBurstDown }}" placeholder="10M" class="form-control"></div>
+                                <div class="col-4"><div class="text-muted small mb-1">For</div><div class="input-group"><input type="number" name="burst_time" min="1" max="60" value="{{ $oneispEditingThis ? old('burst_time') : $plan->burst_time }}" placeholder="8" class="form-control"><span class="input-group-text">sec</span></div></div>
+                            </div>
+                            @if($oneispEditingThis) @error('burst_upload') <div class="text-danger small mt-1">{{ $message }}</div> @enderror @error('burst_download') <div class="text-danger small mt-1">{{ $message }}</div> @enderror @endif
                         </div>
 
                         <div class="col-6">

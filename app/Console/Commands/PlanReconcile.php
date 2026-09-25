@@ -62,7 +62,7 @@ class PlanReconcile extends Command
             $id = $api->findId("{$endpoint}/print", 'name', $plan->name);
 
             if (! $id) {
-                $attrs = ['name' => $plan->name, 'rate-limit' => $plan->speed_limit];
+                $attrs = ['name' => $plan->name, 'rate-limit' => $plan->rate_limit];
                 if ($plan->type === 'hotspot') {
                     $attrs['shared-users'] = '1';
                     $attrs['transparent-proxy'] = 'yes';
@@ -79,8 +79,8 @@ class PlanReconcile extends Command
             // Matched via a closure, not firstWhere('.id', ...): firstWhere() treats the leading
             // dot in RouterOS's ".id" field as dot-notation and never matches.
             $current = collect($api->query("{$endpoint}/print"))->first(fn ($row) => $row['.id'] === $id);
-            if (($current['rate-limit'] ?? null) !== $plan->speed_limit) {
-                $api->setById("{$endpoint}/set", $id, ['rate-limit' => $plan->speed_limit]);
+            if (($current['rate-limit'] ?? null) !== $plan->rate_limit) {
+                $api->setById("{$endpoint}/set", $id, ['rate-limit' => $plan->rate_limit]);
                 $this->recordResult($plan, $router, 'synced', 'Updated rate limit.');
             } else {
                 $this->recordResult($plan, $router, 'synced', 'Already up to date.');

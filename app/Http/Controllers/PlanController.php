@@ -10,6 +10,7 @@ use App\Models\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PlanController extends Controller
 {
@@ -77,6 +78,8 @@ class PlanController extends Controller
             'duration_unit' => $plan->duration_unit,
             'data_cap_mb' => $plan->data_cap_mb,
             'speed_limit' => $plan->speed_limit,
+            'burst_limit' => $plan->burst_limit,
+            'burst_time' => $plan->burst_time,
             'caption' => $plan->caption,
             'fup_speed_limit' => $plan->fup_speed_limit,
         ]);
@@ -101,6 +104,9 @@ class PlanController extends Controller
             'download_speed' => ['required', 'string', 'regex:/^\d+[kKmM]$/'],
             'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'burst_upload' => ['nullable', 'required_with:burst_download', 'string', 'regex:/^\d+[kKmM]$/'],
+            'burst_download' => ['nullable', 'required_with:burst_upload', 'string', 'regex:/^\d+[kKmM]$/'],
+            'burst_time' => 'nullable|integer|min:1|max:60',
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
         ]);
@@ -116,6 +122,7 @@ class PlanController extends Controller
             'speed_limit' => "{$request->upload_speed}/{$request->download_speed}",
             'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
+            ...$this->burstFields($request),
         ]);
 
         // Empty selection means the plan applies to every active router.
@@ -150,6 +157,9 @@ class PlanController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'caption' => 'nullable|string|max:255',
             'fup_speed_limit' => ['nullable', 'string', 'regex:/^\d+[kKmM]\/\d+[kKmM]$/'],
+            'burst_upload' => ['nullable', 'required_with:burst_download', 'string', 'regex:/^\d+[kKmM]$/'],
+            'burst_download' => ['nullable', 'required_with:burst_upload', 'string', 'regex:/^\d+[kKmM]$/'],
+            'burst_time' => 'nullable|integer|min:1|max:60',
             'router_ids' => 'nullable|array',
             'router_ids.*' => 'exists:routers,id',
         ]);
@@ -165,11 +175,40 @@ class PlanController extends Controller
             'speed_limit' => "{$request->upload_speed}/{$request->download_speed}",
             'caption' => $request->caption,
             'fup_speed_limit' => $request->data_cap_mb ? $request->fup_speed_limit : null,
+            ...$this->burstFields($request),
         ]);
 
         $plan->routers()->sync($request->input('router_ids', []));
 
         return redirect()->route('plans.index', ['tab' => $plan->type])->with('success', 'Plan updated — re-syncing to hardware within a minute.');
+    }
+
+    /**
+     * Burst is optional: leaving both burst speeds empty clears it. When set, each side must be
+     * faster than the plan's normal speed on that side — a burst below the base rate would
+     * just throttle the customer for burst_time seconds, the opposite of the point.
+     */
+    private function burstFields(Request $request): array
+    {
+        if (! $request->filled('burst_upload')) {
+            return ['burst_limit' => null, 'burst_time' => null];
+        }
+
+        $toKbps = fn (string $rate) => (int) $rate * (str_ends_with(strtolower($rate), 'm') ? 1000 : 1);
+        $errors = [];
+        foreach (['upload', 'download'] as $side) {
+            if ($toKbps($request->input("burst_{$side}")) <= $toKbps($request->input("{$side}_speed"))) {
+                $errors["burst_{$side}"] = 'Burst '.$side.' speed must be faster than the normal '.$side.' speed.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return [
+            'burst_limit' => "{$request->burst_upload}/{$request->burst_download}",
+            'burst_time' => (int) ($request->burst_time ?: 8),
+        ];
     }
 
     public function destroy(Plan $plan)

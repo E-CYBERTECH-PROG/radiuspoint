@@ -100,7 +100,7 @@ class HotspotUserController extends Controller
         ]);
 
         if ($user->status === 'active') {
-            RadiusSyncService::sync($user->phone_number, Str::password(10), $plan?->speed_limit);
+            RadiusSyncService::sync($user->phone_number, Str::password(10), $plan?->rate_limit);
             if ($user->expires_at) {
                 RadiusSyncService::setExpiryWindow($user->phone_number, $user->expires_at);
             }
@@ -230,9 +230,9 @@ class HotspotUserController extends Controller
             foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
                 if (RadiusSyncService::hasCredential($radiusUsername)) {
                     // Preserve the existing password — only refresh the bandwidth profile.
-                    RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
+                    RadiusSyncService::updateRateLimit($radiusUsername, $plan?->rate_limit);
                 } else {
-                    RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
+                    RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->rate_limit);
                 }
                 if ($hotspot_user->expires_at) {
                     RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);
@@ -331,9 +331,9 @@ class HotspotUserController extends Controller
         $plan = $hotspot_user->plan;
         foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
             if (RadiusSyncService::hasCredential($radiusUsername)) {
-                RadiusSyncService::updateRateLimit($radiusUsername, $plan?->speed_limit);
+                RadiusSyncService::updateRateLimit($radiusUsername, $plan?->rate_limit);
             } else {
-                RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
+                RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->rate_limit);
             }
             RadiusSyncService::setExpiryWindow($radiusUsername, $newExpiry);
             // Same "connected, no internet" gap PppoeUserController::extendExpiry() already
@@ -457,9 +457,9 @@ class HotspotUserController extends Controller
 
         foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
             if (RadiusSyncService::hasCredential($radiusUsername)) {
-                RadiusSyncService::updateRateLimit($radiusUsername, $hotspot_user->plan?->speed_limit);
+                RadiusSyncService::updateRateLimit($radiusUsername, $hotspot_user->plan?->rate_limit);
             } else {
-                RadiusSyncService::sync($radiusUsername, Str::password(10), $hotspot_user->plan?->speed_limit);
+                RadiusSyncService::sync($radiusUsername, Str::password(10), $hotspot_user->plan?->rate_limit);
             }
             if ($hotspot_user->expires_at) {
                 RadiusSyncService::setExpiryWindow($radiusUsername, $hotspot_user->expires_at);

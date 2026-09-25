@@ -96,7 +96,7 @@ class BillingController extends Controller
         $router = Router::withoutGlobalScope('tenant')->find($transaction->router_id);
 
         foreach ([$hotspotUser->phone_number => $password, $code => $code] as $username => $pass) {
-            RadiusSyncService::sync($username, $pass, $plan->speed_limit);
+            RadiusSyncService::sync($username, $pass, $plan->rate_limit);
             RadiusSyncService::setExpiryWindow($username, $hotspotUser->expires_at);
             ExpiredBlockService::clear($router, $username);
         }
