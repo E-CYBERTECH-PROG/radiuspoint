@@ -748,6 +748,13 @@ class RouterController extends Controller
                 $api->setById('/radius/set', $entry['.id'], ['address' => $correctRadiusIp]);
                 $radiusFixed++;
             }
+            // Routers provisioned before Router::buildProvisioningScript() set timeout=3s are
+            // still on RouterOS's 300ms default — shorter than one tunnel round trip on a slow
+            // uplink. RouterOS reads it back as e.g. "300ms" or "3s".
+            if (($entry['timeout'] ?? '') !== '3s') {
+                $api->setById('/radius/set', $entry['.id'], ['timeout' => '3s']);
+                $radiusFixed++;
+            }
         }
 
         // RouterOS's hotspot always creates a dynamic dstnat redirect for port 443 on top of
@@ -878,8 +885,11 @@ class RouterController extends Controller
             '.*messenger\\.com',
         ];
 
+        // FWD-type DNS static entries (type/forward-to/address-list) only exist from RouterOS v7;
+        // v6 rejects them with "unknown parameter". The profile and firewall rules below still
+        // apply on v6 — Free Mode there just has no domain allowlist to populate.
         $dnsAdded = 0;
-        foreach ($allowedDomains as $regexp) {
+        foreach ($router->routeros_version === 'v6' ? [] : $allowedDomains as $regexp) {
             $existing = $api->findId('/ip/dns/static/print', 'regexp', $regexp);
             if ($existing) {
                 // Keep its address-list pointed at the current name.

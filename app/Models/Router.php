@@ -131,7 +131,10 @@ class Router extends Model {
         $lines[] = "/ip service set api disabled=no port=8728;";
         // Must be the server's tunnel-internal address, not $publicIp: FreeRADIUS binds only
         // to the VPN interface, so pointing at $publicIp routes outside the tunnel and fails.
-        $lines[] = "/radius add address={$serverVpnIp} secret={$this->secret_key} service=hotspot,ppp;";
+        // timeout=3s: RouterOS's 300ms default is shorter than a single tunnel round trip on a
+        // high-latency uplink (~250ms measured on a live router), so auth replies arrived after
+        // the router had already given up and reported the RADIUS server as not responding.
+        $lines[] = "/radius add address={$serverVpnIp} secret={$this->secret_key} service=hotspot,ppp timeout=3s;";
         $lines[] = "/radius incoming set accept=yes port=3799;";
 
         // RouterOS's default firewall drops input not on the "LAN" interface-list, so the

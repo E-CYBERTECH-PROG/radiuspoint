@@ -17,7 +17,7 @@
         </div>
     @endif
 
-    <div class="alert alert-warning d-flex align-items-center gap-2" id="rp-lockout-alert" style="display:none">
+    <div class="alert alert-warning d-none align-items-center gap-2" id="rp-lockout-alert">
         <i class="ti ti-clock icon flex-shrink-0"></i>
         <span>Too many attempts. Try again in <strong id="rp-lockout-seconds"></strong>s.</span>
     </div>
@@ -77,7 +77,8 @@
                 var secondsLeft = Math.max(0, lockedUntil - Math.floor(Date.now() / 1000));
                 var locked = secondsLeft > 0;
 
-                alertEl.style.display = locked ? '' : 'none';
+                alertEl.classList.toggle('d-none', !locked);
+                alertEl.classList.toggle('d-flex', locked);
                 secondsEl.textContent = secondsLeft;
                 submitBtn.disabled = locked;
                 email.disabled = locked;

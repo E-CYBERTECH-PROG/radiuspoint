@@ -36,7 +36,7 @@
                             <button type="button" class="btn btn-link btn-sm" data-rp-cancel-pay>Cancel</button>
                         </div>
                     </form>
-                    <div class="d-flex align-items-center gap-2 small text-muted" data-rp-pay-waiting style="display:none">
+                    <div class="align-items-center gap-2 small text-muted" data-rp-pay-waiting style="display:none">
                         <i class="ti ti-loader-2 icon-spin"></i>
                         <span>Check your phone for the M-Pesa prompt and enter your PIN&hellip;</span>
                     </div>

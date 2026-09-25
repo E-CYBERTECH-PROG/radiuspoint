@@ -174,8 +174,11 @@ class NasProvisioningController extends Controller
             $lines[] = '# Walled garden — lets an unauthenticated client reach the captive portal.';
             $host = parse_url(config('app.url'), PHP_URL_HOST);
             $lines[] = ":if ([:len [/ip hotspot walled-garden find dst-host={$host}]] = 0) do={ /ip hotspot walled-garden add action=allow dst-host={$host} comment=\"{$slug} captive portal\" };";
+            // HTTPS counterpart — see RouterController::provisionCaptivePortal() for why the
+            // hostname rule above alone doesn't let the portal's own HTTPS calls through.
+            $lines[] = ":if ([:len [/ip hotspot walled-garden ip find dst-host={$host}]] = 0) do={ /ip hotspot walled-garden ip add action=accept dst-host={$host} comment=\"{$slug} captive portal https\" };";
 
-            array_push($lines, ...$this->buildFreeModeLines($slug));
+            array_push($lines, ...$this->buildFreeModeLines($slug, $router->routeros_version === 'v6'));
         }
 
         return implode("\r\n", $lines) . "\r\n";
@@ -240,7 +243,7 @@ class NasProvisioningController extends Controller
      * Mirrors RouterController::provisionFreeMode() exactly — same profile/DNS/firewall setup,
      * same domain allowlist.
      */
-    private function buildFreeModeLines(string $slug): array
+    private function buildFreeModeLines(string $slug, bool $isV6 = false): array
     {
         $profileName = "{$slug}_free";
         $freemodeList = "{$slug}-freemode";
@@ -258,7 +261,8 @@ class NasProvisioningController extends Controller
             '.*fbcdn\\.net',
             '.*messenger\\.com',
         ];
-        foreach ($allowedDomains as $regexp) {
+        // FWD-type DNS static entries are v7-only — see RouterController::provisionFreeMode().
+        foreach ($isV6 ? [] : $allowedDomains as $regexp) {
             $lines[] = ":if ([:len [/ip dns static find regexp=\"{$regexp}\"]] = 0) do={ /ip dns static add regexp=\"{$regexp}\" type=FWD forward-to=8.8.8.8 address-list={$allowedList} ttl=1m comment=\"{$slug} free mode\" };";
         }
 
