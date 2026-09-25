@@ -94,8 +94,6 @@
         </div>
     </div>
 
-    {{-- Captive Portal card hidden per request — form/routes/controller untouched, just not
-         rendered here. Re-enable by un-commenting this block.
     <div id="captive-portal" class="card mb-3" style="scroll-margin-top:1.5rem;border-color:var(--tblr-primary)">
         <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-3">
@@ -215,7 +213,6 @@
             </div>
         </div>
     </div>
-    --}}
 
     <div class="card mb-3">
         <div class="card-body">

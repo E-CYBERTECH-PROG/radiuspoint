@@ -93,6 +93,7 @@ class HotspotUser extends Model
         'is_voucher',
         'expires_at',
         'fup_throttled_at',
+        'balance',
     ];
 
     protected $casts = [

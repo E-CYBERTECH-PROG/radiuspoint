@@ -68,7 +68,7 @@ Route::get('/nas/startup/{router:setup_token}', [NasProvisioningController::clas
 // Router-specific hotspot skin pages — the only files in public/hotspot/* that need this
 // tenant's business name/support number/API base baked in rather than served as-is.
 Route::get('/nas/hotspot-page/{router:public_token}/{page}', [NasProvisioningController::class, 'hotspotPage'])
-    ->where('page', 'login\.html|login2\.html|status\.html')
+    ->where('page', 'login\.html|login2\.html|status\.html|logout\.html|radvert\.html')
     ->name('nas.hotspot-page');
 
 // Public hotspot captive portal, reached via the login.html redirect stub RouterOS serves
@@ -84,6 +84,9 @@ Route::post('/captive/{router:public_token}/lookup', [CaptivePortalController::c
 Route::post('/captive/{router:public_token}/lookup-receipt', [CaptivePortalController::class, 'lookupReceipt'])
     ->middleware('throttle:6,1')
     ->name('captive.lookup-receipt');
+Route::post('/captive/{router:public_token}/lookup-mac', [CaptivePortalController::class, 'lookupByMac'])
+    ->middleware('throttle:20,1')
+    ->name('captive.lookup-mac');
 Route::post('/captive/{router:public_token}/free-mode', [CaptivePortalController::class, 'freeMode'])
     ->middleware('throttle:6,1')
     ->name('captive.free-mode');
@@ -138,7 +141,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
 
     Route::middleware('restrict.sales-agent')->group(function () {
         // destroy is replaced by the two-step code-verified decommission flow below
-        Route::resource('routers', RouterController::class)->except(['index', 'destroy']);
+        Route::resource('routers', RouterController::class)->except(['index', 'edit', 'destroy']);
         Route::post('/routers/{router}/decommission/request', [RouterController::class, 'requestDecommission'])->name('routers.decommission.request');
         Route::post('/routers/{router}/decommission/confirm', [RouterController::class, 'confirmDecommission'])->name('routers.decommission.confirm');
 
@@ -212,15 +215,17 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     Route::post('/pppoe-users/purge-expired', [PppoeUserController::class, 'purgeExpired'])->name('pppoe-users.purge-expired');
     Route::post('/hotspot-users/purge-expired', [HotspotUserController::class, 'purgeExpired'])->name('hotspot-users.purge-expired');
     Route::post('/hotspot-users/purge-unused', [HotspotUserController::class, 'purgeUnused'])->name('hotspot-users.purge-unused');
-    Route::resource('pppoe-users', PppoeUserController::class);
-    Route::resource('hotspot-users', HotspotUserController::class);
+    Route::resource('pppoe-users', PppoeUserController::class)->except(['show']);
+    Route::resource('hotspot-users', HotspotUserController::class)->except(['show']);
     Route::post('/pppoe-users/{pppoe_user}/extend', [PppoeUserController::class, 'extendExpiry'])->name('pppoe-users.extend');
+    Route::post('/pppoe-users/{pppoe_user}/adjust-balance', [PppoeUserController::class, 'adjustBalance'])->name('pppoe-users.adjust-balance');
     Route::post('/pppoe-users/{pppoe_user}/disconnect', [PppoeUserController::class, 'forceDisconnect'])->name('pppoe-users.disconnect');
     Route::post('/pppoe-users/{pppoe_user}/disable', [PppoeUserController::class, 'disable'])->name('pppoe-users.disable');
     Route::post('/pppoe-users/{pppoe_user}/enable', [PppoeUserController::class, 'enable'])->name('pppoe-users.enable');
     Route::post('/pppoe-users/{pppoe_user}/change-password', [PppoeUserController::class, 'changePassword'])->name('pppoe-users.change-password');
     Route::get('/pppoe-users/{pppoe_user}/panel', [PppoeUserController::class, 'panel'])->name('pppoe-users.panel');
     Route::post('/hotspot-users/{hotspot_user}/extend', [HotspotUserController::class, 'extendExpiry'])->name('hotspot-users.extend');
+    Route::post('/hotspot-users/{hotspot_user}/adjust-balance', [HotspotUserController::class, 'adjustBalance'])->name('hotspot-users.adjust-balance');
     Route::post('/hotspot-users/{hotspot_user}/disconnect', [HotspotUserController::class, 'forceDisconnect'])->name('hotspot-users.disconnect');
     Route::post('/hotspot-users/{hotspot_user}/disable', [HotspotUserController::class, 'disable'])->name('hotspot-users.disable');
     Route::post('/hotspot-users/{hotspot_user}/enable', [HotspotUserController::class, 'enable'])->name('hotspot-users.enable');

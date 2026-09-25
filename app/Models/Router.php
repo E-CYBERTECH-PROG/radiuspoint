@@ -77,6 +77,7 @@ class Router extends Model {
         $publicIp = config('vpn.public_ip');
         $publicKey = config('vpn.public_key');
         $serverVpnIp = config('vpn.server_vpn_ip');
+        $l2tpPsk = config('vpn.l2tp_ipsec_psk');
         $tunnelInterface = $this->routeros_version === 'v6' ? 'l2tp-isp' : 'wg-isp';
 
         $lines = [];
@@ -108,7 +109,13 @@ class Router extends Model {
 
         // --- Set up fresh.
         if ($this->routeros_version === 'v6') {
-            $lines[] = "/interface l2tp-client add name={$tunnelInterface} connect-to={$publicIp} user={$this->api_username} password={$this->api_password} ipsec-secret={$this->secret_key} use-ipsec=yes disabled=no;";
+            // ipsec-secret is the shared transport PSK (same for every v6 router, see
+            // config/vpn.php) — the router's own identity/auth is user/password below, verified
+            // by strongswan/xl2tpd via PPP CHAP, not by this PSK.
+            // ipsec-secret must be quoted — a base64 PSK's /, +, and trailing = characters
+            // otherwise break RouterOS's :import parser (confirmed live: "expected end of
+            // command"), the same reason the WireGuard keys below are quoted too.
+            $lines[] = "/interface l2tp-client add name={$tunnelInterface} connect-to={$publicIp} user={$this->api_username} password={$this->api_password} ipsec-secret=\"{$l2tpPsk}\" use-ipsec=yes disabled=no;";
         } else {
             // mtu=1280 avoids PMTUD black holes on WAN links that block ICMP
             // fragmentation-needed messages. Server side (wg0) matches this.

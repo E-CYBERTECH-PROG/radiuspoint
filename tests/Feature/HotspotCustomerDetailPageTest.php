@@ -56,7 +56,7 @@ class HotspotCustomerDetailPageTest extends TestCase
         $response->assertSee('Langas 4011');
         $response->assertSee('11.220.3.190');
         $response->assertSee('Unlimited 6HRS');
-        $response->assertSee('Purge');
+        $response->assertSee('End Session');
         $response->assertSee('Device Session Data');
         $response->assertSee('Quick Action Buttons');
     }
@@ -90,8 +90,13 @@ class HotspotCustomerDetailPageTest extends TestCase
         $response->assertDontSee('Quick Action Buttons');
     }
 
-    public function test_purge_disconnects_removes_credential_and_clears_history_but_keeps_the_record(): void
+    public function test_purge_disconnects_only_and_leaves_credential_history_and_record_untouched(): void
     {
+        // Purge used to also wipe the RADIUS credential and radacct history, which meant a
+        // customer purged mid-session (still-valid time/data remaining) could never reconnect
+        // with that login again — the real incident that prompted this change: a live voucher
+        // purged by mistake locked its customer out for the rest of its validity window
+        // instead of just ending the current session. Purge now only force-disconnects.
         $tenant = Tenant::factory()->create();
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
         $customer = HotspotUser::factory()->active()->create(['tenant_id' => $tenant->id, 'phone_number' => '254799778899', 'mac_address' => 'AA:BB:CC:DD:EE:FF']);
@@ -108,8 +113,8 @@ class HotspotCustomerDetailPageTest extends TestCase
 
         $this->actingAs($admin)->post(route('hotspot-users.purge', $customer))->assertRedirect();
 
-        $this->assertDatabaseHas('hotspot_users', ['id' => $customer->id, 'status' => 'offline', 'mac_address' => null]);
-        $this->assertSame(0, DB::table('radcheck')->where('username', '254799778899')->count());
-        $this->assertSame(0, DB::table('radacct')->where('username', '254799778899')->count());
+        $this->assertDatabaseHas('hotspot_users', ['id' => $customer->id, 'status' => 'active', 'mac_address' => 'AA:BB:CC:DD:EE:FF']);
+        $this->assertSame(1, DB::table('radcheck')->where('username', '254799778899')->where('attribute', 'Cleartext-Password')->count());
+        $this->assertSame(1, DB::table('radacct')->where('username', '254799778899')->count());
     }
 }

@@ -20,6 +20,22 @@
     $oneispExtendUrl = $oneispIsHotspot ? route('hotspot-users.extend', $user) : route('pppoe-users.extend', $user);
     $oneispPurgeUrl = $oneispIsHotspot ? route('hotspot-users.purge', $user) : null;
     $oneispMac = $user->mac_address ?: ($liveSession['mac_address'] ?? null);
+    $oneispAdjustBalanceUrl = $oneispIsHotspot ? route('hotspot-users.adjust-balance', $user) : route('pppoe-users.adjust-balance', $user);
+    // Vouchers are prepaid at generation, not per-account — they don't carry a wallet balance.
+    $oneispIsVoucherAccount = $oneispIsHotspot && $user->is_voucher;
+
+    // RADIUS-standard terminate causes, plain-English for anyone reading the connection log.
+    $oneispTerminateCauseLabels = [
+        'User-Request' => 'Customer disconnected',
+        'Idle-Timeout' => 'Idle timeout',
+        'Session-Timeout' => 'Session time limit reached',
+        'NAS-Reboot' => 'Router restarted',
+        'NAS-Request' => 'Disconnected by router',
+        'Admin-Reset' => 'Disconnected by admin',
+        'Lost-Carrier' => 'Connection lost',
+        'Lost-Service' => 'Service lost',
+        'Port-Error' => 'Port error',
+    ];
 
     // "offline" is what the Disable button actually sets (see disable()) — that's this app's
     // closest equivalent to "disabled". "unused" (hotspot-only: a voucher not yet redeemed)
@@ -75,6 +91,9 @@
                 ['label' => 'Expiry Date', 'value' => $user->expires_at?->format('d M Y H:i A') ?? '—', 'color' => 'text-danger'],
                 ['label' => 'Mac Address', 'value' => $oneispMac ?: '—', 'color' => 'text-warning'],
             ];
+            if (! $oneispIsVoucherAccount) {
+                $oneispHotspotKpis[] = ['label' => 'Wallet Balance', 'value' => 'KES ' . number_format($user->balance, 2), 'color' => 'text-primary'];
+            }
         @endphp
         <div class="card mb-3" style="border-radius:.5rem">
             <div class="d-flex flex-column flex-sm-row rp-stat-strip">
@@ -128,12 +147,18 @@
                                 @csrf
                                 <button type="submit" class="btn btn-outline-secondary rounded-pill">Reset Mac</button>
                             </form>
-                            <form action="{{ $oneispPurgeUrl }}" method="POST" onsubmit="return rpConfirm(event, 'Purge this customer? This disconnects their session, removes their RADIUS credential, and clears their connection history. Their account record and plan stay intact.')">
+                            <form action="{{ $oneispPurgeUrl }}" method="POST" onsubmit="return rpConfirm(event, 'End this customer\'s active session? Their RADIUS login, connection history, and remaining time/data stay intact — they can reconnect right away.')">
                                 @csrf
-                                <button type="submit" class="btn btn-outline-danger rounded-pill">Purge</button>
+                                <button type="submit" class="btn btn-outline-danger rounded-pill">End Session</button>
                             </form>
                             <button type="button" class="btn btn-outline-success rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-sms-offcanvas">Send SMS</button>
                             <button type="button" class="btn btn-outline-primary rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-edit-offcanvas">Change Package</button>
+                            <button type="button" class="btn btn-outline-danger rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-expiry-offcanvas">Extend Expiry</button>
+                            @if($oneispIsVoucherAccount)
+                                <button type="button" disabled title="Vouchers don't carry a wallet balance — they're prepaid at generation, not per-account." class="btn btn-outline-warning rounded-pill">Adjust Balance</button>
+                            @else
+                                <button type="button" class="btn btn-outline-warning rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-balance-offcanvas">Adjust Balance</button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -174,14 +199,31 @@
                         @else
                             <ul class="list-unstyled mb-0">
                                 @foreach($connectionLogs as $log)
+                                    @php
+                                        // FreeRADIUS writes these in UTC regardless of the app/tenant timezone
+                                        // (see RadiusSyncService::firstSessionStart()) — parsing without an
+                                        // explicit source timezone reads them as app-local, shifting every
+                                        // timestamp/duration shown here 3 hours off.
+                                        $oneispLogStart = \Carbon\Carbon::parse($log->acctstarttime, 'UTC')->setTimezone(config('app.timezone'));
+                                        $oneispLogStop = $log->acctstoptime ? \Carbon\Carbon::parse($log->acctstoptime, 'UTC')->setTimezone(config('app.timezone')) : null;
+                                        $oneispLogOnline = is_null($oneispLogStop);
+                                    @endphp
                                     <li class="d-flex gap-2 mb-3">
-                                        <span class="rounded-circle bg-primary flex-shrink-0 mt-1" style="width:.625rem;height:.625rem"></span>
+                                        <span class="rounded-circle {{ $oneispLogOnline ? 'bg-success' : 'bg-primary' }} flex-shrink-0 mt-1" style="width:.625rem;height:.625rem"></span>
                                         <div class="flex-fill min-w-0">
                                             <div class="d-flex align-items-start justify-content-between gap-3">
                                                 <p class="fw-bold mb-0">Access-Accept</p>
-                                                <p class="text-muted small flex-shrink-0 mb-0">{{ \Carbon\Carbon::parse($log->acctstarttime)->format('H:i d/m/Y') }}</p>
+                                                <p class="text-muted small flex-shrink-0 mb-0">{{ $oneispLogStart->format('H:i d/m/Y') }}</p>
                                             </div>
                                             <p class="text-muted small mb-0 text-truncate">IP: {{ $log->framedipaddress ?: '—' }} · MAC: {{ $log->callingstationid ?: '—' }}</p>
+                                            <p class="small mb-0 {{ $oneispLogOnline ? 'text-success fw-bold' : 'text-muted' }}">
+                                                @if($oneispLogOnline)
+                                                    Still connected · {{ $oneispLogStart->diffForHumans(null, true) }} so far
+                                                @else
+                                                    Ended {{ $oneispLogStop->format('H:i d/m/Y') }} · lasted {{ $oneispLogStart->diffAsCarbonInterval($oneispLogStop)->cascade()->forHumans(['short' => true, 'parts' => 2]) }}
+                                                    · {{ $oneispTerminateCauseLabels[$log->acctterminatecause] ?? ($log->acctterminatecause ?: 'Unknown reason') }}
+                                                @endif
+                                            </p>
                                         </div>
                                     </li>
                                 @endforeach
@@ -224,7 +266,7 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="avatar rounded-3 bg-primary-lt"><i class="ti ti-currency-dollar"></i></span>
                                     <div>
-                                        <p class="font-monospace fw-bold mb-0">KES 0</p>
+                                        <p class="font-monospace fw-bold mb-0">KES {{ number_format($user->balance, 2) }}</p>
                                         <p class="text-muted mb-0" style="font-size:.6875rem">Wallet Balance</p>
                                     </div>
                                 </div>
@@ -239,7 +281,11 @@
 
                             <div class="d-flex flex-wrap gap-2">
                                 <button type="button" disabled title="No payment-request feature yet" class="btn btn-outline-success rounded-pill">Request Payment</button>
-                                <button type="button" disabled title="No wallet feature yet" class="btn btn-orange rounded-pill">Adjust Balance</button>
+                                @if($oneispIsVoucherAccount)
+                                    <button type="button" disabled title="Vouchers don't carry a wallet balance — they're prepaid at generation, not per-account." class="btn btn-orange rounded-pill">Adjust Balance</button>
+                                @else
+                                    <button type="button" class="btn btn-orange rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#rp-balance-offcanvas">Adjust Balance</button>
+                                @endif
                             </div>
                         </div>
 
@@ -310,14 +356,31 @@
                     @else
                         <ul class="list-unstyled mb-0">
                             @foreach($connectionLogs as $log)
+                                @php
+                                    // FreeRADIUS writes these in UTC regardless of the app/tenant timezone
+                                    // (see RadiusSyncService::firstSessionStart()) — parsing without an
+                                    // explicit source timezone reads them as app-local, shifting every
+                                    // timestamp/duration shown here 3 hours off.
+                                    $oneispLogStart = \Carbon\Carbon::parse($log->acctstarttime, 'UTC')->setTimezone(config('app.timezone'));
+                                    $oneispLogStop = $log->acctstoptime ? \Carbon\Carbon::parse($log->acctstoptime, 'UTC')->setTimezone(config('app.timezone')) : null;
+                                    $oneispLogOnline = is_null($oneispLogStop);
+                                @endphp
                                 <li class="d-flex gap-2 mb-3">
-                                    <span class="rounded-circle bg-primary flex-shrink-0 mt-1" style="width:.625rem;height:.625rem"></span>
+                                    <span class="rounded-circle {{ $oneispLogOnline ? 'bg-success' : 'bg-primary' }} flex-shrink-0 mt-1" style="width:.625rem;height:.625rem"></span>
                                     <div class="flex-fill">
                                         <div class="d-flex align-items-start justify-content-between gap-3">
                                             <p class="fw-bold mb-0">Access-Accept</p>
-                                            <p class="text-muted small flex-shrink-0 mb-0">{{ \Carbon\Carbon::parse($log->acctstarttime)->format('H:i d/m/Y') }}</p>
+                                            <p class="text-muted small flex-shrink-0 mb-0">{{ $oneispLogStart->format('H:i d/m/Y') }}</p>
                                         </div>
                                         <p class="text-muted small mb-0">Status: UserOk Password: {{ $oneispRadiusUsername }}</p>
+                                        <p class="small mb-0 {{ $oneispLogOnline ? 'text-success fw-bold' : 'text-muted' }}">
+                                            @if($oneispLogOnline)
+                                                Still connected · {{ $oneispLogStart->diffForHumans(null, true) }} so far
+                                            @else
+                                                Ended {{ $oneispLogStop->format('H:i d/m/Y') }} · lasted {{ $oneispLogStart->diffAsCarbonInterval($oneispLogStop)->cascade()->forHumans(['short' => true, 'parts' => 2]) }}
+                                                · {{ $oneispTerminateCauseLabels[$log->acctterminatecause] ?? ($log->acctterminatecause ?: 'Unknown reason') }}
+                                            @endif
+                                        </p>
                                     </div>
                                 </li>
                             @endforeach
@@ -359,7 +422,7 @@
                     </button>
                 </div>
                 <div class="col">
-                    <button type="button" disabled title="No wallet feature yet" class="btn btn-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4">
+                    <button type="button" class="btn btn-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-1 py-4" data-bs-toggle="offcanvas" data-bs-target="#rp-balance-offcanvas">
                         <i class="ti ti-credit-card fs-3"></i> <span class="small">Deposit</span>
                     </button>
                 </div>
@@ -456,6 +519,41 @@
             </div>
         </form>
     </div>
+
+    {{-- === ADJUST BALANCE OFFCANVAS === --}}
+    @unless($oneispIsVoucherAccount)
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-balance-offcanvas">
+            <div class="offcanvas-header border-bottom">
+                <h3 class="offcanvas-title">Adjust Balance</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+            <form action="{{ $oneispAdjustBalanceUrl }}" method="POST" class="d-flex flex-column h-100">
+                @csrf
+                <div class="offcanvas-body">
+                    <p class="text-muted small text-uppercase mb-1">Current Balance</p>
+                    <p class="font-monospace fw-bold fs-2 mb-3">KES {{ number_format($user->balance, 2) }}</p>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" required class="form-select">
+                            <option value="credit">Credit (add funds)</option>
+                            <option value="debit">Debit (remove funds)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount (KES)</label>
+                        <input type="number" name="amount" step="0.01" min="0.01" required class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <textarea name="reason" required rows="3" maxlength="255" placeholder="e.g. Refund for outage on 5 Sep" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="offcanvas-footer p-3 border-top">
+                    <button type="submit" class="btn btn-orange w-100">Save Adjustment</button>
+                </div>
+            </form>
+        </div>
+    @endunless
 
     {{-- === SEND SMS OFFCANVAS === --}}
     <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-sms-offcanvas" @if($errors->sms->any()) data-rp-autoshow @endif>

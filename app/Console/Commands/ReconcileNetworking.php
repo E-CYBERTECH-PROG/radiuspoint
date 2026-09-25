@@ -25,6 +25,7 @@ class ReconcileNetworking extends Command
     public function handle(): int
     {
         $peersChanged = $this->reconcileWireguardPeers();
+        $this->reconcileL2tpSecrets();
         $nasChanged = $this->nasTableChangedSinceLastRun();
         $this->reconcileProxyPorts();
 
@@ -98,6 +99,46 @@ class ReconcileNetworking extends Command
         }
 
         return $changed;
+    }
+
+    /**
+     * RouterOS v6 has no WireGuard client, so those routers tunnel in over L2TP/IPsec
+     * (strongswan + xl2tpd) instead of wg0 — see Router::buildProvisioningScript(). xl2tpd
+     * spawns a fresh pppd per incoming session, and pppd reads chap-secrets fresh on every
+     * invocation, so a plain rewrite here is picked up by the next connection attempt with no
+     * service restart and no disruption to any v6 router already tunneled in.
+     */
+    private function reconcileL2tpSecrets(): void
+    {
+        $path = '/etc/ppp/chap-secrets';
+        if (! is_dir(dirname($path))) {
+            $this->error("{$path}'s directory is missing — is ppp/xl2tpd installed?");
+
+            return;
+        }
+
+        $v6Routers = Router::withoutGlobalScope('tenant')
+            ->where('routeros_version', 'v6')
+            ->whereNotNull('api_username')
+            ->get(['id', 'api_username', 'api_password', 'ip_address']);
+
+        $lines = [
+            '# Secrets for authentication using CHAP',
+            '# client        server  secret                  IP addresses',
+            '# Managed entirely by router:reconcile-networking — do not edit by hand.',
+        ];
+        foreach ($v6Routers as $router) {
+            $lines[] = "{$router->api_username}\t*\t\"{$router->api_password}\"\t{$router->ip_address}";
+        }
+        $content = implode("\n", $lines) . "\n";
+
+        if (is_file($path) && file_get_contents($path) === $content) {
+            return;
+        }
+
+        file_put_contents($path, $content);
+        chmod($path, 0600);
+        $this->info("Updated {$path} ({$v6Routers->count()} v6 router(s)).");
     }
 
     /**

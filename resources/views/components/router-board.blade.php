@@ -18,12 +18,16 @@
          config/mikrotik_models.php) rather than hotlinked, so it doesn't disappear if that CDN
          is slow/unreachable. The uplink status LED is overlaid on the photo itself rather than
          a separate port diagram — we don't have per-model port coordinates to place it on the
-         correct physical port precisely. --}}
-    <div class="router-board-photo {{ $compact ? 'router-board-photo-sm' : '' }} position-relative bg-white border rounded d-flex align-items-center justify-content-center overflow-hidden mx-auto">
-        @if ($image)
+         correct physical port precisely. At compact (inline table) size the photo shrinks to
+         ~40px, where a real product shot just reads as a grey blob rather than anything
+         recognizable — a clean colored icon holds up far better that small, so compact mode
+         always uses it regardless of whether a photo is configured; the photo is reserved for
+         full-size contexts (router detail page, hardware picker) where it's actually legible. --}}
+    <div class="router-board-photo {{ $compact ? 'router-board-photo-sm' : '' }} position-relative d-flex align-items-center justify-content-center overflow-hidden mx-auto {{ ($image && ! $compact) ? 'bg-white border rounded' : 'bg-primary-lt rounded-circle' }}">
+        @if ($image && ! $compact)
             <img src="{{ asset($image) }}" loading="lazy" alt="MikroTik board photo" class="w-100 h-100 p-2" style="object-fit:contain">
         @else
-            <i class="ti ti-router text-muted {{ $compact ? 'fs-3' : '' }}" style="{{ $compact ? '' : 'font-size:3rem' }}"></i>
+            <i class="ti ti-router text-primary {{ $compact ? 'fs-4' : '' }}" style="{{ $compact ? '' : 'font-size:3rem' }}"></i>
         @endif
         <span class="router-board-led position-absolute rounded-circle {{ $ledColor }}"
               @if($blinkSpeed) style="animation: router-board-blink {{ $blinkSpeed }} steps(1) infinite;" @endif

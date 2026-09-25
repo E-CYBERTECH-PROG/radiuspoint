@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CaptivePortalVisit;
+use Carbon\Carbon;
 use App\Models\PppoeUser;
 use App\Models\Plan;
 use App\Models\Router;
@@ -164,8 +165,14 @@ class ReportController extends Controller
         $logs = DB::table('radacct')
             ->whereIn('nasipaddress', $routers->pluck('ip_address'))
             ->when($search, fn ($q) => $q->where('username', 'like', "%{$search}%"))
-            ->when($request->filled('from'), fn ($q) => $q->whereDate('acctstarttime', '>=', $request->from))
-            ->when($request->filled('to'), fn ($q) => $q->whereDate('acctstarttime', '<=', $request->to))
+            // FreeRADIUS writes acctstarttime in UTC regardless of the app/tenant timezone (see
+            // RadiusSyncService::firstSessionStart()) — comparing it directly against the
+            // admin's typed calendar date (meant as a local Africa/Nairobi day) mis-boundaries
+            // by 3 hours, so a session between local midnight and 3am could land in the wrong
+            // day's results. Converting the filter's own day boundaries to UTC instead keeps
+            // the comparison on the same instant the admin actually meant.
+            ->when($request->filled('from'), fn ($q) => $q->where('acctstarttime', '>=', Carbon::parse($request->from, config('app.timezone'))->startOfDay()->setTimezone('UTC')))
+            ->when($request->filled('to'), fn ($q) => $q->where('acctstarttime', '<=', Carbon::parse($request->to, config('app.timezone'))->endOfDay()->setTimezone('UTC')))
             ->orderByDesc('acctstarttime')
             ->paginate($this->perPage($request, 50))
             ->withQueryString();

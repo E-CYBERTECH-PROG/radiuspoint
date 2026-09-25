@@ -1,89 +1,63 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <meta http-equiv="refresh" content="2; url=$(link-orig)">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="pragma" content="no-cache">
-    <meta http-equiv="expires" content="-1">
-    <title>Internet - Advertisement</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <script>
-
-        var popup = '';
-        function openOrig() {
-            if (window.focus) popup.focus();
-            location.href = unescape('$(link-orig-esc)');
-        }
-        function openAd() {
-            location.href = unescape('$(link-redirect-esc)');
-        }
-        function openAdvert() {
-            if (window.name != 'hotspot_advert') {
-                popup = open('$(link-redirect)', 'hotspot_advert', '');
-                setTimeout("openOrig()", 1000);
-                return;
-            }
-            setTimeout("openAd()", 1000);
-        }
-    </script>
-
-    <style>
-        @import url("https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@200;300;400;500;600;800;900&display=swap");
-
-        body {
-            font-family: "Lexend Deca", sans-serif;
-            color: white;
-            overflow-x: hidden;
-            width: 100vw;
-            height: 100vh;
-            min-width: 2.5in;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgb(31, 31, 31);
-        }
-
-
-        .container {
-            width: 2.5in;
-            padding: .2in;
-            font-weight: 600;
-            line-height: .3in;
-        }
-
-        a {
-            text-decoration: none;
-            color: red;
-        }
-
-        p {
-            width: 100%;
-            text-align: center;
-            margin: 0;
-        }
-
-        .head {
-            font-size: 15pt;
-            color: rgb(0, 81, 255);
-        }
-
-        p:not(.head) {
-            font-size: 10pt;
-        }
-    </style>
+  <meta http-equiv="refresh" content="2; url=$(link-orig)">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="pragma" content="no-cache" />
+  <meta http-equiv="expires" content="-1" />
+  <title>[network_name] — Connecting</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script>
+    // RouterOS's advertise-interstitial flow: pop $(link-redirect) once in its own named
+    // window, then always continue the original tab to $(link-orig) — the meta-refresh above
+    // is the fallback if this popup path is blocked or JS doesn't run at all.
+    var popup = '';
+    function openOrig() {
+      if (window.focus) popup.focus();
+      location.href = unescape('$(link-orig-esc)');
+    }
+    function openAd() {
+      location.href = unescape('$(link-redirect-esc)');
+    }
+    function openAdvert() {
+      if (window.name != 'hotspot_advert') {
+        popup = open('$(link-redirect)', 'hotspot_advert', '');
+        setTimeout("openOrig()", 1000);
+        return;
+      }
+      setTimeout("openAd()", 1000);
+    }
+  </script>
+  <style>
+    .connecting-spinner {
+      width: 34px; height: 34px; margin: 4px auto 14px;
+      border: 3px solid rgba(52, 152, 219, .25);
+      border-top-color: #3498db;
+      border-radius: 50%;
+      animation: rp-spin 0.8s linear infinite;
+    }
+    @keyframes rp-spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 
-<body onLoad="openAdvert()">
-    <div class="ie-fixMinHeight">
-        <div class="main">
-            <div class="wrap">
-                <h1>Advertisement</h1>
-                <p class="info">If nothing happens, open <a href="$(link-redirect)"
-                        target="hotspot_advert">advertisement</a> manually.</p>
-            </div>
-        </div>
+<body onload="openAdvert()">
+
+  <div class="bgimg">
+    <img src="assets/img/global-network.jpg" alt="" />
+  </div>
+
+  <div class="wrap animated fadeIn">
+    <div class="main-container payment-options">
+      <div class="container networkname-banner">
+        <div class="connecting-spinner" aria-hidden="true"></div>
+        <h1 class="ssid">You're connected!</h1>
+        <p class="banner-instruction">Taking you to the internet now&hellip;</p>
+      </div>
     </div>
+  </div>
+
 </body>
 
 </html>

@@ -39,14 +39,7 @@ class RouterController extends Controller
             ->withQueryString();
         $models = config('mikrotik_models');
 
-        $stats = [
-            'total' => Router::where('tenant_id', $tenantId)->count(),
-            'online' => Router::where('tenant_id', $tenantId)->where('status', 'active')->count(),
-            'awaiting' => Router::where('tenant_id', $tenantId)->whereIn('status', ['pending', 'provisioning'])->count(),
-            'offline' => Router::where('tenant_id', $tenantId)->where('status', 'offline')->count(),
-        ];
-
-        return view('routers.index', compact('routers', 'models', 'stats'));
+        return view('routers.index', compact('routers', 'models'));
     }
 
     /**
@@ -574,6 +567,21 @@ class RouterController extends Controller
             ]);
         }
 
+        // The rule above only covers plain HTTP: the hostname walled-garden matches on the Host
+        // header, which doesn't exist for a direct TLS connection, so an unauthenticated client
+        // opening the portal over HTTPS gets its connection dropped and renders a blank page.
+        // The IP list matches at the firewall level instead, which is what actually lets 443
+        // through. dst-host (rather than a literal address) keeps this correct while the portal
+        // sits behind a CDN, where the answer is a rotating edge IP rather than our origin.
+        $existingIpRule = $api->findId('/ip/hotspot/walled-garden/ip/print', 'dst-host', $host);
+        if (! $existingIpRule) {
+            $api->query('/ip/hotspot/walled-garden/ip/add', [
+                'action' => 'accept',
+                'dst-host' => $host,
+                'comment' => "{$slug} captive portal https",
+            ]);
+        }
+
         $filesPushed = $this->pushHotspotSkin($api, $router);
 
         // Retroactive fix for routers provisioned before login-by/radius-interim-update were
@@ -601,9 +609,16 @@ class RouterController extends Controller
             }
             // Strip "cookie" (RouterOS's own opaque per-device auto-relogin cache, which
             // can re-authenticate a device with stale attributes and bypasses our own
-            // MAC-based reconnect flow entirely) and ensure http-pap is present.
+            // MAC-based reconnect flow entirely) and ensure http-pap is present. Deliberately
+            // NOT adding "https" here — that requires a certificate for RouterOS to terminate
+            // TLS with, and since it can only ever be a self-signed one, every client sees a
+            // "connection not private" warning before it'll even show the login page, and
+            // real browsers (not just the OS's captive-portal mini-browser) refuse to
+            // continue past it cleanly. The login page itself is served fine over plain HTTP
+            // interception; the walled-garden entries above are what let its own JS calls out
+            // to our HTTPS domain once it's loaded — that doesn't need login-by=https at all.
             $current = $profile['login-by'] ?? '';
-            $methods = array_filter(explode(',', $current), fn ($m) => $m !== '' && $m !== 'cookie');
+            $methods = array_filter(explode(',', $current), fn ($m) => $m !== '' && $m !== 'cookie' && $m !== 'https');
             if (! in_array('http-pap', $methods, true)) {
                 $methods[] = 'http-pap';
             }
@@ -735,8 +750,30 @@ class RouterController extends Controller
             }
         }
 
+        // RouterOS's hotspot always creates a dynamic dstnat redirect for port 443 on top of
+        // port 80's, regardless of login-by — but without https in login-by (deliberately, see
+        // above) there's nothing on the other end able to complete that TLS handshake. The
+        // client's connection doesn't fail, it just hangs — redirected to a service that never
+        // answers — which for a browser or the OS's captive-portal webview renders as an
+        // indefinitely blank page rather than any visible error. Disabling it makes an
+        // unauthenticated HTTPS attempt fail cleanly and immediately instead, which is exactly
+        // the signal modern OSes' captive-portal detection is built to recognize and fall back
+        // from to the HTTP probe that actually reaches the real login page. Re-disabled on every
+        // push since it's a dynamic rule RouterOS can regenerate (enabled) on its own, e.g. after
+        // a service restart.
+        $port443RedirectFixed = 0;
+        foreach ($api->query('/ip/firewall/nat/print') as $natRule) {
+            if (($natRule['chain'] ?? '') === 'hotspot'
+                && ($natRule['action'] ?? '') === 'redirect'
+                && ($natRule['dst-port'] ?? '') === '443'
+                && ($natRule['disabled'] ?? 'false') !== 'true') {
+                $api->query('/ip/firewall/nat/disable', ['.id' => $natRule['.id']]);
+                $port443RedirectFixed++;
+            }
+        }
+
         return [
-            'walled_garden' => $existingRule ? 'already present' : 'added',
+            'walled_garden' => ($existingRule && $existingIpRule) ? 'already present' : 'added',
             'hotspot_files_pushed' => $filesPushed,
             'login_by_fixed' => $loginByFixed,
             'interim_update_fixed' => $interimUpdateFixed,
@@ -744,6 +781,7 @@ class RouterController extends Controller
             'radius_address_fixed' => $radiusFixed,
             'profiles_renamed' => $renamed,
             'one_session_per_host_fixed' => $oneSessionFixed,
+            'port_443_redirect_fixed' => $port443RedirectFixed,
         ];
     }
 
@@ -753,29 +791,45 @@ class RouterController extends Controller
      * login2.html, and status.html are fetched from NasProvisioningController::hotspotPage()
      * instead of their plain public URL, since those three need this tenant's business
      * name/support number/API base baked in — everything else has no per-tenant content and is
-     * fetched as-is. /tool fetch overwrites an existing destination file, so this is safe to
-     * call on every push; it's fire-and-forget (RouterOS downloads happen in the background),
-     * so this returns a file count, not a per-file success/failure report.
+     * fetched as-is. /tool fetch does NOT reliably overwrite an existing destination file on
+     * RouterOS (confirmed empirically: it reports status=finished with the correct downloaded
+     * size, but the file already at that path is left untouched) — the same gotcha the
+     * bootstrap script already works around for startup.rsc, so every path here is removed
+     * first if present. Every URL also carries a cache-busting query param: Cloudflare's edge
+     * cache is geographically distributed with a long max-age, so a router re-fetching from a
+     * different edge PoP than whichever one last revalidated can silently get a stale cached
+     * copy served straight from that edge — never touching our origin at all, so it wouldn't
+     * even show up in the app's own logs. A value that changes on every push guarantees a fresh
+     * URL Cloudflare has never cached, regardless of which edge answers. It's fire-and-forget
+     * (RouterOS downloads happen in the background), so this returns a file count, not a
+     * per-file success/failure report.
      */
     protected function pushHotspotSkin(MikrotikApiService $api, Router $router): int
     {
-        $templated = ['login.html', 'login2.html', 'status.html'];
+        $templated = ['login.html', 'login2.html', 'status.html', 'logout.html', 'radvert.html'];
         $appUrl = rtrim(config('app.url'), '/');
+        $cacheBust = 'rpcb='.now()->timestamp;
         $count = 0;
 
         $files = File::allFiles(public_path('hotspot'));
         foreach ($files as $file) {
             $relativePath = str_replace('\\', '/', $file->getRelativePathname());
+            $dstPath = "hotspot/{$relativePath}";
 
             $url = in_array($relativePath, $templated, true)
-                ? route('nas.hotspot-page', [$router, $relativePath])
-                : "{$appUrl}/hotspot/{$relativePath}";
+                ? route('nas.hotspot-page', [$router, $relativePath]).'?'.$cacheBust
+                : "{$appUrl}/hotspot/{$relativePath}?{$cacheBust}";
+
+            $existingId = $api->findId('/file/print', 'name', $dstPath);
+            if ($existingId) {
+                $api->query('/file/remove', ['.id' => $existingId]);
+            }
 
             $api->query('/tool/fetch', [
                 'url' => $url,
                 'mode' => 'https',
                 'check-certificate' => 'no',
-                'dst-path' => "hotspot/{$relativePath}",
+                'dst-path' => $dstPath,
                 'http-method' => 'get',
             ]);
             $count++;
@@ -907,7 +961,16 @@ class RouterController extends Controller
             }
 
             $result = $this->provisionCaptivePortal($api, $router);
-            $freeMode = $this->provisionFreeMode($api, $router);
+
+            // Isolated from the captive-portal push above: a Free Mode failure (e.g. a RouterOS
+            // version rejecting one of its DNS static parameters) shouldn't fail the whole
+            // request when the actual captive-portal files already pushed successfully.
+            try {
+                $freeMode = $this->provisionFreeMode($api, $router);
+            } catch (Exception $e) {
+                Log::warning("Free Mode setup failed for {$router->name}: " . $e->getMessage());
+                $freeMode = ['profile' => null, 'firewall_rules' => null];
+            }
 
             return response()->json([
                 'message' => 'Captive portal files pushed to router.',

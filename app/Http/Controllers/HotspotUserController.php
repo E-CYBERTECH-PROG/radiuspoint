@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BalanceAdjustment;
 use App\Models\HotspotUser;
 use App\Models\Plan;
 use App\Models\Router;
 use App\Models\Transaction;
+use App\Services\ExpiredBlockService;
 use App\Services\MikrotikApiService;
 use App\Services\RadiusSyncService;
 use App\Services\SessionDisconnectService;
@@ -13,7 +15,6 @@ use App\Services\UsageCycleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -24,8 +25,10 @@ class HotspotUserController extends Controller
     {
         $search = $this->searchTerm($request);
 
-        // Vouchers (is_voucher=true) have their own page (vouchers.index) — excluded here so a
-        // redeemed voucher doesn't show up as a regular walk-up hotspot customer.
+        // Vouchers (is_voucher=true) live in the Customers hub (customers.index, filtered to
+        // "Vouchers") — excluded here so a redeemed voucher doesn't show up as a regular
+        // walk-up hotspot customer. This legacy list (superseded by the Customers hub, not
+        // linked from the main nav) predates that merge.
         $users = HotspotUser::where('tenant_id', Auth::user()->tenant_id)
             ->where('is_voucher', false)
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
@@ -258,37 +261,35 @@ class HotspotUserController extends Controller
     }
 
     /**
-     * Wipes this customer back to a clean slate without deleting their record (unlike
-     * destroy()): force-disconnects any active session, removes the RADIUS credential, clears
-     * their radacct session/accounting history, and resets the bound MAC — so the next device
-     * to authenticate binds fresh. Plan/expiry/billing fields are left untouched; this is
-     * purely a RADIUS/session-level reset.
+     * Force-ends this customer's active session without touching anything else — unlike
+     * destroy() or a real credential wipe, their RADIUS login, connection history, plan, and
+     * expiry all stay exactly as they were, so they can reconnect and keep using whatever time
+     * they have left. (Previously this also removed the RADIUS credential and deleted radacct
+     * history — that made a purged voucher/customer unable to reconnect at all even with valid
+     * time remaining, which caused a real customer's still-active voucher to get permanently
+     * locked out mid-session. If a genuine hard wipe is ever needed again, destroy() already
+     * covers that.)
      */
     public function purgeCustomer(Request $request, HotspotUser $hotspot_user)
     {
         // An auto-purchased account can have two valid RADIUS credentials at once (see
-        // HotspotUser::radiusUsernames()) — a real purge has to clear both, or one would
-        // keep working after the "purge".
-        $radiusUsernames = $hotspot_user->radiusUsernames();
-
-        foreach ($radiusUsernames as $radiusUsername) {
-            if ($hotspot_user->router) {
-                SessionDisconnectService::disconnect(
-                    $hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername
-                );
+        // HotspotUser::radiusUsernames()) — the active session could be under either.
+        $disconnected = false;
+        if ($hotspot_user->router) {
+            foreach ($hotspot_user->radiusUsernames() as $radiusUsername) {
+                if (SessionDisconnectService::disconnect($hotspot_user->router, '/ip/hotspot/active/print', 'user', '/ip/hotspot/active/remove', $radiusUsername)) {
+                    $disconnected = true;
+                }
             }
-
-            RadiusSyncService::remove($radiusUsername);
         }
 
-        DB::table('radacct')->whereIn('username', $radiusUsernames)->delete();
-        $hotspot_user->update(['status' => 'offline', 'mac_address' => null]);
-
-        $message = 'Customer purged — RADIUS credential and session history cleared.';
+        $message = $disconnected
+            ? 'Session disconnected — they can reconnect with any time/data still remaining.'
+            : 'No active session found (they may already be offline).';
 
         return $request->wantsJson()
-            ? response()->json(['message' => $message])
-            : back()->with('success', $message);
+            ? response()->json(['message' => $message], $disconnected ? 200 : 422)
+            : back()->with($disconnected ? 'success' : 'error', $message);
     }
 
     /**
@@ -324,6 +325,12 @@ class HotspotUserController extends Controller
                 RadiusSyncService::sync($radiusUsername, Str::password(10), $plan?->speed_limit);
             }
             RadiusSyncService::setExpiryWindow($radiusUsername, $newExpiry);
+            // Same "connected, no internet" gap PppoeUserController::extendExpiry() already
+            // guards against: if this customer's last plan lapsed while they were still
+            // connected, users:expire-overdue's blockIfConnected() left their IP on the
+            // router's expired-block list — without this, a manual extend here leaves that
+            // stale block in place even though their credential is valid again.
+            ExpiredBlockService::clear($hotspot_user->router, $radiusUsername);
         }
 
         $message = "Extended to {$newExpiry->format('d M Y H:i')}.";
@@ -346,6 +353,45 @@ class HotspotUserController extends Controller
 
         return $request->wantsJson()
             ? response()->json(['message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Manual credit/debit to this customer's prepaid balance — a wallet correction, not a real
+     * sale, so it's logged in balance_adjustments rather than transactions (see that table's
+     * migration comment) and never touches revenue reporting.
+     */
+    public function adjustBalance(Request $request, HotspotUser $hotspot_user)
+    {
+        if ($hotspot_user->is_voucher) {
+            $message = "Vouchers don't carry a wallet balance — they're prepaid at generation, not per-account.";
+
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        $request->validate([
+            'type' => 'required|in:credit,debit',
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $signedAmount = $request->type === 'credit' ? $request->amount : -$request->amount;
+
+        BalanceAdjustment::create([
+            'hotspot_user_id' => $hotspot_user->id,
+            'amount' => $signedAmount,
+            'reason' => $request->reason,
+            'created_by' => Auth::id(),
+        ]);
+
+        $hotspot_user->increment('balance', $signedAmount);
+
+        $message = ($request->type === 'credit' ? 'Credited ' : 'Debited ') . number_format($request->amount, 2) . ' — new balance ' . number_format($hotspot_user->balance, 2) . '.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message, 'balance' => $hotspot_user->balance])
             : back()->with('success', $message);
     }
 

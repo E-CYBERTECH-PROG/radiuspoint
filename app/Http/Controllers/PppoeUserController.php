@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BalanceAdjustment;
 use App\Models\PppoeUser;
 use App\Models\Plan;
 use App\Models\Router;
@@ -308,6 +309,37 @@ class PppoeUserController extends Controller
 
         return $request->wantsJson()
             ? response()->json(['message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Manual credit/debit to this customer's prepaid balance — a wallet correction, not a real
+     * sale, so it's logged in balance_adjustments rather than transactions (see that table's
+     * migration comment) and never touches revenue reporting.
+     */
+    public function adjustBalance(Request $request, PppoeUser $pppoe_user)
+    {
+        $request->validate([
+            'type' => 'required|in:credit,debit',
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $signedAmount = $request->type === 'credit' ? $request->amount : -$request->amount;
+
+        BalanceAdjustment::create([
+            'pppoe_user_id' => $pppoe_user->id,
+            'amount' => $signedAmount,
+            'reason' => $request->reason,
+            'created_by' => Auth::id(),
+        ]);
+
+        $pppoe_user->increment('balance', $signedAmount);
+
+        $message = ($request->type === 'credit' ? 'Credited ' : 'Debited ') . number_format($request->amount, 2) . ' — new balance ' . number_format($pppoe_user->balance, 2) . '.';
+
+        return $request->wantsJson()
+            ? response()->json(['message' => $message, 'balance' => $pppoe_user->balance])
             : back()->with('success', $message);
     }
 

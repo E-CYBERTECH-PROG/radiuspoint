@@ -40,7 +40,10 @@
                             <td class="fw-bold font-monospace">{{ $log->username }}</td>
                             <td class="text-muted">{{ $routersByIp[$log->nasipaddress]->name ?? $log->nasipaddress }}</td>
                             <td class="text-muted font-monospace">{{ $log->framedipaddress ?: '—' }}</td>
-                            <td class="text-muted">{{ $log->acctstarttime ? \Carbon\Carbon::parse($log->acctstarttime)->format('d M Y H:i') : '—' }}</td>
+                            {{-- FreeRADIUS writes acctstarttime in UTC regardless of the app/tenant timezone
+                                 (see RadiusSyncService::firstSessionStart()) — parsing without an explicit
+                                 source timezone reads it as app-local, showing every entry 3 hours early. --}}
+                            <td class="text-muted">{{ $log->acctstarttime ? \Carbon\Carbon::parse($log->acctstarttime, 'UTC')->setTimezone(config('app.timezone'))->format('d M Y H:i') : '—' }}</td>
                             <td class="text-muted font-monospace">
                                 @if($log->acctsessiontime)
                                     {{ sprintf('%02d:%02d:%02d', floor($log->acctsessiontime / 3600), floor(($log->acctsessiontime % 3600) / 60), $log->acctsessiontime % 60) }}

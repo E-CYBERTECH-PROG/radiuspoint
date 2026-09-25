@@ -55,6 +55,7 @@ class PppoeUser extends Model
         'status',
         'expires_at',
         'fup_throttled_at',
+        'balance',
     ];
 
     protected $casts = [

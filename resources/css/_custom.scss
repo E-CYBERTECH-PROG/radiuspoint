@@ -170,6 +170,31 @@ html:not([data-bs-theme="dark"]) {
     #rp-mobile-nav {
         width: clamp(12.5rem, 40%, 15rem) !important;
     }
+
+    // .custom-scrollbar (above) only reveals its thumb on :hover, which never fires on a
+    // touchscreen — the drawer's nav list is tall enough to need scrolling (Settings/Access
+    // Control sits below the fold), but with zero visible affordance a phone user just sees
+    // the list end at "Announcements" and has no reason to try scrolling further inside this
+    // narrow panel specifically. Confirmed live: the content scrolls fine once you know to
+    // try, there was just nothing telling you to. Always-faint here, not hover-gated.
+    #rp-mobile-nav .offcanvas-body.custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: var(--tblr-border-color);
+    }
+    #rp-mobile-nav .offcanvas-body.custom-scrollbar {
+        scrollbar-width: thin;
+    }
+
+    // Belt-and-braces on top of the always-faint scrollbar above: many mobile browsers use a
+    // system overlay scrollbar that ignores custom-scrollbar's CSS entirely, so that alone
+    // isn't a guaranteed affordance. rp-shell.js toggles this class off once scrolled to the
+    // bottom (or if the list never overflowed in the first place).
+    #rp-mobile-nav .offcanvas-body {
+        transition: box-shadow .2s ease;
+
+        &.rp-has-more-below {
+            box-shadow: inset 0 -14px 10px -10px rgba(0, 0, 0, .18);
+        }
+    }
 }
 
 // Notifications dropdown (layouts/sidebar.blade.php #rp-notif-root) — Tabler's

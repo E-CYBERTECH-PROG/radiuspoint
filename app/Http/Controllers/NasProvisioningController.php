@@ -37,7 +37,34 @@ class NasProvisioningController extends Controller
             file_get_contents($path)
         );
 
+        $html = $this->applyHotspotTheme($html, $router);
+
         return response($html, 200)->header('Content-Type', 'text/html');
+    }
+
+    /**
+     * Repaints the router-hosted hotspot skin with the same template an admin picked on the
+     * router's Captive Portal card — that picker previously only affected the Laravel-rendered
+     * /captive/{token} fallback page, never what a customer actually sees on first connect (this
+     * self-hosted skin, served straight off the router's own filesystem). Injected as a <style>
+     * block placed after the stylesheet <link> so its :root wins the cascade, rather than
+     * touching style.css's own token defaults, which stay as the light-lumen fallback for a
+     * router with no CaptivePortal row at all.
+     */
+    private function applyHotspotTheme(string $html, Router $router): string
+    {
+        $template = $router->captivePortal->template ?? 'light-lumen';
+        $tokens = config("captive_hotspot_themes.{$template}") ?? config('captive_hotspot_themes.light-lumen');
+
+        $css = "<style id=\"rp-theme-tokens\">\n:root {\n";
+        foreach ($tokens as $name => $value) {
+            $css .= "  --{$name}: {$value};\n";
+        }
+        $css .= "}\n</style>\n</head>";
+
+        return str_contains($html, '</head>')
+            ? str_replace('</head>', $css, $html)
+            : $html;
     }
 
     /**

@@ -212,8 +212,14 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $this->assertSame(0, DB::table('radcheck')->where('username', '254744556677')->count());
     }
 
-    public function test_purging_an_auto_purchased_customer_clears_both_credentials(): void
+    public function test_purging_an_auto_purchased_customer_disconnects_without_clearing_credentials(): void
     {
+        // Purge used to also wipe the RADIUS credential and radacct history — that meant a
+        // customer purged mid-session (still-valid time/data remaining) could never reconnect
+        // again with that same login, which is exactly the real incident that prompted this
+        // change: a live voucher purged by mistake locked its customer out for the rest of its
+        // validity window instead of just ending the current session. Purge now only
+        // force-disconnects; everything else about the account is untouched.
         $tenant = Tenant::factory()->create();
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
         $plan = Plan::factory()->create(['tenant_id' => $tenant->id, 'type' => 'hotspot', 'duration_value' => 1, 'duration_unit' => 'days']);
@@ -231,22 +237,38 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
 
         $this->actingAs($admin)->post(route('hotspot-users.purge', $hotspotUser))->assertRedirect();
 
-        $this->assertSame(0, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->count());
-        $this->assertSame(0, DB::table('radcheck')->where('username', '254755667788')->count());
+        $this->assertSame(1, DB::table('radcheck')->where('username', 'QGH7ABCDE1')->where('attribute', 'Cleartext-Password')->count());
+        $this->assertSame(1, DB::table('radcheck')->where('username', '254755667788')->where('attribute', 'Cleartext-Password')->count());
+        $this->assertSame('active', $hotspotUser->fresh()->status);
     }
 
-    public function test_vouchers_are_excluded_from_customers_hub_and_its_stats(): void
+    public function test_customers_hub_merges_vouchers_and_registered_customers_with_a_kind_filter(): void
     {
+        // Vouchers and registered walk-up customers used to live on entirely separate pages —
+        // merged into one list (Customers > Hotspot) behind a kind filter, defaulting to
+        // showing both together, since they're the same underlying HotspotUser record.
         $tenant = Tenant::factory()->create();
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
         HotspotUser::factory()->active()->create(['tenant_id' => $tenant->id, 'phone_number' => '254700111222']);
         HotspotUser::factory()->active()->create(['tenant_id' => $tenant->id, 'phone_number' => 'VOUCHER99', 'is_voucher' => true]);
 
+        // Default view: both show.
         $response = $this->actingAs($admin)->get('/customers/hotspot');
+        $response->assertOk();
+        $response->assertSee('254700111222');
+        $response->assertSee('VOUCHER99');
 
+        // Filtered to registered only.
+        $response = $this->actingAs($admin)->get('/customers/hotspot?kind=registered');
         $response->assertOk();
         $response->assertSee('254700111222');
         $response->assertDontSee('VOUCHER99');
+
+        // Filtered to vouchers only.
+        $response = $this->actingAs($admin)->get('/customers/hotspot?kind=voucher');
+        $response->assertOk();
+        $response->assertSee('VOUCHER99');
+        $response->assertDontSee('254700111222');
     }
 
     public function test_vouchers_are_excluded_from_hotspot_users_index(): void
@@ -263,7 +285,7 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $response->assertDontSee('VOUCHERAB');
     }
 
-    public function test_vouchers_are_excluded_from_dashboard_customer_total(): void
+    public function test_vouchers_are_counted_in_dashboard_customer_total(): void
     {
         $tenant = Tenant::factory()->create();
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
@@ -274,8 +296,8 @@ class HotspotVoucherCredentialSchemeTest extends TestCase
         $response = $this->actingAs($admin)->get('/dashboard');
 
         $response->assertOk();
-        // Only the one non-voucher row should count — if the two vouchers were still folded
-        // in, this would be 3.
-        $this->assertSame(1, $response->original->getData()['stats']['customers_total']);
+        // A voucher customer using WiFi right now is just as real as a registered one — all
+        // three rows count toward the dashboard's headline total.
+        $this->assertSame(3, $response->original->getData()['stats']['customers_total']);
     }
 }

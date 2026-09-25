@@ -28,6 +28,22 @@
         </div>
     </div>
 
+    {{-- === REGISTERED / VOUCHER FILTER (hotspot only) — a real server-side filter (unlike
+         the live online/offline pills below), since a redeemed voucher and a registered
+         walk-up customer are still the same underlying record, just previously split across
+         two separate pages (Customers > Hotspot vs. a standalone Vouchers page). === --}}
+    @if($tab === 'hotspot')
+        <ul class="nav nav-pills mb-3">
+            @foreach(['all' => 'All', 'registered' => 'Registered', 'voucher' => 'Vouchers'] as $key => $label)
+                <li class="nav-item">
+                    <a href="{{ route('customers.index', array_filter(['type' => 'hotspot', 'kind' => $key, 'search' => request('search')])) }}" class="nav-link {{ $kind === $key ? 'active' : '' }}">
+                        {{ $label }}
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
     {{-- === LIVE ONLINE/OFFLINE FILTER — updated as the poll() below refreshes each row's
          live status; purely client-side, doesn't touch the DB `status` column (that's the
          billing status, filterable separately via the Filters offcanvas). === --}}
@@ -61,6 +77,11 @@
                         <span class="input-icon-addon"><i class="ti ti-search"></i></span>
                         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by username, name, or phone…" class="form-control">
                     </div>
+                    @if($tab === 'hotspot')
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-voucher">
+                            <i class="ti ti-ticket icon"></i> <span class="d-none d-sm-inline">New Voucher</span>
+                        </button>
+                    @endif
                     <button type="button" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#rp-add-customer">
                         <i class="ti ti-user-plus icon"></i> <span class="d-none d-sm-inline">New Customer</span>
                     </button>
@@ -92,6 +113,9 @@
                                     <a href="{{ $oneispDetailUrl }}" class="fw-bold">
                                         {{ $tab === 'hotspot' ? $user->phone_number : $user->username }}
                                     </a>
+                                    @if($tab === 'hotspot' && $kind === 'all')
+                                        <span class="badge {{ $user->is_voucher ? 'bg-orange-lt' : 'bg-blue-lt' }} ms-1">{{ $user->is_voucher ? 'Voucher' : 'Registered' }}</span>
+                                    @endif
                                 </td>
                                 <td class="text-muted">{{ $user->name ?: '—' }}</td>
                                 <td class="text-muted">{{ $user->phone_number ?: '—' }}</td>
@@ -158,6 +182,71 @@
     </form>
 
     <div class="mt-3">{{ $users->links('vendor.pagination.rp-circles') }}</div>
+
+    {{-- === NEW VOUCHER OFFCANVAS (hotspot only) === --}}
+    @if($tab === 'hotspot')
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="rp-add-voucher">
+            <div class="offcanvas-header border-bottom">
+                <h3 class="offcanvas-title">New Voucher</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+
+            <form action="{{ route('vouchers.generate') }}" method="POST" class="d-flex flex-column h-100">
+                @csrf
+                <div class="offcanvas-body">
+                    <div class="mb-3">
+                        <label class="form-label">Package <span class="text-danger">*</span></label>
+                        <select name="plan_id" required class="form-select">
+                            @forelse($hotspotPlans as $plan)
+                                <option value="{{ $plan->id }}">{{ $plan->name }} — KES {{ number_format($plan->price) }}</option>
+                            @empty
+                                <option value="" disabled>No hotspot packages yet — create one first</option>
+                            @endforelse
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Mode <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="mode" value="single" class="form-selectgroup-input" id="rp-voucher-mode-single" checked>
+                                    <span class="form-selectgroup-label text-center">Single</span>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="mode" value="batch" class="form-selectgroup-input" id="rp-voucher-mode-batch">
+                                    <span class="form-selectgroup-label text-center">Batch</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-rp-mode="single" class="mb-3">
+                        <label class="form-label">Voucher Code <span class="text-muted text-lowercase">(optional — auto-generated if blank)</span></label>
+                        <input type="text" name="username" placeholder="Leave blank to auto-generate" class="form-control">
+                    </div>
+
+                    <div data-rp-mode="single" class="mb-3">
+                        <label class="form-label">Send To Phone <span class="text-muted text-lowercase">(optional)</span></label>
+                        <input type="tel" name="phone" placeholder="0712345678" class="form-control">
+                    </div>
+
+                    <div data-rp-mode="batch" class="mb-3" style="display:none">
+                        <label class="form-label">Quantity <span class="text-danger">*</span> <span class="text-muted text-lowercase">(max 21 per print page)</span></label>
+                        <input type="number" name="quantity" min="1" max="21" value="21" class="form-control">
+                    </div>
+                </div>
+
+                <div class="offcanvas-footer p-3 border-top">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ti ti-ticket icon"></i> Generate
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
 
     {{-- === ADD CUSTOMER OFFCANVAS === --}}
     @php $oneispConnType = old('_connection_type', $tab); @endphp
@@ -261,6 +350,20 @@
                 document.querySelectorAll('[data-rp-autoshow]').forEach(function (el) {
                     bootstrap.Offcanvas.getOrCreateInstance(el).show();
                 });
+
+                // New-voucher offcanvas: Single/Batch radios show only the relevant fields.
+                var voucherModeSingle = document.getElementById('rp-voucher-mode-single');
+                var voucherModeBatch = document.getElementById('rp-voucher-mode-batch');
+                if (voucherModeSingle && voucherModeBatch) {
+                    var syncVoucherMode = function () {
+                        var mode = voucherModeBatch.checked ? 'batch' : 'single';
+                        document.querySelectorAll('[data-rp-mode]').forEach(function (el) {
+                            el.style.display = el.getAttribute('data-rp-mode') === mode ? '' : 'none';
+                        });
+                    };
+                    voucherModeSingle.addEventListener('change', syncVoucherMode);
+                    voucherModeBatch.addEventListener('change', syncVoucherMode);
+                }
 
                 // Add-customer offcanvas: connection-type radios swap the form action, the
                 // hidden _connection_type/redirect_to values, and which fields are shown.

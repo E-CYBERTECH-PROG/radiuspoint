@@ -12,7 +12,7 @@
 </head>
 <body class="bg-body-secondary p-4">
     <div class="no-print mb-4 d-flex justify-content-between align-items-center" style="max-width:56rem;margin-inline:auto">
-        <a href="{{ route('vouchers.index') }}">&larr; Back to Vouchers</a>
+        <a href="{{ route('customers.index', ['type' => 'hotspot', 'kind' => 'voucher']) }}">&larr; Back to Vouchers</a>
         <button onclick="window.print()" class="btn btn-primary">Print</button>
     </div>
 

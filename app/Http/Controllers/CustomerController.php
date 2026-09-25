@@ -31,9 +31,20 @@ class CustomerController extends Controller
         $plans = Plan::where('tenant_id', $tenantId)->where('type', $tab)->get();
         $routers = Router::where('tenant_id', $tenantId)->get()->keyBy('id');
 
+        // Registered walk-up customers and vouchers used to live on entirely separate pages
+        // (Customers > Hotspot vs. a standalone Vouchers page) — merged here behind this
+        // filter so an admin isn't hunting across two places for the same underlying
+        // HotspotUser record. Defaults to showing both together. Meaningless for the PPPoE
+        // tab (no such thing as a PPPoE voucher), but still defined so the view can
+        // unconditionally check it.
+        $kind = $tab === 'hotspot' && in_array($request->get('kind'), ['all', 'registered', 'voucher'], true)
+            ? $request->get('kind')
+            : 'all';
+
         if ($tab === 'hotspot') {
             $users = HotspotUser::where('tenant_id', $tenantId)
-                ->where('is_voucher', false)
+                ->when($kind === 'registered', fn ($q) => $q->where('is_voucher', false))
+                ->when($kind === 'voucher', fn ($q) => $q->where('is_voucher', true))
                 ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                     $q->where('phone_number', 'like', "%{$search}%")->orWhere('mac_address', 'like', "%{$search}%");
                 }))
@@ -67,16 +78,20 @@ class CustomerController extends Controller
         $hotspotPlans = $allPlans->where('type', 'hotspot')->values();
 
         // Scoped to this page's own type only — a PPPoE customer shouldn't inflate the KPI
-        // tiles on the Hotspot page or vice versa, now that they're separate pages rather than
-        // tabs on one shared total. Vouchers (is_voucher=true) are excluded from every hotspot
-        // count here — they aren't real walk-up customers until redeemed, and even then belong
-        // on their own Vouchers page (vouchers.index).
+        // tiles on the Hotspot page or vice versa. Also scoped to the current kind filter
+        // (registered/voucher/all) so the tiles always describe exactly what's in the table
+        // below them, matching the dashboard's own decision to count vouchers as real
+        // customers rather than a separate category.
         if ($tab === 'hotspot') {
+            $statsQuery = fn () => HotspotUser::where('tenant_id', $tenantId)
+                ->when($kind === 'registered', fn ($q) => $q->where('is_voucher', false))
+                ->when($kind === 'voucher', fn ($q) => $q->where('is_voucher', true));
+
             $stats = [
-                'total' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->count(),
-                'active' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'active')->count(),
-                'expired' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->where('status', 'expired')->count(),
-                'disabled' => HotspotUser::where('tenant_id', $tenantId)->where('is_voucher', false)->whereIn('status', ['offline', 'unused'])->count(),
+                'total' => $statsQuery()->count(),
+                'active' => $statsQuery()->where('status', 'active')->count(),
+                'expired' => $statsQuery()->where('status', 'expired')->count(),
+                'disabled' => $statsQuery()->whereIn('status', ['offline', 'unused'])->count(),
             ];
         } else {
             $stats = [
@@ -88,7 +103,7 @@ class CustomerController extends Controller
         }
 
         return view('customers.index', compact(
-            'users', 'plans', 'allPlans', 'pppoePlans', 'hotspotPlans', 'routers', 'tab', 'stats'
+            'users', 'plans', 'allPlans', 'pppoePlans', 'hotspotPlans', 'routers', 'tab', 'stats', 'kind'
         ));
     }
 
@@ -157,7 +172,11 @@ class CustomerController extends Controller
                 'ip_address' => $latest->framedipaddress,
                 'mac_address' => $latest->callingstationid,
                 'site' => Router::where('tenant_id', $tenantId)->where('ip_address', $latest->nasipaddress)->value('name'),
-                'started_at' => Carbon::parse($latest->acctstarttime),
+                // FreeRADIUS writes acctstarttime in UTC regardless of the app/tenant timezone
+                // (see RadiusSyncService::firstSessionStart()) — parsing it without an explicit
+                // source timezone reads it as app-local (Africa/Nairobi, UTC+3), silently
+                // shifting "online since"/uptime 3 hours into the past.
+                'started_at' => Carbon::parse($latest->acctstarttime, 'UTC')->setTimezone(config('app.timezone')),
             ];
         }
 

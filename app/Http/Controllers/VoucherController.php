@@ -24,31 +24,23 @@ class VoucherController extends Controller
         'expired' => 'expired',
     ];
 
+    /**
+     * Vouchers used to have this whole page to themselves; they now live in the Customers hub
+     * (Customers > Hotspot, filtered to "Vouchers") alongside registered walk-up customers,
+     * since both are the same underlying HotspotUser record and admins were hunting across two
+     * separate pages for it. This just carries an old bookmark/link forward — translating the
+     * old status tab into the new page's status filter, where the two overlap.
+     */
     public function index(Request $request)
     {
-        $tenantId = Auth::user()->tenant_id;
-        $tab = in_array($request->get('tab'), array_keys(self::STATUS_MAP), true) ? $request->get('tab') : 'available';
-        $search = $this->searchTerm($request);
+        $tab = in_array($request->get('tab'), array_keys(self::STATUS_MAP), true) ? $request->get('tab') : null;
 
-        $plans = Plan::where('tenant_id', $tenantId)->where('type', 'hotspot')->get();
-
-        $vouchers = HotspotUser::where('tenant_id', $tenantId)
-            ->where('is_voucher', true)
-            ->where('status', self::STATUS_MAP[$tab])
-            ->when($search, fn ($q) => $q->where('phone_number', 'like', "%{$search}%"))
-            ->latest()
-            ->paginate($this->perPage($request, 10))
-            ->withQueryString();
-
-        $counts = HotspotUser::where('tenant_id', $tenantId)
-            ->where('is_voucher', true)
-            ->selectRaw('status, count(*) as c')
-            ->groupBy('status')
-            ->pluck('c', 'status');
-
-        $plansById = Plan::where('tenant_id', $tenantId)->get()->keyBy('id');
-
-        return view('vouchers.index', compact('plans', 'vouchers', 'tab', 'counts', 'plansById'));
+        return redirect()->route('customers.index', array_filter([
+            'type' => 'hotspot',
+            'kind' => 'voucher',
+            'status' => $tab ? self::STATUS_MAP[$tab] : null,
+            'search' => $request->get('search'),
+        ]));
     }
 
     public function generate(Request $request)
@@ -110,7 +102,7 @@ class VoucherController extends Controller
         $vouchers = session('vouchers', []);
 
         if (empty($vouchers)) {
-            return redirect()->route('vouchers.index');
+            return redirect()->route('customers.index', ['type' => 'hotspot', 'kind' => 'voucher']);
         }
 
         return view('vouchers.print', compact('vouchers'));
@@ -121,6 +113,6 @@ class VoucherController extends Controller
         RadiusSyncService::remove($hotspot_user->phone_number);
         $hotspot_user->delete();
 
-        return redirect()->route('vouchers.index')->with('success', 'Voucher removed.');
+        return redirect()->route('customers.index', ['type' => 'hotspot', 'kind' => 'voucher'])->with('success', 'Voucher removed.');
     }
 }

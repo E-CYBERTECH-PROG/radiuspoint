@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>[network_name]</title>
   <link rel="stylesheet" href="assets/css/style.css?v=18June20261148H" />
-  <script src="assets/js/swal.js"></script>
+  <script src="assets/js/swal.js" defer></script>
 
 
   <script>
@@ -52,6 +52,16 @@
 
 <body>
 
+  <script>
+    // Set true only when this page load is itself the result of a failed login attempt
+    // (RouterOS only renders the $(if error) block in that case) — the MAC auto-reconnect
+    // script below checks this so a device whose remembered credential just failed doesn't
+    // loop retrying the same dead login forever; it falls back to the manual form instead.
+    var rpHadLoginError = false;
+    $(if error)
+    rpHadLoginError = true;
+    $(endif)
+  </script>
 
   <div class="system-alert-wrapper hide" id="system-alert-wrapper" $(if error) style="display: block;" $(endif)>
 
@@ -277,14 +287,49 @@
     return false;
   }
 
+  // Auto-recovering a returning device purely by MAC address — previously flagged as not
+  // wired up (see the note above about phone/receipt recovery being the only options). Fires
+  // silently on every login-page load; a miss just leaves the normal manual form showing, no
+  // visible change. This is a fresh RADIUS-backed check every time (CaptivePortalController::
+  // lookupByMac(), not a cached cookie), so it self-heals the moment a credential is purged,
+  // expires, or was never activated for this MAC — it never gets a device stuck logged in past
+  // any of those. rpHadLoginError (set above) stops this from looping if the remembered
+  // credential just failed.
+  async function rp_try_mac_auto_reconnect() {
+    if (rpHadLoginError) return;
+    if (!device_mac_address || device_mac_address.indexOf('$') !== -1) return;
+
+    try {
+      let curl = await fetch(`${rpCaptiveBase}/lookup-mac`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ mac: device_mac_address }),
+      });
+      if (curl.status !== 200) return;
+
+      let data = await curl.json();
+      if (!data.found) return;
+
+      document.sendin.username.value = data.username;
+      document.sendin.password.value = data.password;
+      document.sendin.submit();
+    } catch (e) {
+      // Best-effort — falls back to the manual login form already on the page.
+    }
+  }
+  rp_try_mac_auto_reconnect();
+
   let username = false;
   let password = false;
   let has_unused_voucher = false;
 
 
-  // Auto-recovering an unused voucher purely by MAC address (no phone/receipt entered) isn't
-  // wired up yet — that needs its own backend lookup, not built as of this skin's rewrite.
-  // Customers can still recover a purchase via the M-Pesa code box below.
+  // Auto-recovering an unused voucher purely by MAC address (no phone/receipt entered) still
+  // isn't wired up — an unused voucher has never connected, so no MAC has ever been recorded
+  // for it, and there's nothing to look up by. Customers can still recover a purchase via the
+  // M-Pesa code box below. (Different from rp_try_mac_auto_reconnect() further down: that one
+  // recovers an already-active voucher/account whose MAC was recorded on its first connect,
+  // for a device reconnecting after its session merely ended, not one that never started.)
 
   async function get_signin_page_startup_data() {
     let curl = await fetch(`${rpCaptiveBase}/startup.json`);

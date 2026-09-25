@@ -23,6 +23,25 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Cues that the mobile nav drawer has more items below the fold (Settings/Access Control
+    // sits past what a phone screen shows at once) — the drawer's own scrollbar gives no such
+    // hint on touch devices (no :hover state to reveal it, and many mobile browsers overlay
+    // their own scrollbar that ignores our styling anyway). See _custom.scss's
+    // .rp-has-more-below for the actual fade.
+    var mobileNavEl = document.getElementById('rp-mobile-nav');
+    var mobileNavBody = mobileNavEl && mobileNavEl.querySelector('.offcanvas-body');
+
+    function syncMobileNavScrollHint() {
+        if (!mobileNavBody) return;
+        var hasMore = mobileNavBody.scrollHeight - mobileNavBody.scrollTop - mobileNavBody.clientHeight > 4;
+        mobileNavBody.classList.toggle('rp-has-more-below', hasMore);
+    }
+
+    if (mobileNavBody) {
+        mobileNavBody.addEventListener('scroll', syncMobileNavScrollHint);
+        mobileNavEl.addEventListener('shown.bs.offcanvas', syncMobileNavScrollHint);
+    }
+
     var themeToggles = document.querySelectorAll('.rp-theme-toggle');
 
     function syncThemeIcons() {

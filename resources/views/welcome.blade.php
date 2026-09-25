@@ -89,6 +89,32 @@
                 border-radius: 1.25rem;
             }
 
+            /* Real photo of a laptop with a blank screen on a desk (Pexels License — free for
+               commercial use, no attribution required: photo by Artem Podrez,
+               pexels.com/photo/white-screen-of-a-laptop-4884107). The dashboard screenshot is
+               positioned into that blank screen by percentage coordinates measured against
+               this exact photo (grid-overlaid and read off by hand) — this only lines up
+               correctly for this specific image, not a general-purpose technique. */
+            .rp-office-laptop {
+                position: relative;
+            }
+            .rp-office-laptop-screen {
+                position: absolute;
+                left: 28.6%;
+                top: 22.3%;
+                width: 42.6%;
+                height: 49.5%;
+                overflow: hidden;
+                border-radius: .15rem;
+            }
+            .rp-office-laptop-screen img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                object-position: top;
+                display: block;
+            }
+
             /* Cursor-tracked spotlight — a soft radial highlight that follows the pointer
                inside each card, driven by --x/--y custom properties set from JS on
                pointermove. Cheap, no per-frame layout cost, reads as "alive" on hover. */
@@ -195,12 +221,13 @@
                 </a>
 
                 <nav class="d-none d-md-flex align-items-center gap-4 mx-auto">
+                    <a href="#demo" class="rp-nav-link">Demo</a>
                     <a href="#features" class="rp-nav-link">Features</a>
                     <a href="#hardware" class="rp-nav-link">Hardware</a>
                     <a href="#how-it-works" class="rp-nav-link">How It Works</a>
                 </nav>
 
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 ms-auto">
                     @auth
                         <a href="{{ url('/dashboard') }}" class="btn btn-primary btn-sm rounded-pill px-3 rp-btn-glow">
                             Dashboard
@@ -219,7 +246,7 @@
 
         <main>
             {{-- Hero --}}
-            <section class="rp-grain position-relative overflow-hidden d-flex align-items-center" style="min-height:46rem;background:var(--rp-void)">
+            <section class="rp-grain position-relative overflow-hidden d-flex align-items-center" style="min-height:34rem;background:var(--rp-void)">
                 <div class="rp-glow-orb" style="width:36rem;height:36rem;top:-14rem;left:-8rem;background:var(--rp-violet);opacity:.28"></div>
                 <div class="rp-glow-orb" style="width:26rem;height:26rem;bottom:-8rem;right:-4rem;background:var(--rp-magenta);opacity:.14"></div>
                 <div class="rp-hero-grid position-absolute top-0 start-0 w-100 h-100" aria-hidden="true"></div>
@@ -263,16 +290,16 @@
                             @endguest
                         </div>
 
-                        <div class="d-flex rp-glass mt-5 overflow-hidden" style="max-width:30rem">
-                            <div class="flex-fill p-3 border-end" style="border-color:var(--rp-border) !important">
+                        <div class="d-flex flex-wrap mt-5" style="max-width:30rem;gap:2.5rem">
+                            <div>
                                 <div class="rp-muted small">Provisioning</div>
                                 <div class="text-white fw-semibold">Zero-Touch</div>
                             </div>
-                            <div class="flex-fill p-3 border-end" style="border-color:var(--rp-border) !important">
+                            <div>
                                 <div class="rp-muted small">Architecture</div>
                                 <div class="text-white fw-semibold">Multi-Tenant</div>
                             </div>
-                            <div class="flex-fill p-3">
+                            <div>
                                 <div class="rp-muted small">Onboarding</div>
                                 <div class="text-white fw-semibold">Verified Signup</div>
                             </div>
@@ -322,20 +349,40 @@
                             </ul>
                         </div>
                         <div class="col-lg-6 order-1 order-lg-2">
-                            <div class="position-relative">
-                                <div class="rp-glow-orb" style="width:20rem;height:20rem;top:-3rem;left:-3rem;background:var(--rp-violet);opacity:.35"></div>
-                                <div class="rp-glass overflow-hidden position-relative" style="z-index:1">
-                                    <div class="px-3 py-2 d-flex align-items-center gap-2 border-bottom" style="border-color:var(--rp-border) !important">
-                                        <span class="rounded-circle bg-red" style="width:.625rem;height:.625rem"></span>
-                                        <span class="rounded-circle bg-yellow" style="width:.625rem;height:.625rem"></span>
-                                        <span class="rounded-circle bg-green" style="width:.625rem;height:.625rem"></span>
-                                        <span class="rp-muted small ms-2">radiuspoint.co.ke/dashboard</span>
+                            <div class="position-relative" style="max-width:40rem;margin-inline:auto">
+                                <div class="rp-glow-orb" style="width:20rem;height:20rem;top:-3rem;left:-3rem;background:var(--rp-violet);opacity:.3"></div>
+                                {{-- A real licensed photo (Pexels License — free for commercial
+                                     use) of a laptop with a blank screen on a desk, in a bright
+                                     office. The dashboard screenshot is composited into that
+                                     blank screen area by percentage-based position, measured
+                                     against this exact photo's geometry. --}}
+                                <div class="rp-office-laptop">
+                                    <img src="{{ asset('images/marketing/office-laptop-backdrop.jpg') }}" alt="Laptop on a desk in a bright office" class="w-100 h-auto d-block rounded-4">
+                                    <div class="rp-office-laptop-screen">
+                                        <img src="{{ asset('images/marketing/dashboard-preview-v2.png') }}" alt="RadiusPoint dashboard showing income, recent transactions, and live customer activity">
                                     </div>
-                                    {{-- Real screenshot of the dashboard against a demo tenant, not a mockup. --}}
-                                    <img src="{{ asset('images/marketing/dashboard-preview.png') }}" alt="RadiusPoint dashboard showing income, recent transactions, and live customer activity" class="w-100 h-auto d-block">
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- Product walkthrough — a real screen recording of the live app (dashboard,
+                 customers, hardware, transactions), not a mockup or stock clip. --}}
+            <section id="demo" class="border-top border-bottom position-relative overflow-hidden" style="border-color:var(--rp-border) !important;background:var(--rp-void)" data-reveal>
+                <div class="rp-glow-orb" style="width:26rem;height:26rem;top:-8rem;right:20%;background:var(--rp-violet);opacity:.16"></div>
+                <div class="container-xl py-6 position-relative">
+                    <div class="text-center mx-auto" style="max-width:34rem">
+                        <span class="rp-eyebrow justify-content-center w-100"><span class="rp-eyebrow-dot"></span> See It In Action</span>
+                        <h2 class="rp-h2 mt-3">A real look at the dashboard</h2>
+                        <p class="rp-muted mt-3 fs-5">No slides, no mockup &mdash; an actual walkthrough of provisioning, customers, and billing.</p>
+                    </div>
+
+                    <div class="rp-glass overflow-hidden mt-5 mx-auto" style="max-width:56rem">
+                        <video controls preload="metadata" poster="{{ asset('images/marketing/product-demo-poster.png') }}" class="w-100 h-auto d-block">
+                            <source src="{{ asset('videos/marketing/product-demo.mp4') }}" type="video/mp4">
+                        </video>
                     </div>
                 </div>
             </section>
@@ -561,26 +608,52 @@
 
             // Scroll-reveal: fade + rise sections into view as the user scrolls.
             // Styles are set inline (not via classes) so they always win the cascade.
+            //
+            // Every section below the hero starts fully invisible and stays that way unless
+            // IntersectionObserver actually fires — which normally works, but nothing here
+            // used to protect against the case where it doesn't (an old/unusual browser, a
+            // blocked/slow script, anything unobserving the wrong element). When that happens
+            // the whole page reads as broken: hero, then a huge empty void where every section
+            // is sitting there at opacity:0. reveal()/revealAll() below are shared so both the
+            // real observer and the timeout fallback go through the same code, and the
+            // fallback fires regardless of whether the observer itself threw.
             (function () {
                 var revealEls = document.querySelectorAll('[data-reveal]');
+                if (!revealEls.length) return;
 
-                revealEls.forEach(function (el) {
+                function reveal(el) {
                     el.style.transition = 'opacity .7s ease, transform .7s ease';
-                    el.style.opacity = '0';
-                    el.style.transform = 'translateY(24px)';
-                });
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }
 
-                var io = new IntersectionObserver(function (entries) {
-                    entries.forEach(function (entry) {
-                        if (entry.isIntersecting) {
-                            entry.target.style.opacity = '1';
-                            entry.target.style.transform = 'translateY(0)';
-                            io.unobserve(entry.target);
-                        }
+                function revealAll() {
+                    revealEls.forEach(reveal);
+                }
+
+                var safetyTimer = setTimeout(revealAll, 3000);
+
+                try {
+                    revealEls.forEach(function (el) {
+                        el.style.transition = 'opacity .7s ease, transform .7s ease';
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateY(24px)';
                     });
-                }, { threshold: 0.12 });
 
-                revealEls.forEach(function (el) { io.observe(el); });
+                    var io = new IntersectionObserver(function (entries) {
+                        entries.forEach(function (entry) {
+                            if (entry.isIntersecting) {
+                                reveal(entry.target);
+                                io.unobserve(entry.target);
+                            }
+                        });
+                    }, { threshold: 0.12 });
+
+                    revealEls.forEach(function (el) { io.observe(el); });
+                } catch (e) {
+                    clearTimeout(safetyTimer);
+                    revealAll();
+                }
             })();
 
             // Mikrotik hardware carousel

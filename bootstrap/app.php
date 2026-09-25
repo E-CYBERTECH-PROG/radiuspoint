@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal/*/pay',
             'captive/*/lookup',
             'captive/*/lookup-receipt',
+            'captive/*/lookup-mac',
             'captive/*/free-mode',
         ]);
     })

@@ -140,13 +140,13 @@ class MikrotikApiService
         $existingRanges = array_column($this->query('/ip/pool/print'), 'ranges');
 
         for ($octet = 0; $octet <= 255; $octet++) {
-            $cidr = "172.20.{$octet}.0/24";
-            $gateway = "172.20.{$octet}.1";
-            $range = "172.20.{$octet}.2-172.20.{$octet}.254";
+            $cidr = "10.100.{$octet}.0/24";
+            $gateway = "10.100.{$octet}.1";
+            $range = "10.100.{$octet}.2-10.100.{$octet}.254";
 
             $collides = false;
             foreach ($existingRanges as $existing) {
-                if (str_contains((string) $existing, "172.20.{$octet}.")) {
+                if (str_contains((string) $existing, "10.100.{$octet}.")) {
                     $collides = true;
                     break;
                 }
@@ -157,6 +157,6 @@ class MikrotikApiService
             }
         }
 
-        throw new \RuntimeException('No free /24 subnet available in the 172.20.0.0/16 allocation block.');
+        throw new \RuntimeException('No free /24 subnet available in the 10.100.0.0/16 allocation block.');
     }
 }

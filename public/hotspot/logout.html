@@ -1,71 +1,70 @@
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="pragma" content="no-cache" />
-    <meta http-equiv="expires" content="-1" />
-    <title>INTERNET HOTSPOT  - Log out</title>
-    <link rel="stylesheet" href="assets/css/style.css" />
-    <script>
-      function openLogin() {
-        if (window.name != "hotspot_logout") return true;
-        open("$(link-login)", "_blank", "");
-        window.close();
-        return false;
-      }
-    </script>
-  </head>
+<!DOCTYPE html>
+<html lang="en">
 
-  <body>
-    <div class="ie-fixMinHeight">
-      <div class="main">
-        <div class="wrap">
-          <div class="bgimg">
-            <img src="assets/img/bg1.jpg" alt="" />
-          </div>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="pragma" content="no-cache" />
+  <meta http-equiv="expires" content="-1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[network_name] — Logged Out</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script>
+    function openLogin() {
+      if (window.name != "hotspot_logout") return true;
+      open("$(link-login)", "_blank", "");
+      window.close();
+      return false;
+    }
+  </script>
+  <style>
+    .logout-summary { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+    .logout-summary td { padding: 6px 0; border-bottom: 1px solid rgba(0, 0, 0, .08); color: #333; }
+    .logout-summary td:first-child { color: #6b7280; }
+    .logout-summary td:last-child { text-align: right; font-weight: 600; color: #0a0a3f; }
+  </style>
+</head>
 
-          <div class="container">
-            <h1 >You have just logged out!</h1>
-            <br />
-            <table >
-              <tr>
-                <td>Username</td>
-                <td>$(username)</td>
-              </tr>
-              <tr>
-                <td>IP address</td>
-                <td>$(ip)</td>
-              </tr>
-              <tr>
-                <td>MAC address</td>
-                <td>$(mac)</td>
-              </tr>
-              <tr>
-                <td>Session time</td>
-                <td>$(uptime)</td>
-              </tr>
-              $(if session-time-left)
-              <tr>
-                <td>Time left</td>
-                <td>$(session-time-left)</td>
-              </tr>
-              $(endif)
-              <tr>
-                <td>Bytes up / down:</td>
-                <td>$(bytes-in-nice) / $(bytes-out-nice)</td>
-              </tr>
-            </table>
+<body>
 
-            <form
-              action="$(link-login)"
-              name="login"
-              onSubmit="return openLogin()"
-            >
-              <input id="search-trx-btn" type="submit" value="Log in" />
-            </form>
-          </div>
+  <div class="bgimg">
+    <img src="assets/img/global-network.jpg" alt="" />
+  </div>
+
+  <div class="wrap animated fadeIn">
+    <div class="main-container payment-options">
+      <div class="container networkname-banner">
+        <div class="wifi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 18.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Z" fill="currentColor" />
+            <path d="M8.2 15.3a5.6 5.6 0 0 1 7.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M4.8 11.9a10.4 10.4 0 0 1 14.4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M1.5 8.6a15 15 0 0 1 21 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h1 class="ssid">You've been logged out</h1>
+        <p class="banner-instruction">Thanks for using [network_name]. Here's your session summary:</p>
+
+        <table class="logout-summary">
+          <tr><td>Username</td><td>$(username)</td></tr>
+          <tr><td>Session time</td><td>$(uptime)</td></tr>
+          $(if session-time-left)
+          <tr><td>Time left</td><td>$(session-time-left)</td></tr>
+          $(endif)
+          <tr><td>Data used</td><td>$(bytes-in-nice) / $(bytes-out-nice)</td></tr>
+        </table>
+
+        <form action="$(link-login)" name="login" onSubmit="return openLogin()">
+          <button class="submit-button" type="submit">Log In Again</button>
+        </form>
+
+        <div class="support-badge">
+          <span class="support-badge-label">Call / Text</span>
+          <span class="org-support">[supportnumber]</span>
         </div>
       </div>
     </div>
-  </body>
+  </div>
+
+</body>
+
 </html>

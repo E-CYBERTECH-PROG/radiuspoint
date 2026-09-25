@@ -153,6 +153,41 @@ class CaptivePortalController extends Controller
     }
 
     /**
+     * MAC-based auto-reconnect for a returning device with a still-active, non-purged voucher
+     * or account — fires silently in the background on every login-page load (see login.html),
+     * not from a customer-facing form, so unlike lookup()/lookupReceipt() this never returns an
+     * explanatory "buy a plan" message on a miss: a miss here just means "nothing to
+     * auto-reconnect", and the page falls back to the normal manual login form. Deliberately a
+     * fresh RADIUS-backed lookup every time (not a cached cookie/session) — credentialFor()
+     * returns null the moment a credential is purged or the account expires, so a device can
+     * never auto-reconnect past either.
+     */
+    public function lookupByMac(Request $request, Router $router)
+    {
+        $request->validate([
+            'mac' => ['required', 'string', 'regex:/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/'],
+        ]);
+
+        $hotspotUser = HotspotUser::withoutGlobalScope('tenant')
+            ->where('tenant_id', $router->tenant_id)
+            ->where('mac_address', $request->mac)
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->latest()
+            ->first();
+
+        $credential = $hotspotUser ? $this->credentialFor($hotspotUser) : null;
+
+        if (! $credential) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json(['found' => true] + $credential);
+    }
+
+    /**
      * Self-service lookup by pasted M-Pesa payment message, for customers who don't know or
      * remember the phone number they paid from. Same throttle tier as lookup() above.
      */

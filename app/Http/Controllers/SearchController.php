@@ -52,10 +52,12 @@ class SearchController extends Controller
 
         return response()->json([
             'hotspot_users' => $results['hotspot_users']->map(fn ($u) => [
-                'label' => $u->phone_number, 'sub' => $u->status, 'url' => route('hotspot-users.show', $u),
+                'label' => $u->phone_number, 'sub' => $u->status,
+                'url' => route('customers.show', ['type' => 'hotspot', 'token' => CustomerController::tokenFor('hotspot', $u->id)]),
             ]),
             'pppoe_users' => $results['pppoe_users']->map(fn ($u) => [
-                'label' => $u->username, 'sub' => $u->status, 'url' => route('pppoe-users.show', $u),
+                'label' => $u->username, 'sub' => $u->status,
+                'url' => route('customers.show', ['type' => 'pppoe', 'token' => CustomerController::tokenFor('pppoe', $u->id)]),
             ]),
             'routers' => $results['routers']->map(fn ($r) => [
                 'label' => $r->name, 'sub' => $r->ip_address, 'url' => route('routers.show', $r),

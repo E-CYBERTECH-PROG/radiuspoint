@@ -1,6 +1,21 @@
 /*@import url("https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@200;300;400;500;600;800;900&display=swap"); teeeeest*/
 
 
+/* Theme tokens — solid values only (no color-mix()/gradients-in-variables), kept deliberately
+   simple since this page has to render correctly in constrained/older captive-portal webviews,
+   not just modern Chrome. A router's selected template (see config/captive_hotspot_themes.php)
+   overrides these via an inline <style> block injected by NasProvisioningController — this
+   :root is just the light-lumen default, so the page still looks right with no override at all. */
+:root {
+  --brand: #3498db;
+  --page-bg-start: #0f172a;
+  --page-bg-end: #1e3a5f;
+  --card-bg: rgba(255, 255, 255, .95);
+  --card-border: rgba(37, 99, 235, .15);
+  --text: #0f172a;
+  --text-muted: #64748b;
+}
+
 body,
 html {
   min-height: 100%;
@@ -11,7 +26,7 @@ html {
 
 body {
   /* width: 100vw; */
-  background-color: rgba(0, 0, 0, 1)
+  background: linear-gradient(160deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%);
 }
 
 a {
@@ -180,10 +195,10 @@ h1 {
 
 .offer {
   margin: 10px auto;
-  background: linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .86));
-  border: 1px solid rgba(138, 43, 226, .2);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, .25);
-  color: #0a0a3f;
+  color: var(--text);
   padding: 12px 14px;
   border-radius: 1px;
   display: flex;
@@ -199,7 +214,7 @@ h1 {
 }
 
 .get-deal {
-  background-color: #3498db;
+  background-color: var(--brand);
   width: auto;
   min-width: 64px;
   padding: 8px 16px;
@@ -456,12 +471,12 @@ form {
 
 
 .networkname-banner {
-  background: linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .86));
+  background: var(--card-bg);
   border-radius: 1px;
   padding: 22px 20px 16px;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-  border: 1px solid rgba(138, 43, 226, .25);
+  border: 1px solid var(--card-border);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
@@ -470,7 +485,7 @@ form {
   width: 42px;
   height: 42px;
   margin: 0 auto 6px;
-  color: #3498db;
+  color: var(--brand);
 }
 
 .networkname-banner .wifi-icon svg {
@@ -483,20 +498,20 @@ form {
   margin: 0 0 6px;
   font-size: 22px !important;
   letter-spacing: .3px;
-  color: #0a0a3f;
+  color: var(--text);
 }
 
 .networkname-banner .banner-instruction {
   margin: 0 0 14px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-muted);
 }
 
 .networkname-banner .support-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #3498db;
+  background: var(--brand);
   color: #fff;
   font-weight: 600;
   font-size: 13px;
@@ -550,15 +565,12 @@ form {
  /*   max-width: 420px;*/
     margin: 10px auto;
     padding: 25px 28px;
-    background: #1e1e2e;        /* dark elegant background */
-    background-color: #fff;
+    background-color: var(--card-bg);
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4),
-                0 0 20px rgba(138, 43, 226, 0.15); /* subtle purple glow */
-    border: 1px solid rgba(138, 43, 226, 0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    border: 1px solid var(--card-border);
     font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    color: #e0e0ff;
-    color: #0a0a3f;
+    color: var(--text);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -603,33 +615,29 @@ form {
 .submit-button {
     width: 100%;
     padding: 8px;
-    background: linear-gradient(135deg, #2e2be2, #ba55d3);
-    background: #3498db;
+    background: var(--brand);
     color: white;
     font-weight: 600;
     font-size: 1.1rem;
     border: none;
     border-radius: .2rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: transform .15s ease, opacity .15s ease;
 }
 
 .submit-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
-    background: linear-gradient(135deg, #9d46f0, #c960e0);
-    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    opacity: .92;
 }
 
 .submit-button:active {
     transform: translateY(0);
 }
 
-
-
 .submit-button:disabled {
-  background-color: #539ad4;
+  background: var(--brand);
   color: #fff;
+  opacity: .55;
 }
 
 
@@ -657,7 +665,7 @@ form {
   .input-type-selector {
     flex: 1 1 100px;           /* grow, shrink, and basis ~400px (adjust as needed) */
     background: #eef2f7;
-    color: #0a0a3f;
+    color: var(--text);
     text-align: center;
     display: flex;
     align-items: center;
@@ -673,7 +681,7 @@ form {
     background-color: #dbe6f0;
   }
    .input-type-selector.selected{
-    background-color: #3498db;
+    background-color: var(--brand);
     color: #fff;
    }
 

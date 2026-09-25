@@ -18,7 +18,10 @@
 
     </script>
     <style>
-        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+        /* No external font import — pre-auth hotspot pages must be 100% self-hosted. A CDN
+           fetch here doesn't just fail to style the page, it can hang the page waiting on a
+           blocked request on stricter captive-portal browsers (iOS Captive Network Assistant
+           and similar). Falls through to the system font stack below. */
 
         * {
             box-sizing: border-box;

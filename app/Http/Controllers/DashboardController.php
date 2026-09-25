@@ -27,15 +27,13 @@ class DashboardController extends Controller
             : DB::table('radacct')->whereIn('nasipaddress', $routerIps)->whereNull('acctstoptime')->pluck('username');
 
         $onlinePpp = $openSessionUsernames->isEmpty() ? 0 : PppoeUser::whereIn('username', $openSessionUsernames)->count();
-        // Vouchers (is_voucher=true) are excluded everywhere in this method — they aren't real
-        // walk-up customers until redeemed, and even then belong on their own Vouchers page,
-        // not folded into "hotspot customer" counts/charts here.
-        //
-        // A hotspot session's RADIUS username is phone_number only for vouchers/manually
-        // created accounts — an auto-purchased account's actual credential is its Transaction's
-        // M-Pesa receipt (see HotspotUser::radiusUsername()), so both need checking here.
-        $onlineHotspot = $openSessionUsernames->isEmpty() ? 0 : HotspotUser::where('is_voucher', false)
-            ->where(function ($q) use ($openSessionUsernames) {
+        // Vouchers (is_voucher=true) are counted alongside registered accounts here — a walk-up
+        // voucher customer using WiFi right now is just as real as a registered one. A voucher's
+        // RADIUS username is its own phone_number/code, which the whereIn below already matches;
+        // the orWhereHas covers an auto-purchased (non-voucher) account, whose actual credential
+        // is its Transaction's M-Pesa receipt rather than its phone_number (see
+        // HotspotUser::radiusUsername()).
+        $onlineHotspot = $openSessionUsernames->isEmpty() ? 0 : HotspotUser::where(function ($q) use ($openSessionUsernames) {
                 $q->whereIn('phone_number', $openSessionUsernames)
                     ->orWhereHas('transactions', fn ($t) => $t->where('status', 'success')->whereIn('mpesa_receipt', $openSessionUsernames));
             })
@@ -45,9 +43,9 @@ class DashboardController extends Controller
             'income_today' => (float) Transaction::whereDate('created_at', $now->copy()->startOfDay())->where('status', 'success')->sum('amount'),
             'income_month' => (float) Transaction::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->where('status', 'success')->sum('amount'),
             'income_last_month' => (float) Transaction::whereMonth('created_at', $now->copy()->subMonth()->month)->whereYear('created_at', $now->copy()->subMonth()->year)->where('status', 'success')->sum('amount'),
-            'hotspot_active' => HotspotUser::where('is_voucher', false)->where('status', 'active')->count(),
+            'hotspot_active' => HotspotUser::where('status', 'active')->count(),
             'pppoe_active' => PppoeUser::where('status', 'active')->count(),
-            'customers_total' => HotspotUser::where('is_voucher', false)->count() + PppoeUser::count(),
+            'customers_total' => HotspotUser::count() + PppoeUser::count(),
             'pppoe_expired' => PppoeUser::where('status', 'expired')->count(),
             'online_ppp' => $onlinePpp,
             'online_hotspot' => $onlineHotspot,

@@ -45,16 +45,10 @@
         <li class="nav-item {{ request()->routeIs('routers.*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('routers.index') }}">
                 <span class="nav-link-icon"><i class="ti ti-world"></i></span>
-                <span class="nav-link-title">NAS</span>
+                <span class="nav-link-title">Routerboards</span>
             </a>
         </li>
 
-        <li class="nav-item {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vouchers.index') }}">
-                <span class="nav-link-icon"><i class="ti ti-ticket"></i></span>
-                <span class="nav-link-title">Vouchers</span>
-            </a>
-        </li>
 
         <li class="nav-item {{ request()->routeIs('plans.*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('plans.index') }}">
