@@ -16,9 +16,9 @@
 
     <div class="tab-content">
         <div class="tab-pane {{ $oneispSmsTab === 'outbox' ? 'active show' : '' }}" id="rp-sms-outbox">
-            <form method="GET">
-            <input type="hidden" name="tab" value="outbox">
             <div class="card">
+                <form method="GET">
+            <input type="hidden" name="tab" value="outbox">
                 <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted small">Show</span>
@@ -38,6 +38,19 @@
                         </button>
                     </div>
                 </div>
+
+            <x-filter-modal name="sms" :clear-url="route('sms.index', ['tab' => 'outbox'])">
+                <div class="col-12">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All</option>
+                        @foreach(['queued', 'sent', 'failed'] as $status)
+                            <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </x-filter-modal>
+                </form>
 
                 <div class="table-responsive">
                     <table class="table card-table table-vcenter text-nowrap">
@@ -84,18 +97,6 @@
                 <div class="card-footer">{{ $messages->links('vendor.pagination.rp-circles') }}</div>
             </div>
 
-            <x-filter-modal name="sms" :clear-url="route('sms.index', ['tab' => 'outbox'])">
-                <div class="col-12">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">All</option>
-                        @foreach(['queued', 'sent', 'failed'] as $status)
-                            <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </x-filter-modal>
-            </form>
         </div>
 
         <div class="tab-pane {{ $oneispSmsTab === 'templates' ? 'active show' : '' }}" id="rp-sms-templates">

@@ -24,8 +24,8 @@
         </div>
     </div>
 
-    <form method="GET">
-        <div class="card">
+    <div class="card">
+            <form method="GET">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
@@ -45,6 +45,19 @@
                     </button>
                 </div>
             </div>
+
+        <x-filter-modal name="expenses" :clear-url="route('expenses.index')">
+            <div class="col-12">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All</option>
+                    @foreach(\App\Http\Controllers\ExpenseController::CATEGORIES as $cat)
+                        <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+            </form>
 
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -117,18 +130,6 @@
         </div>
         </div>
 
-        <x-filter-modal name="expenses" :clear-url="route('expenses.index')">
-            <div class="col-12">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-select">
-                    <option value="">All</option>
-                    @foreach(\App\Http\Controllers\ExpenseController::CATEGORIES as $cat)
-                        <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </x-filter-modal>
-    </form>
 
     <div class="mt-3">{{ $expenses->links('vendor.pagination.rp-circles') }}</div>
 

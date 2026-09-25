@@ -9,8 +9,8 @@
         </a>
     </div>
 
-    <form method="GET">
-        <div class="card">
+    <div class="card">
+            <form method="GET">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
@@ -30,6 +30,28 @@
                     </a>
                 </div>
             </div>
+
+        <x-filter-modal name="tenants" :clear-url="route('platform-admin.tenants.index')">
+            <div class="col-12">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['pending', 'active', 'suspended', 'rejected'] as $status)
+                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Tier</label>
+                <select name="tier" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['free', 'starter', 'pro'] as $tier)
+                        <option value="{{ $tier }}" @selected(request('tier') === $tier)>{{ ucfirst($tier) }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+            </form>
 
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -108,25 +130,4 @@
         @endif
         </div>
 
-        <x-filter-modal name="tenants" :clear-url="route('platform-admin.tenants.index')">
-            <div class="col-12">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All</option>
-                    @foreach(['pending', 'active', 'suspended', 'rejected'] as $status)
-                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-12">
-                <label class="form-label">Tier</label>
-                <select name="tier" class="form-select">
-                    <option value="">All</option>
-                    @foreach(['free', 'starter', 'pro'] as $tier)
-                        <option value="{{ $tier }}" @selected(request('tier') === $tier)>{{ ucfirst($tier) }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </x-filter-modal>
-    </form>
 </x-sidebar-layout>

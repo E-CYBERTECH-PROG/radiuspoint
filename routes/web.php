@@ -199,7 +199,7 @@ Route::middleware(['auth', 'verified', 'tenant.approved', 'tenant.subscribed', '
     // === PLAN MANAGEMENT ===
     // Registered before the resource route below — plans/{plan} would otherwise swallow this
     // as a route-model-binding lookup for a plan literally named "bulk-destroy".
-    Route::delete('/plans/bulk-destroy', [PlanController::class, 'destroyBulk'])->name('plans.destroy-bulk');
+    Route::post('/plans/bulk', [PlanController::class, 'bulk'])->name('plans.bulk');
     Route::resource('plans', PlanController::class)->except('show');
     Route::post('/plans/{plan}/duplicate', [PlanController::class, 'duplicate'])->name('plans.duplicate');
     Route::get('/plans/{plan}/sync-status', [PlanController::class, 'syncStatus'])->name('plans.sync-status');

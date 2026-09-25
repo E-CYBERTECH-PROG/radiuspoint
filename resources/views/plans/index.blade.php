@@ -112,10 +112,16 @@
     <input type="hidden" name="tab" value="{{ $tab }}">
     <div class="card">
         <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2" id="rp-plans-pager">
                 <span class="text-muted small">Show</span>
                 <x-per-page-select :default="10" />
                 <span class="text-muted small">Entries</span>
+            </div>
+            <div class="d-none align-items-center gap-2" id="rp-plans-bulkbar">
+                <span class="fw-bold small"><span id="rp-plans-count">0</span> selected</span>
+                <button type="button" class="btn btn-sm" data-rp-bulk="activate"><i class="ti ti-player-play icon"></i> Activate</button>
+                <button type="button" class="btn btn-sm" data-rp-bulk="deactivate"><i class="ti ti-player-pause icon"></i> Deactivate</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-rp-bulk="delete"><i class="ti ti-trash icon"></i> Delete</button>
             </div>
 
             <div class="d-flex align-items-center gap-2">
@@ -133,6 +139,7 @@
             <table class="table card-table table-vcenter text-nowrap">
                 <thead>
                     <tr>
+                        <th class="w-1"><input type="checkbox" class="form-check-input m-0" id="rp-plans-select-all" title="Select all" aria-label="Select all packages"></th>
                         <th>ID</th>
                         <th>Name</th>
                         <th>Price</th>
@@ -145,6 +152,7 @@
                 <tbody>
                     @forelse($plans as $i => $plan)
                         <tr>
+                            <td><input type="checkbox" class="form-check-input m-0 rp-plan-check" name="plan_ids[]" value="{{ $plan->id }}" form="rp-plans-bulk" aria-label="Select {{ $plan->name }}"></td>
                             <td class="text-muted">{{ $plans->firstItem() + $i }}</td>
                             <td class="fw-bold">{{ $plan->name }}</td>
                             <td>KES {{ number_format($plan->price) }}</td>
@@ -165,21 +173,15 @@
                             <td class="text-end">
                                 <div class="d-flex align-items-center justify-content-end gap-3">
                                     <button type="button" class="text-muted" style="background:none;border:0" data-bs-toggle="offcanvas" data-bs-target="#rp-edit-plan-{{ $plan->id }}" title="Edit"><i class="ti ti-edit"></i></button>
-                                    <form action="{{ route('plans.duplicate', $plan) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="text-muted" style="background:none;border:0" title="Duplicate"><i class="ti ti-copy"></i></button>
-                                    </form>
+                                    <button type="submit" form="rp-plan-dup-{{ $plan->id }}" class="text-muted" style="background:none;border:0" title="Duplicate"><i class="ti ti-copy"></i></button>
                                     <a href="{{ route('plans.sync-status', $plan) }}" class="text-success" title="View Sync Status"><i class="ti ti-eye"></i></a>
-                                    <form action="{{ route('plans.destroy', $plan) }}" method="POST" onsubmit="return rpConfirm(event, 'Delete this plan? Customers assigned to it must be reassigned first.')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-danger" style="background:none;border:0" title="Delete"><i class="ti ti-trash"></i></button>
-                                    </form>
+                                    <button type="submit" form="rp-plan-del-{{ $plan->id }}" class="text-danger" style="background:none;border:0" title="Delete"><i class="ti ti-trash"></i></button>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <span class="avatar avatar-xl bg-primary-lt mb-3"><i class="ti ti-box fs-1"></i></span>
                                 <p class="text-uppercase text-muted small mb-0">No {{ $tab === 'hotspot' ? 'hotspot' : 'fixed' }} packages yet — add your first one to get started.</p>
                             </td>
@@ -191,6 +193,19 @@
 
         <div class="card-footer">{{ $plans->links('vendor.pagination.rp-circles') }}</div>
     </div>
+    </form>
+
+    {{-- Row and bulk action forms live outside the search form above: a <form> nested inside
+         another is ignored by the browser, so its button would submit the search instead.
+         The table's buttons/checkboxes reach these through the form="…" attribute. --}}
+    @foreach($plans as $plan)
+        <form id="rp-plan-dup-{{ $plan->id }}" action="{{ route('plans.duplicate', $plan) }}" method="POST" class="d-none">@csrf</form>
+        <form id="rp-plan-del-{{ $plan->id }}" action="{{ route('plans.destroy', $plan) }}" method="POST" class="d-none" onsubmit="return rpConfirm(event, 'Delete this plan? Customers assigned to it must be reassigned first.')">@csrf @method('DELETE')</form>
+    @endforeach
+    <form id="rp-plans-bulk" action="{{ route('plans.bulk') }}" method="POST" class="d-none">
+        @csrf
+        <input type="hidden" name="action" id="rp-plans-bulk-action">
+        <input type="hidden" name="tab" value="{{ $tab }}">
     </form>
 
     {{-- === EDIT PACKAGE OFFCANVASES — one per row === --}}
@@ -334,6 +349,36 @@
     @endforeach
 
     <script>
+        (function () {
+            var all = document.getElementById('rp-plans-select-all');
+            var checks = function () { return Array.prototype.slice.call(document.querySelectorAll('.rp-plan-check')); };
+            var bar = document.getElementById('rp-plans-bulkbar'), pager = document.getElementById('rp-plans-pager');
+            var form = document.getElementById('rp-plans-bulk'), actionInput = document.getElementById('rp-plans-bulk-action');
+            if (!all || !form) return;
+
+            function refresh() {
+                var n = checks().filter(function (c) { return c.checked; }).length;
+                document.getElementById('rp-plans-count').textContent = n;
+                bar.classList.toggle('d-none', n === 0); bar.classList.toggle('d-flex', n > 0);
+                pager.classList.toggle('d-none', n > 0); pager.classList.toggle('d-flex', n === 0);
+                all.checked = n > 0 && n === checks().length;
+                all.indeterminate = n > 0 && n < checks().length;
+            }
+            all.addEventListener('change', function () { checks().forEach(function (c) { c.checked = all.checked; }); refresh(); });
+            document.addEventListener('change', function (e) { if (e.target.classList.contains('rp-plan-check')) refresh(); });
+
+            document.querySelectorAll('[data-rp-bulk]').forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    var action = btn.getAttribute('data-rp-bulk');
+                    var n = document.getElementById('rp-plans-count').textContent;
+                    if (action === 'delete' && !(await window.rpConfirmAsync('Delete ' + n + ' package(s)? Any still assigned to customers will be skipped.'))) return;
+                    actionInput.value = action;
+                    if (window.rpShowPageLoader) window.rpShowPageLoader();
+                    HTMLFormElement.prototype.submit.call(form);
+                });
+            });
+        })();
+
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('[data-rp-autoshow]').forEach(function (el) {
                 bootstrap.Offcanvas.getOrCreateInstance(el).show();

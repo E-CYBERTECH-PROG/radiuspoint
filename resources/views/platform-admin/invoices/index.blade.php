@@ -21,8 +21,8 @@
         </div>
     </div>
 
-    <form method="GET">
-        <div class="card">
+    <div class="card">
+            <form method="GET">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
@@ -33,6 +33,19 @@
                     </button>
                 </div>
             </div>
+
+        <x-filter-modal name="invoices" :clear-url="route('platform-admin.invoices.index')">
+            <div class="col-12">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="pending" @selected(request('status') === 'pending')>Pending</option>
+                    <option value="overdue" @selected(request('status') === 'overdue')>Overdue</option>
+                    <option value="paid" @selected(request('status') === 'paid')>Paid</option>
+                </select>
+            </div>
+        </x-filter-modal>
+            </form>
 
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -93,16 +106,4 @@
         @endif
         </div>
 
-        <x-filter-modal name="invoices" :clear-url="route('platform-admin.invoices.index')">
-            <div class="col-12">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All</option>
-                    <option value="pending" @selected(request('status') === 'pending')>Pending</option>
-                    <option value="overdue" @selected(request('status') === 'overdue')>Overdue</option>
-                    <option value="paid" @selected(request('status') === 'paid')>Paid</option>
-                </select>
-            </div>
-        </x-filter-modal>
-    </form>
 </x-sidebar-layout>

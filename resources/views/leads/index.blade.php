@@ -4,8 +4,8 @@
         <p class="text-muted mb-0">Prospective customers captured from field agents and campaigns.</p>
     </div>
 
-    <form method="GET">
-        <div class="card">
+    <div class="card">
+            <form method="GET">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
@@ -25,6 +25,19 @@
                     </button>
                 </div>
             </div>
+
+        <x-filter-modal name="leads" :clear-url="route('leads.index')">
+            <div class="col-12">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['new', 'contacted', 'converted', 'lost'] as $status)
+                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+            </form>
 
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -123,18 +136,6 @@
         </div>
         </div>
 
-        <x-filter-modal name="leads" :clear-url="route('leads.index')">
-            <div class="col-12">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All</option>
-                    @foreach(['new', 'contacted', 'converted', 'lost'] as $status)
-                        <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </x-filter-modal>
-    </form>
 
     <div class="mt-3">{{ $leads->links('vendor.pagination.rp-circles') }}</div>
 

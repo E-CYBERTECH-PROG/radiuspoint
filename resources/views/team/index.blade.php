@@ -4,8 +4,8 @@
         <p class="text-muted mb-0">Staff accounts with access to your RadiusPoint dashboard.</p>
     </div>
 
-    <form method="GET">
-        <div class="card">
+    <div class="card">
+            <form method="GET">
             <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
@@ -25,6 +25,19 @@
                     </button>
                 </div>
             </div>
+
+        <x-filter-modal name="team" :clear-url="route('team.index')">
+            <div class="col-12">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-select">
+                    <option value="">All</option>
+                    @foreach(['Admin', 'Technician', 'Sales Agent'] as $role)
+                        <option value="{{ $role }}" @selected(request('role') === $role)>{{ $role }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </x-filter-modal>
+            </form>
 
         <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -99,18 +112,6 @@
         </div>
         </div>
 
-        <x-filter-modal name="team" :clear-url="route('team.index')">
-            <div class="col-12">
-                <label class="form-label">Role</label>
-                <select name="role" class="form-select">
-                    <option value="">All</option>
-                    @foreach(['Admin', 'Technician', 'Sales Agent'] as $role)
-                        <option value="{{ $role }}" @selected(request('role') === $role)>{{ $role }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </x-filter-modal>
-    </form>
 
     <div class="mt-3">{{ $members->links('vendor.pagination.rp-circles') }}</div>
 

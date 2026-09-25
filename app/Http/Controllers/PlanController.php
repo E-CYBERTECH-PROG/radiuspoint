@@ -226,23 +226,33 @@ class PlanController extends Controller
     }
 
     /**
-     * Same in-use guard as destroy(), applied per plan — skips (rather than fails outright on)
-     * any plan still assigned to a customer, and reports how many of each in one message.
+     * Bulk Activate / Deactivate / Delete from the Packages table's checkboxes. Delete uses the
+     * same in-use guard as destroy(), skipping (rather than failing on) any plan still assigned
+     * to a customer. Deactivating is always safe: existing customers keep their plan.
      */
-    public function destroyBulk(Request $request)
+    public function bulk(Request $request)
     {
         $request->validate([
             'plan_ids' => 'required|array',
-            'plan_ids.*' => 'exists:plans,id',
+            'plan_ids.*' => 'integer',
+            'action' => ['required', Rule::in(['activate', 'deactivate', 'delete'])],
+            'tab' => 'nullable|in:hotspot,pppoe',
         ]);
 
         $plans = Plan::where('tenant_id', Auth::user()->tenant_id)
             ->whereIn('id', $request->plan_ids)
             ->get();
+        $back = redirect()->route('plans.index', array_filter(['tab' => $request->tab]));
+
+        if ($request->action !== 'delete') {
+            $status = $request->action === 'activate' ? 'active' : 'inactive';
+            Plan::whereIn('id', $plans->pluck('id'))->update(['status' => $status]);
+
+            return $back->with('success', ucfirst($request->action).'d '.$plans->count().' package(s).');
+        }
 
         $deleted = 0;
         $skipped = 0;
-
         foreach ($plans as $plan) {
             $inUse = PppoeUser::where('current_plan_id', $plan->id)->exists()
                 || HotspotUser::where('current_plan_id', $plan->id)->exists();
@@ -256,12 +266,12 @@ class PlanController extends Controller
             $deleted++;
         }
 
-        $message = "Removed {$deleted} plan(s).";
+        $message = "Removed {$deleted} package(s).";
         if ($skipped > 0) {
             $message .= " Skipped {$skipped} still assigned to customers.";
         }
 
-        return redirect()->route('plans.index')->with($skipped > 0 ? 'error' : 'success', $message);
+        return $back->with($skipped > 0 ? 'error' : 'success', $message);
     }
 
     /**
